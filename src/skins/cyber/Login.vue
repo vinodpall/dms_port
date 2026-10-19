@@ -20,7 +20,6 @@ const LEDS = [[1103, 178, 0], [1103, 232, 1.1], [1150, 205, 0.5], [1150, 262, 1.
     <div class="cy-login-bg" aria-hidden="true" />
     <div class="cy-hero" aria-hidden="true">
       <img :src="hero" alt="" draggable="false" />
-      <span class="cy-hero-sweep" />
       <svg viewBox="0 0 1800 1168" class="cy-hero-fx">
         <defs>
           <clipPath id="holo-clip"><polygon points="893,163 1045,78 1045,272 893,357" /></clipPath>
