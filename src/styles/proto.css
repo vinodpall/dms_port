@@ -479,6 +479,7 @@
     .step .bar { display: none; }
   }
   @media (min-width: 761px) { .navscrim { display: none; } }
-  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  /* 赛博皮肤（.cy）的动效由皮肤自行控制，不受此全局规则影响 */
+  @media (prefers-reduced-motion: reduce) { :where(*:not(.cy, .cy *)), :where(*:not(.cy *))::before, :where(*:not(.cy *))::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
   [hidden] { display: none !important; }
 

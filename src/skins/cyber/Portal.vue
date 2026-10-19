@@ -285,5 +285,4 @@ const stageStyle = computed(() => ({
   .node-en { margin: 0; align-self: start; grid-column: 2; }
   .node-status { margin: 0; grid-column: 3; grid-row: 1 / span 2; }
 }
-@media (prefers-reduced-motion: reduce) { .mod-node { animation: none; } }
 </style>

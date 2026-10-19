@@ -139,8 +139,6 @@
 .cy-err.shake { animation: cy-shake .35s; }
 @keyframes cy-shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
 
-/* 系统开启「减少动画」时：仅关闭位移类动画（入场、缩放、地面滚动），保留轻量的循环氛围动效 */
-@media (prefers-reduced-motion: reduce) { .cy-hero, .cy-title, .cy-card, .cy-floor, .cy-scan { animation: none !important; } }
 @media (max-width: 1100px) { .cy-login { grid-template-columns: minmax(0, 1fr) 460px; } .cy-side { padding-right: 48px; } }
 @media (max-width: 900px) {
   .cy-login { grid-template-columns: 1fr; grid-template-rows: auto 1fr; height: auto; min-height: 100vh; overflow: visible; }
