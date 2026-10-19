@@ -49,7 +49,7 @@ const columns = [
   { title: '电量', key: 'battery', width: 140, sorter: (a: Device, b: Device) => a.battery - b.battery },
   { title: '信号', key: 'signal', width: 70 },
   { title: '所在场景', dataIndex: 'scene', width: 130 },
-  { title: '能力标签', key: 'caps', width: 220 },
+  { title: '能力标签', key: 'caps', width: 250 },
   { title: '最后在线', dataIndex: 'lastSeen', width: 100 },
   { title: '操作', key: 'op', width: 150, fixed: 'right' },
 ]
