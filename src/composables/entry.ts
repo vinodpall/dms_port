@@ -40,6 +40,7 @@ export function usePortal() {
   const available = computed(() => MODULES.filter(ok).length)
   function enter(m: ModuleDef) {
     if (!ok(m)) { toast('当前角色（' + ROLES[session.role].name + '）无权访问「' + m.title + '」', { type: 'warn' }); return }
+    if (!m.url && m.proto) { router.push(m.proto); return }
     if (!m.url) { toast('「' + m.title + '」站点地址待配置（.env → VITE_URL_*）'); return }
     // sso：携带当前角色，目标站点免二次登录（演示用；正式环境请改为后端签发的 token）
     window.open(m.sso ? m.url.replace(/\/$/, '') + '/#/login?sso=' + session.role : m.url, '_blank', 'noopener')

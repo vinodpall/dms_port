@@ -64,8 +64,8 @@ onMounted(() => {
 onBeforeUnmount(() => ro?.disconnect())
 
 const iconOf = (m: ModuleDef) => ICONS[m.key] ?? ICONS.device
-const statusText = (m: ModuleDef) => (!ok(m) ? '无权限' : m.url ? '在线' : '待接入')
-const statusClass = (m: ModuleDef) => (!ok(m) ? 'off' : m.url ? 'on' : 'wait')
+const statusText = (m: ModuleDef) => (!ok(m) ? '无权限' : m.url || m.proto ? '在线' : '待接入')
+const statusClass = (m: ModuleDef) => (!ok(m) ? 'off' : m.url || m.proto ? 'on' : 'wait')
 
 const stageStyle = computed(() => ({
   width: `${STAGE_W}px`,

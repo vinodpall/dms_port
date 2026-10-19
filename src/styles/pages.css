@@ -1,0 +1,77 @@
+/* 模块原型页通用样式：与登录页 / 五大模块页一致的深海军蓝 + 青色赛博风 */
+.pp {
+  --bg: #071523; --surface: #0C1E30; --surface-2: #10263B; --surface-3: #163149; --line: #1B3A52; --line-strong: #285370;
+  --text: #E6F7FB; --muted: #8FB3C7; --faint: #5B7486; --accent: #26C6DA; --accent-soft: rgba(38,198,218,.12); --accent-text: #7FF3FF;
+  --cyan: #4DD0E1; --ok: #4DE8B0; --warn: #FFB74D; --bad: #FF6B6B;
+  --mono: 'JetBrains Mono', 'SF Mono', Consolas, Menlo, monospace;
+  position: relative; height: 100vh; display: flex; flex-direction: column; overflow: hidden; color: var(--text);
+  background:
+    linear-gradient(rgba(77,208,225,.035) 1px, transparent 1px) -1px -1px / 40px 40px,
+    linear-gradient(90deg, rgba(77,208,225,.035) 1px, transparent 1px) -1px -1px / 40px 40px,
+    radial-gradient(ellipse 80% 70% at 55% 40%, #0D2840, #071523 70%);
+}
+.pp-top { flex: none; position: relative; z-index: 5; height: 60px; display: flex; align-items: center; gap: 18px; padding: 0 20px 0 24px;
+  background: linear-gradient(180deg, rgba(6,17,29,.95), rgba(8,22,36,.85)); border-bottom: 1px solid rgba(77,208,225,.16); }
+.pp-top::after { content: ''; position: absolute; left: 0; bottom: -1px; width: 420px; height: 1px; background: linear-gradient(90deg, var(--cyan), transparent); }
+.pp-brand { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.pp-brand svg { width: 32px; height: 32px; }
+.pp-brand > div, .pp-mod { display: flex; flex-direction: column; line-height: 1.2; }
+.pp-brand b { font-size: 15px; letter-spacing: 2px; }
+.pp-brand small, .pp-mod small { font: 9.5px var(--mono); letter-spacing: 2px; color: var(--cyan); opacity: .7; margin-top: 3px; text-transform: uppercase; }
+.pp-sep { width: 1px; height: 26px; background: rgba(77,208,225,.25); transform: skewX(-20deg); }
+.pp-mod b { font-size: 16px; font-weight: 600; letter-spacing: 1px; color: #fff; }
+.pp-top-r { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+.pp-ico { color: var(--muted) !important; font-size: 16px; }
+.pp-ico:hover { color: var(--cyan) !important; }
+.pp-clock { font: 500 14px var(--mono); color: var(--text); padding: 0 12px; border-left: 1px solid var(--line); border-right: 1px solid var(--line); margin: 0 8px; letter-spacing: 1px; }
+.pp-user { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; line-height: 1.2; }
+.pp-user > span:last-child { display: flex; flex-direction: column; }
+.pp-user small { color: var(--muted); font-size: 11px; }
+.pp .av { width: 30px; height: 30px; display: grid; place-items: center; background: linear-gradient(135deg, #12B5CB, #1E88E5); color: #fff; font-weight: 600; clip-path: polygon(0 0, calc(100% - 7px) 0, 100% 7px, 100% 100%, 7px 100%, 0 calc(100% - 7px)); }
+
+.pp-body { flex: 1; min-height: 0; display: flex; }
+.pp-side { flex: none; width: 208px; display: flex; flex-direction: column; background: rgba(6,17,29,.7); border-right: 1px solid rgba(77,208,225,.12); }
+.pp-menu.ant-menu { flex: 1; background: transparent !important; border-inline-end: 0 !important; padding: 12px 10px; }
+.pp-menu .ant-menu-item { height: 42px; line-height: 42px; border-radius: 3px; margin-block: 4px; color: var(--muted); }
+.pp-menu .ant-menu-item-selected { color: #fff !important; background: linear-gradient(90deg, rgba(38,198,218,.28), rgba(38,198,218,.04)) !important; box-shadow: inset 2px 0 0 var(--cyan); }
+.pp-side-foot { padding: 14px 20px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); display: flex; align-items: center; gap: 8px; }
+.pp i.dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 8px var(--ok); display: inline-block; animation: pp-blink 3s ease-in-out infinite; }
+@keyframes pp-blink { 50% { opacity: .35; } }
+.pp-main { flex: 1; min-width: 0; overflow: auto; padding: 20px 24px 28px; }
+.pp-main.flush { padding: 0; overflow: hidden; }
+
+/* 面板 */
+.pp-panel { position: relative; background: linear-gradient(180deg, rgba(14,36,56,.85), rgba(10,27,43,.85)); border: 1px solid rgba(77,208,225,.14); border-radius: 4px; }
+.pp-panel::before { content: ''; position: absolute; left: -1px; top: -1px; width: 12px; height: 12px; border-left: 2px solid var(--cyan); border-top: 2px solid var(--cyan); opacity: .8; }
+.pp-panel-h { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 16px; border-bottom: 1px solid rgba(77,208,225,.1); }
+.pp-panel-h h3 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: 1px; display: flex; align-items: center; gap: 8px; }
+.pp-panel-h h3::before { content: ''; width: 3px; height: 14px; background: linear-gradient(var(--cyan), #2F6BFF); }
+.pp-panel-h .r { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.pp-panel-b { padding: 16px; }
+
+.pp-head { display: flex; align-items: flex-end; gap: 16px; margin-bottom: 18px; }
+.pp-head h2 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: 1px; }
+.pp-head p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+.pp-head .r { margin-left: auto; display: flex; gap: 8px; }
+
+/* KPI */
+.pp-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin-bottom: 16px; }
+.pp-kpi { position: relative; padding: 14px 16px; overflow: hidden; background: linear-gradient(135deg, rgba(20,48,74,.8), rgba(10,27,43,.85)); border: 1px solid rgba(77,208,225,.14); border-radius: 4px; }
+.pp-kpi::after { content: ''; position: absolute; right: -18px; top: -18px; width: 70px; height: 70px; border-radius: 50%; background: radial-gradient(var(--k, #4DD0E1), transparent 70%); opacity: .18; }
+.pp-kpi small { color: var(--muted); font-size: 12.5px; display: flex; align-items: center; gap: 6px; }
+.pp-kpi b { display: block; margin-top: 6px; font: 600 28px/1.1 var(--mono); color: #fff; }
+.pp-kpi b em { font-size: 13px; font-weight: 400; font-style: normal; color: var(--muted); margin-left: 4px; }
+.pp-kpi .bar { position: absolute; left: 0; bottom: 0; height: 2px; width: 100%; background: linear-gradient(90deg, var(--k, #4DD0E1), transparent); }
+
+.pp .mono { font-family: var(--mono); }
+.pp .muted { color: var(--muted); }
+
+/* Ant Design 细节对齐 */
+.pp .ant-table-wrapper .ant-table { background: transparent; }
+.pp .ant-table-wrapper .ant-table-thead > tr > th { background: rgba(22,49,73,.7); color: var(--muted); border-bottom: 1px solid var(--line); }
+.pp .ant-table-wrapper .ant-table-tbody > tr > td { border-bottom: 1px solid rgba(27,58,82,.7); }
+.pp .ant-table-wrapper .ant-table-tbody > tr:hover > td { background: rgba(38,198,218,.06) !important; }
+.pp .ant-btn-primary:not(:disabled) { background: linear-gradient(90deg, #13B4CC, #2C82F0); border: 0; box-shadow: 0 6px 16px rgba(30,136,229,.25); }
+.pp .ant-btn-primary:not(:disabled):hover { filter: brightness(1.1); }
+.pp .ant-card { background: transparent; }
+.pp ::-webkit-scrollbar { width: 8px; height: 8px; } .pp ::-webkit-scrollbar-thumb { background: #1F4560; border-radius: 4px; } .pp ::-webkit-scrollbar-track { background: transparent; }

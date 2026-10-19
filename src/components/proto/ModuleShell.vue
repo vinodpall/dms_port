@@ -1,0 +1,54 @@
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { AppstoreOutlined, LogoutOutlined, BellOutlined, QuestionCircleOutlined } from '@ant-design/icons-vue'
+import BrandMark from '@/components/BrandMark.vue'
+import { PLATFORM } from '@/constants'
+import { useClock } from '@/composables/entry'
+import { useSession } from '@/stores/session'
+import '@/styles/pages.css'
+
+export interface ShellMenu { key: string; label: string; icon?: unknown }
+const props = withDefaults(defineProps<{ title: string; en: string; menu?: ShellMenu[]; active?: string; flush?: boolean }>(), { menu: () => [], active: '', flush: false })
+const emit = defineEmits<{ 'update:active': [string] }>()
+const router = useRouter()
+const session = useSession()
+const { time } = useClock()
+const selected = computed(() => [props.active])
+const logout = () => { session.logout(); router.replace({ name: 'login' }) }
+</script>
+
+<template>
+  <div class="pp">
+    <header class="pp-top">
+      <div class="pp-brand" role="link" tabindex="0" @click="router.push('/portal')" @keydown.enter="router.push('/portal')">
+        <BrandMark />
+        <div><b>{{ PLATFORM.name }}</b><small>{{ PLATFORM.en }}</small></div>
+      </div>
+      <i class="pp-sep" />
+      <div class="pp-mod"><b>{{ title }}</b><small>{{ en }}</small></div>
+      <div class="pp-top-r">
+        <slot name="extra" />
+        <a-tooltip title="返回模块导航"><a-button type="text" class="pp-ico" @click="router.push('/portal')"><AppstoreOutlined /></a-button></a-tooltip>
+        <a-badge :count="3" size="small" :offset="[-6, 6]"><a-button type="text" class="pp-ico"><BellOutlined /></a-button></a-badge>
+        <a-button type="text" class="pp-ico"><QuestionCircleOutlined /></a-button>
+        <span class="pp-clock">{{ time }}</span>
+        <a-dropdown placement="bottomRight">
+          <div class="pp-user"><span class="av">{{ session.info.init }}</span><span>{{ session.info.user }}<small>{{ session.info.name }}</small></span></div>
+          <template #overlay>
+            <a-menu><a-menu-item key="portal" @click="router.push('/portal')"><AppstoreOutlined /> 模块导航</a-menu-item><a-menu-item key="out" danger @click="logout"><LogoutOutlined /> 退出登录</a-menu-item></a-menu>
+          </template>
+        </a-dropdown>
+      </div>
+    </header>
+    <div class="pp-body">
+      <aside v-if="menu.length" class="pp-side">
+        <a-menu mode="inline" :selected-keys="selected" class="pp-menu" @click="(e: any) => emit('update:active', String(e.key))">
+          <a-menu-item v-for="m in menu" :key="m.key"><template #icon><component :is="m.icon" /></template>{{ m.label }}</a-menu-item>
+        </a-menu>
+        <div class="pp-side-foot"><i class="dot" /> 系统运行正常</div>
+      </aside>
+      <main class="pp-main" :class="{ flush }"><slot /></main>
+    </div>
+  </div>
+</template>
