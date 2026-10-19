@@ -132,8 +132,6 @@
 .cy-go { position: relative; overflow: hidden; width: 100%; height: 48px; border: 0; border-radius: 4px; cursor: pointer; box-shadow: 0 10px 28px rgba(30,136,229,.35);
   background: linear-gradient(90deg, #13B4CC, #2C82F0); color: #fff !important; font-weight: 600; font-size: 16px; letter-spacing: 8px; text-indent: 8px;
   transition: filter .2s, transform .2s; }
-.cy-go::after { content: ''; position: absolute; top: 0; bottom: 0; width: 30%; left: -50%; background: linear-gradient(100deg, transparent, rgba(255,255,255,.3), transparent); animation: cy-shine 4.5s ease-in-out infinite; }
-@keyframes cy-shine { 0%, 65% { left: -50%; } 100% { left: 130%; } }
 .cy-go:hover { filter: brightness(1.1); }
 .cy-go:active { transform: translateY(1px); }
 .cy-go:disabled { opacity: .7; cursor: progress; }
