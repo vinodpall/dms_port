@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import AppIcon from '@/components/AppIcon.vue'
 import BrandMark from '@/components/BrandMark.vue'
 import { MODULES, PLATFORM, type ModuleDef } from '@/constants'
@@ -7,37 +7,81 @@ import { useClock, usePop, usePortal } from '@/composables/entry'
 import { ICONS } from './art'
 import './cyber.css'
 
-const { session, greet, ok, available, enter, logout } = usePortal()
+const { session, ok, enter, logout } = usePortal()
 const { open, root } = usePop()
 const { time, now } = useClock()
 
-/** 有权限的模块排在前面，保持原有相对顺序 */
-const list = computed(() => {
-  const idx = (m: ModuleDef) => MODULES.indexOf(m)
-  return [...MODULES].sort((a, b) => Number(ok(b)) - Number(ok(a)) || idx(a) - idx(b))
+/* ---------- 舞台几何 ---------- */
+const STAGE_W = 1600
+const STAGE_H = 1000
+const CX = STAGE_W / 2
+const CY = 505
+/** 五边形外接圆半径 */
+const R = 345
+/** 六边形底板尺寸（节点以底板中心对齐五边形顶点） */
+const PLATE_H = 208
+
+const POINTS = Array.from({ length: 5 }, (_, i) => {
+  const a = ((-90 + i * 72) * Math.PI) / 180
+  return { x: +(CX + R * Math.cos(a)).toFixed(1), y: +(CY + R * Math.sin(a)).toFixed(1) }
 })
-const online = computed(() => MODULES.filter((m) => ok(m) && m.url).length)
+const slots = POINTS.map((p) => ({ left: `${p.x}px`, top: `${p.y}px` }))
+const linkPath = `M ${POINTS.map((p) => `${p.x} ${p.y}`).join(' L ')} Z`
+const SPOKES = POINTS.map((p) => `M ${CX} ${CY} L ${p.x} ${p.y}`)
+
+/** 中心仪表盘刻度 */
+const TICKS = Array.from({ length: 72 }, (_, i) => {
+  const a = (i * 5 * Math.PI) / 180
+  const r1 = i % 6 === 0 ? 128 : 134
+  const r2 = 140
+  return { x1: CX + r1 * Math.cos(a), y1: CY + r1 * Math.sin(a), x2: CX + r2 * Math.cos(a), y2: CY + r2 * Math.sin(a), major: i % 6 === 0 }
+})
+const hexPts = (r: number) => Array.from({ length: 6 }, (_, i) => {
+  const a = ((-90 + i * 60) * Math.PI) / 180
+  return `${(CX + r * Math.cos(a)).toFixed(1)},${(CY + r * Math.sin(a)).toFixed(1)}`
+}).join(' ')
+
 const dateLabel = computed(() => {
   const d = now.value
   const p = (n: number) => String(n).padStart(2, '0')
   return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())} 星期${'日一二三四五六'[d.getDay()]}`
 })
 
+/* ---------- 自适应缩放 ---------- */
+const scale = ref(1)
+const wrapEl = ref<HTMLElement | null>(null)
+let ro: ResizeObserver | null = null
+const fit = () => {
+  const w = wrapEl.value?.clientWidth ?? 0
+  const h = wrapEl.value?.clientHeight ?? 0
+  if (w < 40 || h < 40) return
+  scale.value = Math.min(w / STAGE_W, h / STAGE_H) * 0.96
+}
+onMounted(() => {
+  fit()
+  if (wrapEl.value) { ro = new ResizeObserver(fit); ro.observe(wrapEl.value) }
+})
+onBeforeUnmount(() => ro?.disconnect())
+
 const iconOf = (m: ModuleDef) => ICONS[m.key] ?? ICONS.device
 const statusText = (m: ModuleDef) => (!ok(m) ? '无权限' : m.url ? '在线' : '待接入')
 const statusClass = (m: ModuleDef) => (!ok(m) ? 'off' : m.url ? 'on' : 'wait')
-const no = (m: ModuleDef) => String(MODULES.indexOf(m) + 1).padStart(2, '0')
+
+const stageStyle = computed(() => ({
+  width: `${STAGE_W}px`,
+  height: `${STAGE_H}px`,
+  transform: `translate(-50%, -50%) scale(${scale.value})`,
+}))
 </script>
 
 <template>
   <div class="cy cy-portal">
-    <div class="cy-glow" aria-hidden="true" />
+    <div class="cy-bgfx" aria-hidden="true" />
     <div class="cy-floor" aria-hidden="true" />
     <div class="cy-scan" aria-hidden="true" />
 
     <header class="cy-top">
       <div class="cy-brand"><BrandMark /><div><b>{{ PLATFORM.name }}</b><small>{{ PLATFORM.en }}</small></div></div>
-      <div class="cy-top-mid" aria-hidden="true"><span>MODULE HUB</span></div>
       <div class="cy-top-right">
         <span class="cy-clock"><b>{{ time }}</b><small>{{ dateLabel }}</small></span>
         <div ref="root" class="cy-user">
@@ -51,171 +95,173 @@ const no = (m: ModuleDef) => String(MODULES.indexOf(m) + 1).padStart(2, '0')
       </div>
     </header>
 
-    <main class="cy-main">
-      <section class="cy-hero">
-        <div>
-          <span class="cy-kicker">// WELCOME BACK, OPERATOR</span>
-          <h1>{{ greet }}，<em>{{ session.info.user }}</em></h1>
-          <p>当前身份 <b>{{ session.info.name }}</b>，请选择要进入的业务模块。模块将在新标签页中打开。</p>
-        </div>
-        <dl class="cy-stats">
-          <div><dt>可用模块</dt><dd>{{ available }}<small>/ {{ MODULES.length }}</small></dd></div>
-          <div><dt>已接入站点</dt><dd>{{ online }}<small>/ {{ available }}</small></dd></div>
-          <div><dt>系统状态</dt><dd class="ok"><i class="dot" />正常</dd></div>
-        </dl>
-      </section>
+    <main ref="wrapEl" class="cy-wrap">
+      <div class="cy-stage" :style="stageStyle">
+        <!-- 连线与中心仪表 -->
+        <svg class="cy-link" :viewBox="`0 0 ${STAGE_W} ${STAGE_H}`" aria-hidden="true">
+          <defs>
+            <radialGradient id="pt-halo"><stop offset="0" stop-color="#4DD0E1" stop-opacity=".22" /><stop offset="1" stop-color="#4DD0E1" stop-opacity="0" /></radialGradient>
+            <linearGradient id="pt-spoke" gradientUnits="userSpaceOnUse" :x1="CX" :y1="CY" :x2="CX" :y2="CY - R">
+              <stop offset="0" stop-color="#4DD0E1" stop-opacity=".7" /><stop offset="1" stop-color="#4DD0E1" stop-opacity=".08" />
+            </linearGradient>
+          </defs>
+          <circle :cx="CX" :cy="CY" r="420" fill="url(#pt-halo)" />
+          <circle :cx="CX" :cy="CY" :r="R" fill="none" stroke="#4DD0E1" stroke-width="1" opacity=".07" />
+          <circle :cx="CX" :cy="CY" :r="R + 60" fill="none" stroke="#4DD0E1" stroke-width="1" stroke-dasharray="2 10" opacity=".14" />
 
-      <section class="cy-grid" aria-label="业务模块">
+          <!-- 五边形外框 -->
+          <path :d="linkPath" fill="rgba(77,208,225,.025)" stroke="#4DD0E1" stroke-width="1" opacity=".22" />
+          <path class="flow" :d="linkPath" fill="none" stroke="#4DD0E1" stroke-width="1.6" stroke-dasharray="40 260" opacity=".7" />
+
+          <!-- 中心辐射线 + 数据脉冲 -->
+          <g v-for="(d, i) in SPOKES" :key="`s-${i}`">
+            <path :d="d" stroke="#4DD0E1" stroke-width="1" stroke-dasharray="3 6" opacity=".35" />
+            <circle r="3" fill="#7FF3FF" opacity="0">
+              <animateMotion :path="d" dur="3.2s" :begin="`${i * 0.64}s`" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0;1;1;0" dur="3.2s" :begin="`${i * 0.64}s`" repeatCount="indefinite" />
+            </circle>
+          </g>
+
+          <!-- 中心仪表盘 -->
+          <g class="gauge">
+            <line v-for="(t, i) in TICKS" :key="`t-${i}`" :x1="t.x1" :y1="t.y1" :x2="t.x2" :y2="t.y2" stroke="#4DD0E1" :stroke-width="t.major ? 1.6 : .8" :opacity="t.major ? .7 : .3" />
+          </g>
+          <circle class="spin-r" :cx="CX" :cy="CY" r="112" fill="none" stroke="#4DD0E1" stroke-width="2" stroke-dasharray="120 232" opacity=".55" />
+          <circle :cx="CX" :cy="CY" r="96" fill="rgba(6,18,30,.85)" stroke="#4DD0E1" stroke-width="1" opacity=".9" />
+          <polygon :points="hexPts(70)" fill="none" stroke="#4DD0E1" stroke-width="1.2" opacity=".5" />
+          <polygon :points="hexPts(54)" fill="rgba(77,208,225,.08)" stroke="#4DD0E1" stroke-width="1" opacity=".35" />
+          <circle class="beat" :cx="CX" :cy="CY" r="8" fill="#4DD0E1" />
+        </svg>
+
+        <!-- 五大模块 -->
         <button
-          v-for="(m, i) in list"
+          v-for="(m, i) in MODULES"
           :key="m.key"
           type="button"
-          class="mod"
-          :class="[{ off: !ok(m), big: i < 2 }]"
-          :style="{ '--c': m.hue, '--d': `${i * 70}ms` }"
+          class="mod-node"
+          :class="{ disabled: !ok(m) }"
+          :style="{ ...slots[i], '--ph': `${PLATE_H}px`, '--d': `${i * 90}ms` }"
           :aria-disabled="!ok(m)"
           @click="enter(m)"
         >
-          <span class="cy-corner tl" /><span class="cy-corner br" />
-          <span class="mod-top">
-            <span class="mod-no">{{ no(m) }}<i />{{ m.en.toUpperCase() }}</span>
-            <span class="mod-st" :class="statusClass(m)"><i />{{ statusText(m) }}</span>
+          <span class="node-plate">
+            <span class="node-ring" />
+            <span class="node-art" v-html="iconOf(m)" />
           </span>
-          <span class="mod-body">
-            <span class="mod-art" v-html="iconOf(m)" />
-            <span class="mod-txt">
-              <span class="mod-title">{{ m.title }}</span>
-              <span class="mod-desc">{{ m.desc }}</span>
-              <span class="mod-tags"><span v-for="t in m.tags" :key="t">{{ t }}</span></span>
+          <span class="node-meta">
+            <span class="node-title">{{ m.title }}</span>
+            <span class="node-en">{{ m.en }}</span>
+            <span class="node-status" :class="statusClass(m)">
+              <AppIcon v-if="!ok(m)" name="lock" size="sm" /><i v-else />{{ statusText(m) }}
             </span>
           </span>
-          <span class="mod-foot">
-            <template v-if="ok(m)"><span>进入模块</span><AppIcon name="arrow" size="sm" /></template>
-            <span v-else class="lk"><AppIcon name="lock" size="sm" />当前角色无访问权限</span>
-          </span>
         </button>
-      </section>
+      </div>
     </main>
-
-    <footer class="cy-bar" aria-hidden="true">
-      <span><i class="dot" />LINK ESTABLISHED</span>
-      <span>ROLE · {{ session.role.toUpperCase() }}</span>
-      <span>{{ PLATFORM.en }} · v0.1.0</span>
-    </footer>
   </div>
 </template>
 
 <style scoped>
-.cy-portal { display: flex; flex-direction: column; min-height: 100vh; overflow-x: hidden; }
-.cy-glow { position: absolute; inset: 0; pointer-events: none; z-index: 0;
+.cy-portal { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+.cy-bgfx { position: absolute; inset: 0; pointer-events: none; z-index: 0;
   background:
-    radial-gradient(900px 480px at 18% 0%, rgba(47,107,255,.16), transparent 60%),
-    radial-gradient(800px 520px at 90% 20%, rgba(38,198,218,.12), transparent 60%),
-    radial-gradient(circle, rgba(77,208,225,.12) 1px, transparent 1.4px) 0 0 / 28px 28px; 
-  mask-image: linear-gradient(#000 40%, transparent); }
-.cy-portal .cy-floor { height: 38vh; opacity: .55; }
+    radial-gradient(1200px 800px at 50% 52%, transparent 30%, rgba(3,8,15,.85) 100%),
+    linear-gradient(rgba(77,208,225,.035) 1px, transparent 1px) 0 0 / 80px 80px,
+    linear-gradient(90deg, rgba(77,208,225,.035) 1px, transparent 1px) 0 0 / 80px 80px; }
+.cy-portal .cy-floor { height: 34vh; opacity: .35; }
 
 /* 顶栏 */
-.cy-top { position: sticky; top: 0; z-index: 10; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; height: 68px; padding: 0 40px;
-  background: rgba(5,13,24,.72); backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); }
-.cy-top::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 1px; background: linear-gradient(90deg, transparent, var(--cyan) 50%, transparent); opacity: .7; }
-.cy-top-mid span { font: 11px var(--mono); letter-spacing: 4px; color: var(--cyan); padding: 5px 18px; border: 1px solid var(--line); clip-path: polygon(10px 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 10px 100%, 0 50%); background: rgba(77,208,225,.06); }
-.cy-top-right { display: flex; align-items: center; justify-content: flex-end; gap: 20px; }
-.cy-clock { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.2; font-family: var(--mono); }
-.cy-clock b { font-size: 16px; font-weight: 500; color: var(--ink); letter-spacing: 1px; }
-.cy-clock small { font-size: 11px; color: var(--muted); font-family: var(--sans); }
+.cy-top { position: relative; z-index: 10; flex: none; display: flex; align-items: center; justify-content: space-between; height: 68px; padding: 0 40px;
+  background: linear-gradient(180deg, rgba(5,13,24,.92), rgba(5,13,24,.6)); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
+.cy-top::after { content: ''; position: absolute; left: 50%; bottom: -1px; width: 360px; height: 1px; transform: translateX(-50%); background: linear-gradient(90deg, transparent, var(--cyan), transparent); }
+.cy-top-right { display: flex; align-items: center; gap: 22px; }
+.cy-clock { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.25; }
+.cy-clock b { font: 500 16px var(--mono); color: var(--ink); letter-spacing: 1px; }
+.cy-clock small { font-size: 11px; color: var(--dim); }
 .cy-user { position: relative; }
-.cy-ubtn { display: flex; align-items: center; gap: 10px; height: 42px; padding: 0 12px 0 5px; border: 1px solid var(--line); border-radius: 4px; background: rgba(77,208,225,.06); cursor: pointer; transition: all .2s; }
-.cy-ubtn:hover, .cy-ubtn[aria-expanded="true"] { border-color: var(--line-hi); background: rgba(77,208,225,.12); }
+.cy-ubtn { display: flex; align-items: center; gap: 10px; height: 42px; padding: 0 12px 0 5px; border: 1px solid var(--line); border-radius: 2px; background: rgba(77,208,225,.05); cursor: pointer; transition: all .2s; }
+.cy-ubtn:hover, .cy-ubtn[aria-expanded="true"] { border-color: var(--line-hi); background: rgba(77,208,225,.1); }
 .cy-ubtn .who { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.25; font-size: 13.5px; }
 .cy-ubtn small { color: var(--muted); font-size: 11.5px; }
-.av { width: 32px; height: 32px; border-radius: 3px; display: grid; place-items: center; background: linear-gradient(135deg, var(--cyan-br), var(--blue)); color: #fff; font-weight: 600; font-size: 13px; box-shadow: 0 0 12px rgba(77,208,225,.4); }
-.cy-menu { position: absolute; right: 0; top: 50px; min-width: 150px; padding: 5px; border-radius: 4px; background: rgba(10,26,42,.95); backdrop-filter: blur(12px); border: 1px solid var(--line-hi); box-shadow: 0 16px 40px rgba(0,0,0,.6); }
-.cy-menu button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 12px; border: 0; border-radius: 3px; background: none; font-size: 13.5px; cursor: pointer; }
+.av { width: 32px; height: 32px; display: grid; place-items: center; background: linear-gradient(135deg, #12B5CB, #1E88E5); color: #fff; font-weight: 600; font-size: 13px; clip-path: polygon(0 0, calc(100% - 7px) 0, 100% 7px, 100% 100%, 7px 100%, 0 calc(100% - 7px)); }
+.cy-menu { position: absolute; right: 0; top: 50px; min-width: 150px; padding: 5px; background: rgba(10,24,38,.96); backdrop-filter: blur(12px); border: 1px solid var(--line-hi); box-shadow: 0 16px 40px rgba(0,0,0,.6); }
+.cy-menu button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 12px; border: 0; background: none; font-size: 13.5px; cursor: pointer; }
 .cy-menu button:hover { background: rgba(255,107,107,.12); color: #FFD0D0; }
 
-/* 主区 */
-.cy-main { position: relative; z-index: 2; flex: 1; width: 100%; max-width: 1360px; margin: 0 auto; padding: 32px 40px 24px; display: flex; flex-direction: column; gap: 26px; }
-.cy-hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 32px; }
-.cy-kicker { font: 12px var(--mono); color: var(--cyan); letter-spacing: 2px; }
-.cy-hero h1 { margin: 8px 0 6px; font-size: 32px; font-weight: 600; letter-spacing: 1px; color: #fff; }
-.cy-hero h1 em { font-style: normal; background: linear-gradient(90deg, #7FF3FF, #2F9BFF); -webkit-background-clip: text; background-clip: text; color: transparent; }
-.cy-hero p { margin: 0; color: var(--muted); font-size: 14px; }
-.cy-hero p b { color: var(--ink); font-weight: 500; }
-.cy-stats { display: flex; gap: 12px; margin: 0; }
-.cy-stats > div { min-width: 132px; padding: 10px 16px; background: var(--glass); border: 1px solid var(--line); border-left: 2px solid var(--cyan); border-radius: 2px; backdrop-filter: blur(8px); }
-.cy-stats dt { font-size: 12px; color: var(--muted); }
-.cy-stats dd { margin: 2px 0 0; font: 500 24px/1.2 var(--mono); color: #fff; display: flex; align-items: baseline; gap: 6px; }
-.cy-stats dd small { font-size: 13px; color: var(--dim); }
-.cy-stats dd.ok { font: 500 18px/1.6 var(--sans); color: var(--ok); align-items: center; gap: 8px; }
+/* 舞台 */
+.cy-wrap { flex: 1; min-height: 0; position: relative; z-index: 2; overflow: hidden; }
+.cy-stage { position: absolute; left: 50%; top: 50%; transform-origin: center center; }
+.cy-link { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.flow { animation: pt-flow 10s linear infinite; }
+@keyframes pt-flow { to { stroke-dashoffset: -1500; } }
+.gauge, .spin-r { transform-origin: 800px 505px; transform-box: view-box; }
+.gauge { animation: pt-spin 60s linear infinite; }
+.spin-r { animation: pt-spin 9s linear infinite reverse; }
+@keyframes pt-spin { to { transform: rotate(360deg); } }
+.beat { filter: drop-shadow(0 0 10px #4DD0E1); animation: pt-beat 2.6s ease-in-out infinite; transform-origin: 800px 505px; transform-box: view-box; }
+@keyframes pt-beat { 50% { opacity: .55; transform: scale(.8); } }
+.core-t { font: 11px var(--mono); letter-spacing: 3px; fill: rgba(77,208,225,.6); }
 
-/* 模块卡片：首行两张大卡，第二行三张 */
-.cy-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 16px; }
-.mod { --c: var(--cyan); grid-column: span 2; position: relative; display: flex; flex-direction: column; text-align: left; padding: 18px 20px 16px; cursor: pointer; overflow: hidden;
-  background: linear-gradient(160deg, rgba(16,38,60,.78), rgba(6,16,28,.88)); border: 1px solid var(--line); border-radius: 4px; backdrop-filter: blur(10px);
-  transition: transform .25s, border-color .25s, box-shadow .25s; animation: mod-in .6s both var(--d); }
-.mod.big { grid-column: span 3; }
-@keyframes mod-in { from { opacity: 0; transform: translateY(14px); } }
-.mod::before { content: ''; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(420px 220px at 85% 0%, color-mix(in srgb, var(--c) 22%, transparent), transparent 70%); opacity: .7; transition: opacity .25s; }
-.mod::after { content: ''; position: absolute; left: 0; right: 0; top: -40%; height: 40%; pointer-events: none; background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--c) 12%, transparent)); opacity: 0; }
-.mod .cy-corner { width: 12px; height: 12px; border-color: var(--c); opacity: .5; transition: opacity .25s; filter: drop-shadow(0 0 4px var(--c)); }
-.mod:not(.off):hover { transform: translateY(-3px); border-color: color-mix(in srgb, var(--c) 60%, transparent); box-shadow: 0 18px 40px rgba(0,0,0,.45), 0 0 28px color-mix(in srgb, var(--c) 22%, transparent); }
-.mod:not(.off):hover::before, .mod:not(.off):hover .cy-corner { opacity: 1; }
-.mod:not(.off):hover::after { opacity: 1; animation: mod-scan 1.4s ease-out; }
-@keyframes mod-scan { from { top: -40%; } to { top: 100%; } }
-.mod > *:not(.cy-corner) { position: relative; }
+/* 模块节点：六边形底板中心 = 五边形顶点 */
+.mod-node { position: absolute; width: 300px; transform: translate(-50%, calc(var(--ph) / -2)); display: flex; flex-direction: column; align-items: center; padding: 0; border: 0; background: none; text-align: center; cursor: pointer; animation: node-in .7s both var(--d); }
+@keyframes node-in { from { opacity: 0; } }
+.node-plate { position: relative; width: 180px; height: var(--ph); display: grid; place-items: center; transition: transform .4s cubic-bezier(.34,1.4,.64,1); }
+.node-plate::before, .node-plate::after { content: ''; position: absolute; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); transition: background .35s, opacity .35s; }
+.node-plate::before { inset: 0; background: linear-gradient(180deg, rgba(77,208,225,.75), rgba(77,208,225,.12) 60%, rgba(77,208,225,.4)); }
+.node-plate::after { inset: 2px;
+  background:
+    radial-gradient(120px 90px at 50% 35%, rgba(77,208,225,.14), transparent 70%),
+    repeating-linear-gradient(0deg, rgba(77,208,225,.04) 0 1px, transparent 1px 6px),
+    linear-gradient(180deg, #0D2033, #07131F); }
+/* 内层细边六边形 */
+.node-ring { position: absolute; inset: 14px; z-index: 1; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); background: rgba(77,208,225,.22); transition: background .35s; }
+.node-ring::after { content: ''; position: absolute; inset: 1px; clip-path: inherit; background: linear-gradient(180deg, #0C1E30, #081522); }
+.node-art { position: relative; z-index: 2; width: 132px; height: 132px; }
+.node-art :deep(svg) { width: 100%; height: 100%; display: block; filter: drop-shadow(0 6px 16px rgba(77,208,225,.45)); transition: filter .35s; }
 
-.mod-top { display: flex; justify-content: space-between; align-items: center; font: 11px var(--mono); letter-spacing: 1.5px; color: var(--muted); }
-.mod-no { display: inline-flex; align-items: center; gap: 8px; }
-.mod-no i { width: 14px; height: 1px; background: var(--c); }
-.mod-st { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 2px; font: 12px var(--sans); letter-spacing: 0; }
-.mod-st i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-.mod-st.on { color: var(--ok); background: rgba(77,232,176,.1); border: 1px solid rgba(77,232,176,.35); }
-.mod-st.on i { box-shadow: 0 0 8px currentColor; animation: cy-blink 2s infinite; }
-.mod-st.wait { color: var(--warn); background: rgba(255,183,77,.08); border: 1px solid rgba(255,183,77,.3); }
-.mod-st.off { color: var(--dim); background: rgba(91,116,134,.1); border: 1px solid rgba(91,116,134,.3); }
+.node-meta { position: relative; display: flex; flex-direction: column; align-items: center; margin-top: 10px; padding: 8px 28px 6px; }
+.node-meta::before { content: ''; position: absolute; inset: -6px -10px; z-index: -1; background: radial-gradient(closest-side, rgba(5,13,24,.96) 55%, rgba(5,13,24,0)); }
+.node-title { font-size: 21px; font-weight: 600; line-height: 1.3; color: var(--ink); letter-spacing: 2px; transition: color .3s, text-shadow .3s; }
+.node-en { margin-top: 4px; font: 11px var(--mono); letter-spacing: 2.5px; text-transform: uppercase; color: var(--dim); }
+.node-status { margin-top: 12px; display: inline-flex; align-items: center; gap: 6px; padding: 3px 12px; font-size: 12px; letter-spacing: 1px; white-space: nowrap;
+  clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%); }
+.node-status i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.node-status.on { color: var(--ok); background: rgba(77,232,176,.12); }
+.node-status.on i { box-shadow: 0 0 8px currentColor; animation: cy-blink 2s infinite; }
+.node-status.wait { color: var(--warn); background: rgba(255,183,77,.1); }
+.node-status.off { color: var(--dim); background: rgba(91,116,134,.14); }
 
-.mod-body { flex: 1; display: flex; flex-direction: column; gap: 8px; margin-top: 8px; min-height: 0; }
-.mod-art { width: 72px; height: 72px; flex: none; margin: -4px 0 0 -8px; filter: drop-shadow(0 0 12px rgba(77,208,225,.35)); }
-.mod-art :deep(svg) { width: 100%; height: 100%; }
-.mod.big .mod-body { flex-direction: row; align-items: center; gap: 22px; }
-.mod.big .mod-art { width: 120px; height: 120px; margin: 0 -4px; }
-.mod-txt { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.mod-title { font-size: 19px; font-weight: 600; color: #fff; letter-spacing: 1px; }
-.mod.big .mod-title { font-size: 22px; }
-.mod-desc { color: var(--muted); font-size: 13px; line-height: 1.65; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.mod-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
-.mod-tags span { padding: 1px 8px; font-size: 12px; color: color-mix(in srgb, var(--c) 55%, #fff); border: 1px solid color-mix(in srgb, var(--c) 35%, transparent); background: color-mix(in srgb, var(--c) 10%, transparent); border-radius: 2px; }
-.mod-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line); font-size: 13px; color: var(--c); font-weight: 500; }
-.mod-foot .ic { transition: transform .25s; }
-.mod:not(.off):hover .mod-foot .ic { transform: translateX(4px); }
+.mod-node:not(.disabled):hover .node-plate { transform: translateY(-6px) scale(1.05); filter: drop-shadow(0 0 22px rgba(77,208,225,.55)); }
+.mod-node:not(.disabled):hover .node-plate::before { background: linear-gradient(180deg, #7FF3FF, #26C6DA 60%, #1E88E5); }
+.mod-node:not(.disabled):hover .node-ring { background: rgba(77,208,225,.5); }
+.mod-node:not(.disabled):hover .node-art :deep(svg) { filter: drop-shadow(0 0 18px rgba(77,208,225,.95)); }
+.mod-node:not(.disabled):hover .node-title { color: #7FF3FF; text-shadow: 0 0 18px rgba(77,208,225,.7); }
+.mod-node:focus-visible { outline: none; }
+.mod-node:focus-visible .node-plate { filter: drop-shadow(0 0 20px rgba(77,208,225,.95)); }
+.mod-node.disabled { cursor: not-allowed; }
+.mod-node.disabled .node-art, .mod-node.disabled .node-title, .mod-node.disabled .node-en { filter: grayscale(1); opacity: .35; }
+.mod-node.disabled .node-plate::before { background: linear-gradient(180deg, rgba(120,140,155,.35), rgba(120,140,155,.08) 60%, rgba(120,140,155,.2)); }
+.mod-node.disabled .node-ring { background: rgba(120,140,155,.12); }
+.mod-node { isolation: isolate; }
 
-.mod.off { cursor: not-allowed; background: rgba(8,18,30,.6); }
-.mod.off .mod-art, .mod.off .mod-title, .mod.off .mod-desc, .mod.off .mod-tags { filter: grayscale(1); opacity: .45; }
-.mod.off .mod-foot { color: var(--dim); font-weight: 400; }
-.lk { display: inline-flex; align-items: center; gap: 6px; }
-.mod.off .cy-corner { border-color: var(--dim); filter: none; opacity: .3; }
-
-/* 底栏 */
-.cy-bar { position: relative; z-index: 2; display: flex; justify-content: space-between; gap: 16px; padding: 10px 40px; font: 11px var(--mono); letter-spacing: 1.5px; color: var(--dim); border-top: 1px solid var(--line); background: rgba(5,13,24,.6); }
-.cy-bar span:first-child { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); }
-
-@media (max-width: 1100px) {
-  .cy-hero { flex-direction: column; align-items: flex-start; }
-  .cy-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: auto; }
-  .mod, .mod.big { grid-column: span 1; }
-  .mod.big .mod-body { flex-direction: column; align-items: flex-start; gap: 10px; }
-  .mod.big .mod-art { width: 84px; height: 84px; }
+/* 窄屏：回落为纵向列表 */
+@media (max-width: 900px) {
+  .cy-portal { height: auto; min-height: 100vh; overflow: visible; }
+  .cy-top { padding: 0 16px; }
+  .cy-brand small, .cy-clock, .cy-ubtn .who { display: none; }
+  .cy-wrap { overflow: visible; }
+  .cy-stage { position: static; transform: none !important; width: auto !important; height: auto !important; padding: 24px 16px 40px; display: flex; flex-direction: column; gap: 12px; }
+  .cy-link { display: none; }
+  .mod-node { position: static; transform: none; width: 100%; max-width: 420px; margin: 0 auto; display: grid; grid-template-columns: 78px 1fr auto; grid-template-rows: auto auto; align-items: center; column-gap: 16px; text-align: left;
+    padding: 14px 16px; border: 1px solid var(--line); background: var(--glass); }
+  .node-plate { width: 78px; height: 90px; grid-row: 1 / span 2; }
+  .node-ring { inset: 7px; }
+  .node-art { width: 60px; height: 60px; }
+  .node-meta { display: contents; }
+  .node-meta::before { display: none; }
+  .node-title { margin: 0; font-size: 17px; letter-spacing: 1px; align-self: end; }
+  .node-en { margin: 0; align-self: start; grid-column: 2; }
+  .node-status { margin: 0; grid-column: 3; grid-row: 1 / span 2; }
 }
-@media (max-width: 720px) {
-  .cy-top { grid-template-columns: 1fr auto; padding: 0 16px; }
-  .cy-top-mid, .cy-clock, .cy-brand small, .cy-ubtn .who { display: none; }
-  .cy-main { padding: 22px 16px; gap: 20px; }
-  .cy-hero h1 { font-size: 26px; }
-  .cy-stats { width: 100%; }
-  .cy-stats > div { flex: 1; min-width: 0; padding: 8px 10px; }
-  .cy-stats dd { font-size: 20px; }
-  .cy-grid { grid-template-columns: 1fr; }
-  .cy-bar { padding: 10px 16px; } .cy-bar span:last-child { display: none; }
-}
+@media (prefers-reduced-motion: reduce) { .flow, .gauge, .spin-r, .beat, .mod-node { animation: none; } }
 </style>
