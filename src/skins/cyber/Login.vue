@@ -12,7 +12,7 @@ const { f, err, shake, loading, showPwd, uErr, pErr, submit, touched } = useLogi
 const ROUTE = 'M440 677 L762 489 L870 551 L545 741 Z'
 const WAYPOINTS = [[440, 677], [530, 623], [622, 569], [762, 489], [870, 551], [545, 741]]
 const PADS = [[260, 521], [437, 419], [628, 313], [818, 204]]
-const LEDS = [[1103, 178, 0], [1103, 232, 1.1], [1150, 205, 0.5], [1150, 262, 1.7], [1203, 236, 0.8], [1203, 300, 2.2], [1140, 806, 0.3], [1140, 846, 1.4], [1257, 300, 2.6]]
+const LEDS = [[1103, 178, 0], [1103, 232, 2.2], [1150, 205, 1], [1150, 262, 3.4], [1203, 236, 1.6], [1203, 300, 4.4], [1140, 806, 0.6], [1140, 846, 2.8], [1257, 300, 3.9]]
 </script>
 
 <template>
@@ -29,13 +29,13 @@ const LEDS = [[1103, 178, 0], [1103, 232, 1.1], [1150, 205, 0.5], [1150, 262, 1.
         <!-- 巡检路线：流动虚线 + 巡检光点 + 节点脉冲 -->
         <path class="fx-route" :d="ROUTE" />
         <g v-for="(w, i) in WAYPOINTS" :key="`w${i}`" :transform="`translate(${w[0]} ${w[1]})`">
-          <ellipse class="fx-ping" rx="14" ry="8" :style="{ animationDelay: `${i * 0.5}s` }" />
+          <ellipse class="fx-ping" rx="14" ry="8" :style="{ animationDelay: `${i * 0.75}s` }" />
         </g>
         <circle r="7" fill="#9FF7FF" filter="url(#fx-glow)">
           <animateMotion :path="ROUTE" dur="9s" repeatCount="indefinite" />
         </circle>
         <!-- 充电位呼吸 -->
-        <ellipse v-for="(p, i) in PADS" :key="`p${i}`" class="fx-pad" :cx="p[0]" :cy="p[1]" rx="46" ry="26" fill="url(#pad-g)" :style="{ animationDelay: `${i * 0.6}s` }" />
+        <ellipse v-for="(p, i) in PADS" :key="`p${i}`" class="fx-pad" :cx="p[0]" :cy="p[1]" rx="46" ry="26" fill="url(#pad-g)" :style="{ animationDelay: `${i * 1.5}s` }" />
         <!-- 数字孪生全息屏扫描 -->
         <g clip-path="url(#holo-clip)">
           <polygon class="fx-holo" points="893,163 1045,78 1045,108 893,193" />

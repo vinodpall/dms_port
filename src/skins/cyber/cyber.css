@@ -62,14 +62,14 @@
 .cy-hero-fx { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 .fx-route { fill: none; stroke: #7FF3FF; stroke-width: 2.5; stroke-dasharray: 14 16; opacity: .75; animation: fx-dash 2.4s linear infinite; }
 @keyframes fx-dash { to { stroke-dashoffset: -60; } }
-.fx-ping { fill: none; stroke: #7FF3FF; stroke-width: 2; transform-box: fill-box; transform-origin: center; animation: fx-ping 3s ease-out infinite; }
+.fx-ping { fill: none; stroke: #7FF3FF; stroke-width: 2; transform-box: fill-box; transform-origin: center; animation: fx-ping 4.5s ease-out infinite; }
 @keyframes fx-ping { 0% { opacity: .9; transform: scale(.6); } 70%, 100% { opacity: 0; transform: scale(2.2); } }
-.fx-pad { mix-blend-mode: screen; animation: fx-breathe 2.4s ease-in-out infinite; }
-@keyframes fx-breathe { 0%, 100% { opacity: .15; } 50% { opacity: .85; } }
-.fx-holo { fill: rgba(127,243,255,.28); animation: fx-holo 3.6s linear infinite; }
+.fx-pad { mix-blend-mode: screen; opacity: .1; animation: fx-breathe 6s cubic-bezier(.45,0,.55,1) infinite; }
+@keyframes fx-breathe { 0%, 100% { opacity: .08; } 45%, 55% { opacity: .7; } }
+.fx-holo { fill: rgba(127,243,255,.28); animation: fx-holo 6s linear infinite; }
 @keyframes fx-holo { from { transform: translateY(-40px); } to { transform: translateY(210px); } }
-.fx-led { fill: #5CFFC1; filter: drop-shadow(0 0 4px #5CFFC1); animation: fx-led 1.6s steps(2, jump-none) infinite; }
-@keyframes fx-led { 0% { opacity: 1; } 100% { opacity: .15; } }
+.fx-led { fill: #5CFFC1; filter: drop-shadow(0 0 4px #5CFFC1); animation: fx-led 5s ease-in-out infinite; }
+@keyframes fx-led { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
 
 /* 入场 */
 .cy-title { animation: cy-fade-down .8s .2s both; }
@@ -99,7 +99,7 @@
   background: linear-gradient(90deg, transparent, var(--cyan) 30%, #4FA3FF 70%, transparent); box-shadow: 0 0 14px rgba(77,208,225,.8); }
 .cy-card::after { content: ''; position: absolute; inset: -1px; border-radius: inherit; padding: 1px; pointer-events: none;
   background: conic-gradient(from var(--ang, 0deg), transparent 0 75%, rgba(127,243,255,.9) 88%, transparent 100%);
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; animation: cy-border 6s linear infinite; }
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; animation: cy-border 10s linear infinite; }
 @property --ang { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
 @keyframes cy-border { to { --ang: 360deg; } }
 .cy-card .cy-corner { width: 14px; height: 14px; border-width: 2px; border-color: var(--cyan); opacity: .9; }
