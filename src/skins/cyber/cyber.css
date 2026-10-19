@@ -1,0 +1,77 @@
+/* 风格：赛博科幻 —— 深蓝网格底，青色光效，2.5D插图，玻璃态卡片 */
+.cy {
+  --bg: #0B1929; --bg2: #0F1E2E; --panel: rgba(20,40,60,.75); --glass: rgba(25,50,75,.65);
+  --line: rgba(77,208,225,.25); --cyan: #4DD0E1; --cyan-br: #26C6DA; --cyan-dk: #00ACC1;
+  --ink: #E1F5FE; --muted: #90CAF9; --dim: #546E7A;
+  --sans: 'Microsoft YaHei', 'PingFang SC', system-ui, sans-serif;
+  --mono: 'Consolas', 'SF Mono', 'Menlo', monospace;
+  position: relative; min-height: 100vh; color: var(--ink); font: 14px/1.6 var(--sans);
+  background: var(--bg);
+  /* 背景：细点阵 + 稀疏结构线，形成科技底纹 */
+  background-image:
+    radial-gradient(circle, rgba(77,208,225,.17) 1px, transparent 1.4px),
+    linear-gradient(rgba(77,208,225,.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(77,208,225,.04) 1px, transparent 1px);
+  background-size: 26px 26px, 130px 130px, 130px 130px;
+  background-position: 0 0, 0 0, 0 0;
+}
+.cy button { font: inherit; color: inherit; }
+.cy :focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.cy-brand { display: flex; align-items: center; gap: 12px; }
+.cy-brand b { font-size: 18px; font-weight: 600; letter-spacing: 1px; text-shadow: 0 0 8px rgba(77,208,225,.6); }
+.cy-brand small { color: var(--muted); font: 11px var(--mono); letter-spacing: 1.5px; text-transform: uppercase; }
+/* 扫描光束：单条光带自上而下掠过 */
+.cy-scan { position: fixed; left: 0; right: 0; top: 0; height: 34vh; pointer-events: none; z-index: 1; opacity: .5;
+  background: linear-gradient(180deg, transparent, rgba(77,208,225,.05) 55%, rgba(77,208,225,.1) 88%, transparent);
+  animation: cy-scan 11s cubic-bezier(.5,0,.5,1) infinite; }
+@keyframes cy-scan { 0% { transform: translateY(-40vh); } 100% { transform: translateY(100vh); } }
+/* 六边形装饰 */
+.cy-hex { width: 20px; height: 23px; position: relative; flex: none; }
+.cy-hex::before { content: ''; position: absolute; inset: 0; background: var(--cyan); opacity: .3; clip-path: polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%); }
+.cy-hex.on::before { opacity: 1; box-shadow: 0 0 12px var(--cyan); }
+
+/* 登录页布局 */
+.cy-login { display: grid; grid-template-columns: minmax(0, 1fr) 520px; min-height: 100vh; position: relative; }
+.cy-stage { display: flex; flex-direction: column; justify-content: space-between; padding: 36px 60px 48px; position: relative; z-index: 2; }
+.cy-stage::before { content: ''; position: absolute; inset: 0; background: radial-gradient(800px 600px at 30% 40%, rgba(77,208,225,.12), transparent 60%); }
+.cy-stage > * { position: relative; z-index: 3; }
+.cy-art { flex: 1; display: grid; place-items: center; padding: 40px 0; min-height: 0; }
+
+/* 状态指示器 - 优化布局 */
+.cy-status { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 12px 24px; color: var(--muted); font-size: 13px; padding: 20px 0; }
+.cy-status-item { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+
+/* 登录表单侧栏 */
+.cy-side { background: rgba(15,30,46,.85); backdrop-filter: blur(12px); border-left: 1px solid rgba(77,208,225,.3); display: flex; flex-direction: column; justify-content: center; padding: 60px 56px; position: relative; z-index: 2; }
+.cy-side::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: linear-gradient(90deg, transparent, var(--cyan) 50%, transparent); animation: cy-glow 3s ease-in-out infinite; }
+@keyframes cy-glow { 0%, 100% { opacity: .5; } 50% { opacity: 1; } }
+.cy-card { background: var(--glass); backdrop-filter: blur(8px); border: 1px solid rgba(77,208,225,.4); border-radius: 12px; padding: 42px 38px; box-shadow: 0 0 24px rgba(77,208,225,.2), inset 0 1px 0 rgba(255,255,255,.1); }
+.cy-card h2 { margin: 0 0 8px; font-size: 28px; font-weight: 600; letter-spacing: 1px; }
+.cy-card .sub { color: var(--muted); margin: 0 0 32px; font-size: 13.5px; }
+.cy-field { margin-bottom: 22px; }
+.cy-field > span:first-child { display: block; font-size: 13.5px; color: var(--muted); margin-bottom: 8px; font-weight: 500; }
+.cy-box { display: flex; align-items: center; gap: 12px; height: 52px; padding: 0 16px; background: rgba(15,30,46,.7); border: 1px solid rgba(77,208,225,.3); border-radius: 8px; color: var(--dim); transition: border-color .2s, box-shadow .2s; }
+.cy-box:focus-within { border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(77,208,225,.15), 0 0 12px rgba(77,208,225,.3); color: var(--cyan); }
+.cy-box.bad { border-color: #EF5350; }
+.cy-box input { flex: 1; height: 100%; border: 0; outline: 0; background: none; color: var(--ink); font: 15px var(--sans); }
+.cy-box input::placeholder { color: var(--dim); }
+.cy-eye { border: 0; background: none; padding: 4px; display: grid; color: var(--dim); cursor: pointer; }
+.cy-eye:hover { color: var(--cyan); }
+.cy-help { display: block; color: #EF5350; font-size: 12.5px; margin-top: 5px; }
+.cy-row { display: flex; justify-content: space-between; align-items: center; margin: 0 0 26px; font-size: 13px; color: var(--muted); }
+.cy-check { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+.cy-check input { accent-color: var(--cyan); width: 16px; height: 16px; cursor: pointer; }
+.cy-go { width: 100%; height: 52px; border: 0; border-radius: 8px; background: linear-gradient(135deg, var(--cyan-dk), var(--cyan-br)); color: #0B1929 !important; font-weight: 700 !important; font-size: 16px !important; letter-spacing: 2px; box-shadow: 0 4px 14px rgba(77,208,225,.5), inset 0 1px 0 rgba(255,255,255,.3); transition: transform .15s, box-shadow .15s; cursor: pointer; }
+.cy-go:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(77,208,225,.6), inset 0 1px 0 rgba(255,255,255,.3); }
+.cy-go:disabled { opacity: .6; cursor: progress; transform: none; }
+.cy-err { display: flex; align-items: center; gap: 8px; padding: 11px 16px; margin-bottom: 20px; border-left: 3px solid #EF5350; background: rgba(239,83,80,.15); color: #FFCDD2; font-size: 13px; border-radius: 4px; }
+.cy-err.shake { animation: cy-shake .35s; }
+@keyframes cy-shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+
+@media (prefers-reduced-motion: reduce) { .cy-scan { animation: none; } .cy-side::before { animation: none; } }
+@media (max-width: 1000px) {
+  .cy-login { grid-template-columns: 1fr; } 
+  .cy-stage { display: none; }
+  .cy-side { min-height: 100vh; padding: 48px 24px; border-left: 0; }
+  .cy-card { padding: 28px 24px; }
+}
