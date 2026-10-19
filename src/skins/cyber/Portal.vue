@@ -78,7 +78,7 @@ const stageStyle = computed(() => ({
   <div class="cy cy-portal">
     <div class="cy-bgfx" aria-hidden="true" />
     <div class="cy-floor" aria-hidden="true" />
-    <div class="cy-scan" aria-hidden="true" />
+    <div class="cy-glow" aria-hidden="true" />
 
     <header class="cy-top">
       <div class="cy-brand"><BrandMark /><div><b>{{ PLATFORM.name }}</b><small>{{ PLATFORM.en }}</small></div></div>
@@ -96,6 +96,7 @@ const stageStyle = computed(() => ({
     </header>
 
     <main ref="wrapEl" class="cy-wrap">
+      <div class="cy-frame" aria-hidden="true"><span class="cy-corner tl" /><span class="cy-corner tr" /><span class="cy-corner bl" /><span class="cy-corner br" /></div>
       <div class="cy-stage" :style="stageStyle">
         <!-- 连线与中心仪表 -->
         <svg class="cy-link" :viewBox="`0 0 ${STAGE_W} ${STAGE_H}`" aria-hidden="true">
@@ -163,16 +164,33 @@ const stageStyle = computed(() => ({
 
 <style scoped>
 .cy-portal { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+.cy-portal { --bg: #06111D; }
+/* 背景：中心提亮的深海军蓝 + 双层网格（细格 + 主格），边缘渐隐 */
 .cy-bgfx { position: absolute; inset: 0; pointer-events: none; z-index: 0;
   background:
-    radial-gradient(1200px 800px at 50% 52%, transparent 30%, rgba(3,8,15,.85) 100%),
-    linear-gradient(rgba(77,208,225,.035) 1px, transparent 1px) 0 0 / 80px 80px,
-    linear-gradient(90deg, rgba(77,208,225,.035) 1px, transparent 1px) 0 0 / 80px 80px; }
-.cy-portal .cy-floor { height: 34vh; opacity: .35; }
+    linear-gradient(rgba(77,208,225,.11) 1px, transparent 1px) -1px -1px / 200px 200px,
+    linear-gradient(90deg, rgba(77,208,225,.11) 1px, transparent 1px) -1px -1px / 200px 200px,
+    linear-gradient(rgba(77,208,225,.05) 1px, transparent 1px) -1px -1px / 40px 40px,
+    linear-gradient(90deg, rgba(77,208,225,.05) 1px, transparent 1px) -1px -1px / 40px 40px,
+    radial-gradient(ellipse 75% 70% at 50% 50%, #0F2C45 0%, #0A1E31 45%, #06111D 100%);
+  -webkit-mask-image: radial-gradient(ellipse 85% 80% at 50% 50%, #000 55%, rgba(0,0,0,.55) 100%);
+          mask-image: radial-gradient(ellipse 85% 80% at 50% 50%, #000 55%, rgba(0,0,0,.55) 100%); }
+/* 中心光晕 + 底部地平线辉光 */
+.cy-glow { position: absolute; inset: 0; pointer-events: none; z-index: 0;
+  background:
+    radial-gradient(900px 600px at 50% 55%, rgba(38,170,220,.16), transparent 70%),
+    radial-gradient(1400px 260px at 50% 100%, rgba(38,170,220,.18), transparent 70%); }
+.cy-portal .cy-floor { height: 36vh; opacity: .55; }
+
+/* 视口 HUD 边框 */
+.cy-frame { position: absolute; inset: 18px 24px; pointer-events: none; z-index: 0; border: 1px solid rgba(77,208,225,.08); }
+.cy-frame .cy-corner { width: 22px; height: 22px; border-width: 2px; opacity: .7; }
+.cy-frame::before, .cy-frame::after { content: ''; position: absolute; top: 50%; width: 3px; height: 120px; transform: translateY(-50%); background: linear-gradient(180deg, transparent, var(--cyan), transparent); opacity: .5; }
+.cy-frame::before { left: -2px; } .cy-frame::after { right: -2px; }
 
 /* 顶栏 */
 .cy-top { position: relative; z-index: 10; flex: none; display: flex; align-items: center; justify-content: space-between; height: 68px; padding: 0 40px;
-  background: linear-gradient(180deg, rgba(5,13,24,.92), rgba(5,13,24,.6)); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
+  background: linear-gradient(180deg, rgba(6,17,29,.9), rgba(8,22,36,.7)); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
 .cy-top::after { content: ''; position: absolute; left: 50%; bottom: -1px; width: 360px; height: 1px; transform: translateX(-50%); background: linear-gradient(90deg, transparent, var(--cyan), transparent); }
 .cy-top-right { display: flex; align-items: center; gap: 22px; }
 .cy-clock { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.25; }
@@ -212,15 +230,18 @@ const stageStyle = computed(() => ({
   background:
     radial-gradient(120px 90px at 50% 35%, rgba(77,208,225,.14), transparent 70%),
     repeating-linear-gradient(0deg, rgba(77,208,225,.04) 0 1px, transparent 1px 6px),
-    linear-gradient(180deg, #0D2033, #07131F); }
+    linear-gradient(180deg, #123350, #0A1C2E); }
 /* 内层细边六边形 */
 .node-ring { position: absolute; inset: 14px; z-index: 1; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); background: rgba(77,208,225,.22); transition: background .35s; }
-.node-ring::after { content: ''; position: absolute; inset: 1px; clip-path: inherit; background: linear-gradient(180deg, #0C1E30, #081522); }
+.node-ring::after { content: ''; position: absolute; inset: 1px; clip-path: inherit; background: linear-gradient(180deg, #0F2B44, #0A1D30); }
 .node-art { position: relative; z-index: 2; width: 132px; height: 132px; }
 .node-art :deep(svg) { width: 100%; height: 100%; display: block; filter: drop-shadow(0 6px 16px rgba(77,208,225,.45)); transition: filter .35s; }
 
-.node-meta { position: relative; display: flex; flex-direction: column; align-items: center; margin-top: 10px; padding: 8px 28px 6px; }
-.node-meta::before { content: ''; position: absolute; inset: -6px -10px; z-index: -1; background: radial-gradient(closest-side, rgba(5,13,24,.96) 55%, rgba(5,13,24,0)); }
+.node-meta { position: relative; display: flex; flex-direction: column; align-items: center; margin-top: 14px; padding: 10px 26px 10px; min-width: 210px;
+  background: linear-gradient(180deg, rgba(12,34,54,.92), rgba(8,24,40,.92)); border: 1px solid rgba(77,208,225,.16); backdrop-filter: blur(6px);
+  clip-path: polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0 calc(100% - 10px), 0 10px);
+  transition: border-color .3s, background .3s; }
+.mod-node:not(.disabled):hover .node-meta { border-color: rgba(77,208,225,.45); }
 .node-title { font-size: 21px; font-weight: 600; line-height: 1.3; color: var(--ink); letter-spacing: 2px; transition: color .3s, text-shadow .3s; }
 .node-en { margin-top: 4px; font: 11px var(--mono); letter-spacing: 2.5px; text-transform: uppercase; color: var(--dim); }
 .node-status { margin-top: 12px; display: inline-flex; align-items: center; gap: 6px; padding: 3px 12px; font-size: 12px; letter-spacing: 1px; white-space: nowrap;
@@ -251,7 +272,7 @@ const stageStyle = computed(() => ({
   .cy-brand small, .cy-clock, .cy-ubtn .who { display: none; }
   .cy-wrap { overflow: visible; }
   .cy-stage { position: static; transform: none !important; width: auto !important; height: auto !important; padding: 24px 16px 40px; display: flex; flex-direction: column; gap: 12px; }
-  .cy-link { display: none; }
+  .cy-link, .cy-frame { display: none; }
   .mod-node { position: static; transform: none; width: 100%; max-width: 420px; margin: 0 auto; display: grid; grid-template-columns: 78px 1fr auto; grid-template-rows: auto auto; align-items: center; column-gap: 16px; text-align: left;
     padding: 14px 16px; border: 1px solid var(--line); background: var(--glass); }
   .node-plate { width: 78px; height: 90px; grid-row: 1 / span 2; }
@@ -259,6 +280,7 @@ const stageStyle = computed(() => ({
   .node-art { width: 60px; height: 60px; }
   .node-meta { display: contents; }
   .node-meta::before { display: none; }
+  .node-meta { min-width: 0; padding: 0; background: none; border: 0; clip-path: none; backdrop-filter: none; }
   .node-title { margin: 0; font-size: 17px; letter-spacing: 1px; align-self: end; }
   .node-en { margin: 0; align-self: start; grid-column: 2; }
   .node-status { margin: 0; grid-column: 3; grid-row: 1 / span 2; }

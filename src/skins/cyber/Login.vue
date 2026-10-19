@@ -12,25 +12,28 @@ const { f, err, shake, loading, showPwd, uErr, pErr, submit, touched } = useLogi
 <template>
   <div class="cy cy-login" :style="{ '--hero': `url(${hero})` }">
     <div class="cy-login-bg" aria-hidden="true" />
-    <div class="cy-scan" aria-hidden="true" />
+    <div class="cy-login-grid" aria-hidden="true" />
 
-    <!-- 左侧：主视觉 + 品牌 -->
-    <section class="cy-stage">
-      <div class="cy-title">
-        <BrandMark />
-        <div>
-          <h1>{{ PLATFORM.name }}</h1>
-          <p>{{ PLATFORM.en }}</p>
-        </div>
+    <!-- 左上：品牌 -->
+    <header class="cy-title">
+      <BrandMark />
+      <div>
+        <h1>{{ PLATFORM.name }}</h1>
+        <p>{{ PLATFORM.en }}</p>
       </div>
-    </section>
+    </header>
+
+    <!-- 左侧：主视觉（背景） -->
+    <section class="cy-stage" aria-hidden="true" />
 
     <!-- 右侧：登录 -->
     <section class="cy-side">
       <form class="cy-card" novalidate @submit.prevent="submit">
-        <span class="cy-corner tl" /><span class="cy-corner br" />
-        <h2>账号登录</h2>
-        <p class="sub">欢迎回来，请登录您的平台账号</p>
+        <span class="cy-corner tl" /><span class="cy-corner tr" /><span class="cy-corner bl" /><span class="cy-corner br" />
+        <div class="cy-card-head">
+          <h2>账号登录</h2>
+          <p class="sub">欢迎登录{{ PLATFORM.name }}</p>
+        </div>
 
         <div v-if="err" class="cy-err" :class="{ shake }" role="alert"><AppIcon name="alert" size="sm" />{{ err }}</div>
 
