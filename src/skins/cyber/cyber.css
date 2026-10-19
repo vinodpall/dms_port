@@ -46,14 +46,43 @@
 
 /* ================= 登录页 ================= */
 .cy-login { --bg: #091A2A; --field: #0B1D2E; display: grid; grid-template-columns: minmax(0, 1fr) 520px; height: 100vh; min-height: 640px; overflow: hidden; }
-.cy-login-bg { position: absolute; inset: 0; z-index: 0;
+.cy-login-bg { position: absolute; inset: 0; z-index: 0; background: #091A2A; }
+.cy-login-fade { position: absolute; inset: 0; z-index: 0; pointer-events: none;
   background:
     radial-gradient(640px 520px at calc(100% - 260px) 50%, rgba(38,150,200,.16), transparent 70%),
-    linear-gradient(90deg, rgba(9,26,42,0) 58%, rgba(9,26,42,.55) 70%, rgba(9,26,42,.85) 82%),
-    var(--hero) left 2vw top calc(50% + 30px) / auto min(80vh, calc((100vw - 420px) / 1.54)) no-repeat,
-    #091A2A;
-  animation: cy-zoom 30s ease-in-out infinite alternate; transform-origin: 30% 50%; }
-@keyframes cy-zoom { to { transform: scale(1.03); } }
+    linear-gradient(90deg, rgba(9,26,42,0) 58%, rgba(9,26,42,.55) 70%, rgba(9,26,42,.85) 82%); }
+
+/* 主视觉插画 + 动效层 */
+.cy-hero { --h: min(80vh, calc((100vw - 420px) / 1.54)); position: absolute; z-index: 0; left: 2vw; top: calc(50% + 30px); height: var(--h); aspect-ratio: 1800 / 1168;
+  translate: 0 -50%; transform-origin: 30% 50%; pointer-events: none; user-select: none;
+  animation: cy-hero-in 1.2s cubic-bezier(.2,.7,.2,1) both, cy-zoom 30s ease-in-out 1.2s infinite alternate; }
+.cy-hero img { display: block; width: 100%; height: 100%; }
+@keyframes cy-hero-in { from { opacity: 0; transform: translateY(24px) scale(.98); } }
+@keyframes cy-zoom { from { transform: scale(1); } to { transform: scale(1.03); } }
+/* 扫光：用插画亮度做遮罩，只点亮线条 */
+.cy-hero-sweep { position: absolute; inset: 0; mix-blend-mode: screen; opacity: .9;
+  background: linear-gradient(115deg, transparent 42%, rgba(127,243,255,.0) 44%, rgba(127,243,255,.85) 50%, rgba(127,243,255,0) 56%, transparent 58%) 0 0 / 300% 100% no-repeat;
+  mask: var(--hero) 0 0 / 100% 100% luminance; -webkit-mask: var(--hero) 0 0 / 100% 100%;
+  animation: cy-sweep 7s ease-in-out 1.5s infinite; }
+@supports (mask-mode: luminance) { .cy-hero-sweep { -webkit-mask: none; mask: var(--hero) 0 0 / 100% 100% luminance; } }
+@keyframes cy-sweep { 0% { background-position: 100% 0; } 60%, 100% { background-position: 0% 0; } }
+.cy-hero-fx { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.fx-route { fill: none; stroke: #7FF3FF; stroke-width: 2.5; stroke-dasharray: 14 16; opacity: .75; animation: fx-dash 2.4s linear infinite; }
+@keyframes fx-dash { to { stroke-dashoffset: -60; } }
+.fx-ping { fill: none; stroke: #7FF3FF; stroke-width: 2; transform-box: fill-box; transform-origin: center; animation: fx-ping 3s ease-out infinite; }
+@keyframes fx-ping { 0% { opacity: .9; transform: scale(.6); } 70%, 100% { opacity: 0; transform: scale(2.2); } }
+.fx-pad { mix-blend-mode: screen; animation: fx-breathe 2.4s ease-in-out infinite; }
+@keyframes fx-breathe { 0%, 100% { opacity: .15; } 50% { opacity: .85; } }
+.fx-holo { fill: rgba(127,243,255,.28); animation: fx-holo 3.6s linear infinite; }
+@keyframes fx-holo { from { transform: translateY(-40px); } to { transform: translateY(210px); } }
+.fx-led { fill: #5CFFC1; filter: drop-shadow(0 0 4px #5CFFC1); animation: fx-led 1.6s steps(2, jump-none) infinite; }
+@keyframes fx-led { 0% { opacity: 1; } 100% { opacity: .15; } }
+
+/* 入场 */
+.cy-title { animation: cy-fade-down .8s .2s both; }
+.cy-card { animation: cy-card-in .9s .35s cubic-bezier(.2,.7,.2,1) both; }
+@keyframes cy-fade-down { from { opacity: 0; transform: translateY(-12px); } }
+@keyframes cy-card-in { from { opacity: 0; transform: translateX(28px); } }
 .cy-login-grid { position: absolute; inset: 0; z-index: 0; pointer-events: none;
   background:
     linear-gradient(rgba(77,208,225,.05) 1px, transparent 1px) 0 0 / 48px 48px,
@@ -75,6 +104,11 @@
   box-shadow: 0 0 0 1px rgba(77,208,225,.06), 0 0 60px rgba(38,198,218,.14), 0 40px 90px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.07); }
 .cy-card::before { content: ''; position: absolute; left: 24px; right: 24px; top: -1px; height: 2px; border-radius: 2px;
   background: linear-gradient(90deg, transparent, var(--cyan) 30%, #4FA3FF 70%, transparent); box-shadow: 0 0 14px rgba(77,208,225,.8); }
+.cy-card::after { content: ''; position: absolute; inset: -1px; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: conic-gradient(from var(--ang, 0deg), transparent 0 75%, rgba(127,243,255,.9) 88%, transparent 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; animation: cy-border 6s linear infinite; }
+@property --ang { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+@keyframes cy-border { to { --ang: 360deg; } }
 .cy-card .cy-corner { width: 14px; height: 14px; border-width: 2px; border-color: var(--cyan); opacity: .9; }
 .cy-card .cy-corner.tl { top: -2px; left: -2px; border-top-left-radius: 6px; }
 .cy-card .cy-corner.tr { top: -2px; right: -2px; border-top-right-radius: 6px; }
@@ -114,11 +148,12 @@
 .cy-err.shake { animation: cy-shake .35s; }
 @keyframes cy-shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
 
-@media (prefers-reduced-motion: reduce) { .cy *, .cy *::before, .cy *::after, .cy-login-bg { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .cy *, .cy *::before, .cy *::after { animation: none !important; } .cy-hero-fx { display: none; } }
 @media (max-width: 1100px) { .cy-login { grid-template-columns: minmax(0, 1fr) 460px; } .cy-side { padding-right: 48px; } }
 @media (max-width: 900px) {
   .cy-login { grid-template-columns: 1fr; grid-template-rows: auto 1fr; height: auto; min-height: 100vh; overflow: visible; }
-  .cy-login-bg { background: linear-gradient(0deg, #091A2A 50%, rgba(9,26,42,.6) 64%, rgba(9,26,42,0) 86%), var(--hero) 0 64px / auto 46vh no-repeat, #091A2A; }
+  .cy-hero { --h: 46vh; left: 0; top: 64px; translate: none; -webkit-mask-image: linear-gradient(#000 55%, transparent 96%); mask-image: linear-gradient(#000 55%, transparent 96%); }
+  .cy-login-fade { display: none; }
   .cy-login-grid { display: none; }
   .cy-title { left: 20px; top: 18px; } .cy-title h1 { font-size: 20px; letter-spacing: 3px; } .cy-title svg { width: 36px; height: 36px; }
   .cy-title p { font-size: 9.5px; letter-spacing: 1.6px; }
