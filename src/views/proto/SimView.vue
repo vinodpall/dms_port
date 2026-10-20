@@ -4,13 +4,11 @@ import { message } from 'ant-design-vue'
 import {
   CaretRightOutlined, PauseOutlined, BorderOutlined, StepForwardOutlined, SelectOutlined, DragOutlined, RedoOutlined, ExpandOutlined,
   EyeOutlined, EyeInvisibleOutlined, FolderOutlined, CameraOutlined, BulbOutlined, AppstoreOutlined, ApartmentOutlined, CloudUploadOutlined,
-  PlusOutlined, SearchOutlined, LinkOutlined, ThunderboltOutlined, CodeOutlined, LineChartOutlined, VideoCameraOutlined, ExperimentOutlined, InboxOutlined,
+  PlusOutlined, SearchOutlined, ThunderboltOutlined, CodeOutlined, LineChartOutlined, VideoCameraOutlined, ExperimentOutlined, InboxOutlined,
 } from '@ant-design/icons-vue'
 import ModuleShell from '@/components/proto/ModuleShell.vue'
 import DeviceGlyph from '@/components/proto/DeviceGlyph.vue'
 import LineChart from '@/components/proto/LineChart.vue'
-import { DEVICES } from '@/mock/devices'
-import { TYPE_META, type DeviceType } from '@/models/device'
 
 document.title = '机器人仿真 · 具身智能训练场'
 
@@ -41,7 +39,16 @@ const expanded = ref<string[]>(['w', 'envs', 'env', 'sen'])
 const hidden = ref<Set<string>>(new Set(['l2']))
 const toggleEye = (k: string) => { const s = new Set(hidden.value); s.has(k) ? s.delete(k) : s.add(k); hidden.value = s }
 const leftTab = ref('stage')
-const ASSETS = (() => { const m = new Map<string, (typeof DEVICES)[number]>(); DEVICES.forEach((d) => m.has(d.model) || m.set(d.model, d)); return [...m.values()] })()
+/** 仿真机器人资产库（USD） */
+const ASSETS = [
+  { model: 'Unitree B2', vendor: '宇树科技', type: 'quadruped', kind: '四足', c: '#5B9BFF' },
+  { model: 'ANYmal C', vendor: 'ANYbotics', type: 'quadruped', kind: '四足', c: '#5B9BFF' },
+  { model: 'Unitree H1', vendor: '宇树科技', type: 'humanoid', kind: '人形', c: '#4DD0E1' },
+  { model: 'Walker S1', vendor: '优必选', type: 'humanoid', kind: '人形', c: '#4DD0E1' },
+  { model: 'Scout 2.0', vendor: '松灵机器人', type: 'ugv', kind: '轮式', c: '#4DE8B0' },
+  { model: 'Iris Quadrotor', vendor: 'PX4 SITL', type: 'uav', kind: '多旋翼', c: '#B48CFF' },
+  { model: 'Franka Panda', vendor: 'Franka Emika', type: 'humanoid', kind: '机械臂', c: '#FFB74D' },
+] as const
 
 /* ---------- 视口中的并行环境 ---------- */
 const ROWS = 5, COLS = 9
@@ -85,7 +92,6 @@ const LOGS = [
   ['12:08:03', 'info', '[urdf_importer] unitree_b2.urdf → /World/envs/env_0/Robot（12 关节，13 刚体）'],
   ['12:08:05', 'warn', '[omni.sensors] height_scanner 射线数 187 超过推荐值，可能影响帧率'],
   ['12:08:10', 'info', '[rsl_rl] Iteration 1420/2000 | mean reward 18.62 | ep len 19.4 s | 82 k steps/s'],
-  ['12:08:12', 'info', '[device-sync] 已从设备管理同步 机器狗-003（B2）标定参数'],
 ]
 const urdfStep = ref(1)
 const doImport = () => { urdfStep.value = 3; message.success('USD 生成完成（原型演示）') }
@@ -138,8 +144,8 @@ const doImport = () => { urdfStep.value = 3; message.success('USD 生成完成�
             <a-tab-pane key="assets"><template #tab><AppstoreOutlined />机器人资产</template>
               <div class="sm-assets">
                 <div v-for="a in ASSETS" :key="a.model" class="sm-asset" draggable="true">
-                  <span class="art"><DeviceGlyph :type="a.type" :size="34" :color="TYPE_META[a.type as DeviceType].color" /></span>
-                  <div><b>{{ a.model }}</b><small>{{ a.vendor }} · {{ TYPE_META[a.type as DeviceType].short }}</small></div>
+                  <span class="art"><DeviceGlyph :type="a.type" :size="34" :color="a.c" /></span>
+                  <div><b>{{ a.model }}</b><small>{{ a.vendor }} · {{ a.kind }}</small></div>
                   <a-tag color="green" class="usd">USD</a-tag>
                 </div>
                 <a-button block type="dashed" @click="bottom = 'urdf'"><PlusOutlined />导入 URDF</a-button>
@@ -210,10 +216,6 @@ const doImport = () => { urdfStep.value = 3; message.success('USD 生成完成�
                 <a-descriptions-item label="恢复系数">0.00</a-descriptions-item><a-descriptions-item label="自碰撞"><a-switch size="small" :checked="false" /></a-descriptions-item>
               </a-descriptions>
             </a-collapse-panel>
-            <a-collapse-panel key="link" header="实体设备关联">
-              <div class="sm-link"><DeviceGlyph type="quadruped" :size="38" color="#5B9BFF" /><div><b>机器狗-003</b><small>Unitree B2 · 来自设备管理</small></div><a-tag color="green">已同步</a-tag></div>
-              <a-button size="small" block style="margin-top:10px"><LinkOutlined />Sim2Real 部署策略到实体</a-button>
-            </a-collapse-panel>
           </a-collapse>
         </section>
       </div>
@@ -256,7 +258,7 @@ const doImport = () => { urdfStep.value = 3; message.success('USD 生成完成�
                 <a-form layout="vertical" class="sm-urdf-f">
                   <a-row :gutter="12">
                     <a-col :span="12"><a-form-item label="关节驱动类型"><a-select value="pos" :options="[{ value: 'pos', label: '位置控制' }, { value: 'vel', label: '速度控制' }]" /></a-form-item></a-col>
-                    <a-col :span="12"><a-form-item label="关联实体设备型号"><a-select value="B2" :options="ASSETS.map((a) => ({ value: a.model, label: a.model }))" /></a-form-item></a-col>
+                    <a-col :span="12"><a-form-item label="机器人模型"><a-select value="B2" :options="ASSETS.map((a) => ({ value: a.model, label: a.model }))" /></a-form-item></a-col>
                   </a-row>
                   <a-checkbox checked>固定基座</a-checkbox><a-checkbox checked>合并固定关节</a-checkbox><a-checkbox>自碰撞</a-checkbox>
                   <div style="margin-top:12px"><a-button type="primary" @click="doImport">开始转换</a-button></div>

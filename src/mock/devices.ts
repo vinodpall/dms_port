@@ -19,11 +19,10 @@ const MODELS: Record<DeviceType, { model: string; vendor: string; protocol: Devi
     { model: 'HL-950', vendor: '华测导航', protocol: 'NMEA2000', caps: ['rescue', 'patrol', 'mapping'], sensors: ['船载雷达', '声呐', '光电吊舱', '北斗定位', '救生圈投放器'], spec: { payload: '200 kg', speed: '12 kn', endurance: '6 h', ip: 'IP68', size: '1550×780×560 mm', weight: '35 kg' } },
   ],
 }
-const SCENES = ['综合训练场 A', '楼梯攀爬区', '复杂地形区', '巡检模拟区', '数据采集间', '水域救援池']
-const GROUPS = ['训练一组', '训练二组', '巡检班', '采集班', '应急组']
+const LOC: Record<DeviceType, string> = { humanoid: 'A 区机库', quadruped: 'B 区机库', ugv: 'C 区车库', uav: '停机坪', usv: '1 号码头' }
+const GROUPS = ['一组', '二组', '三组', '应急组']
 const PLAN: [DeviceType, number, string][] = [['humanoid', 8, 'HM'], ['quadruped', 10, 'QD'], ['ugv', 6, 'UG'], ['uav', 6, 'UA'], ['usv', 4, 'US']]
 const STATUS_CYCLE: DeviceStatus[] = ['working', 'online', 'working', 'charging', 'online', 'working', 'offline', 'working', 'fault', 'online']
-const TASKS = ['楼梯攀爬数据采集 #A12', '夜间巡检路线 R3', '抓取示教采集 #C07', '复杂地形步态训练', '水域搜救演练 W2', '三维建图任务 M5']
 const NAMES: Record<DeviceType, string> = { humanoid: '人形', quadruped: '机器狗', ugv: '无人车', uav: '无人机', usv: '救生船' }
 
 let seed = 7
@@ -35,7 +34,6 @@ export const DEVICES: Device[] = PLAN.flatMap(([type, n, code]) =>
     const m = MODELS[type][i % MODELS[type].length]
     const status = STATUS_CYCLE[(i * 3 + code.charCodeAt(0)) % STATUS_CYCLE.length]
     const off = status === 'offline'
-    const scene = type === 'usv' ? '水域救援池' : type === 'uav' ? pick(['综合训练场 A', '巡检模拟区']) : pick(SCENES.slice(0, 5))
     const no = String(i + 1).padStart(3, '0')
     return {
       id: `${code}-${no}`,
@@ -46,7 +44,7 @@ export const DEVICES: Device[] = PLAN.flatMap(([type, n, code]) =>
       signal: off ? 0 : 1 + Math.floor(rnd() * 4),
       cpu: off ? 0 : 12 + Math.round(rnd() * 70),
       temp: off ? 0 : 34 + Math.round(rnd() * 30),
-      scene, group: pick(GROUPS), protocol: m.protocol,
+      location: `${LOC[type]} · ${String.fromCharCode(65 + (i % 3))}-${String(i + 1).padStart(2, '0')}`, group: pick(GROUPS), protocol: m.protocol,
       ipAddr: `10.20.${PLAN.findIndex((p) => p[0] === type) + 1}.${11 + i}`,
       firmware: `v${2 + (i % 2)}.${(i * 3) % 10}.${(i * 7) % 12}`,
       lastSeen: off ? `${2 + i} 小时前` : status === 'fault' ? '3 分钟前' : '刚刚',
@@ -54,7 +52,6 @@ export const DEVICES: Device[] = PLAN.flatMap(([type, n, code]) =>
       caps: m.caps, sensors: m.sensors, spec: m.spec,
       owner: pick(['周工', '赵工', '张杰']),
       commissioned: `2024-${String(1 + (i % 12)).padStart(2, '0')}-${String(3 + i).padStart(2, '0')}`,
-      task: status === 'working' ? pick(TASKS) : undefined,
     } satisfies Device
   }),
 )

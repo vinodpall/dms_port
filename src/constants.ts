@@ -17,7 +17,7 @@ export const MODULES: ModuleDef[] = [
   { key: 'biz', title: '机器人业务管理', en: 'Robot Business', icon: 'route', desc: '巡检业务编排：数据总览、地图与视频展示、预警、录包建图、轨迹录制、巡检任务编辑调度。', tags: ['巡检任务', '地图展示', '预警日志'], roles: ['admin', 'op', 'mt'], url: env.VITE_URL_BIZ ?? '', hue: '#19B5A5' },
   { key: 'collect', title: '数据采集', en: 'Data Collection', icon: 'db', desc: '采集任务、实时监控、数据处理流水线、标注校验、数据集与存储管理，覆盖具身数据全流程。', tags: ['采集任务', '标注校验', '数据集'], roles: ['admin', 'op', 'ann', 'rev', 'mt'], url: env.VITE_URL_COLLECT ?? '', sso: true, hue: '#5B7CFA' },
   { key: 'sim', title: '机器人仿真', en: 'Simulation', icon: 'cube', desc: 'GPU 加速仿真：URDF 转 USD 模型导入、自定义仿真场景、强化学习框架与任务构建。', tags: ['URDF→USD', '强化学习', '仿真场景'], roles: ['admin', 'ann', 'rev'], url: env.VITE_URL_SIM ?? '', hue: '#A667F0', proto: '/m/sim' },
-  { key: 'scene', title: '场景管理（训练场）', en: 'Training Ground', icon: 'map', desc: '管理训练场场景与资产，组织采集与仿真使用的标准场景、任务与评测配置。', tags: ['场景资产', '训练场', '评测配置'], roles: ['admin', 'op', 'ann', 'rev'], url: env.VITE_URL_SCENE ?? '', hue: '#F08A3C', proto: '/m/scene' },
+  { key: 'scene', title: '场景管理', en: 'Training Ground', icon: 'map', desc: '管理训练场物理场景的布局、场景要素、环境状态与使用排期，并提供训练场实时态势大屏。', tags: ['训练场景', '使用排期', '大屏展示'], roles: ['admin', 'op', 'ann', 'rev'], url: env.VITE_URL_SCENE ?? '', hue: '#F08A3C', proto: '/m/scene' },
 ]
 export const DEMO_ACCOUNTS: { u: string; role: RoleKey }[] = [
   { u: 'admin', role: 'admin' }, { u: 'zhangjie', role: 'op' }, { u: 'linyue', role: 'ann' }, { u: 'chenjing', role: 'rev' }, { u: 'zhaogong', role: 'mt' },

@@ -2,29 +2,33 @@
 import { computed, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import {
-  DatabaseOutlined, AppstoreOutlined, ToolOutlined, ApiOutlined, PlusOutlined, ImportOutlined, ExportOutlined,
+  DashboardOutlined, DatabaseOutlined, AppstoreOutlined, ToolOutlined, SettingOutlined, RightOutlined, PlusOutlined, ImportOutlined, ExportOutlined,
   UnorderedListOutlined, SearchOutlined, MoreOutlined, ControlOutlined, EyeOutlined, ThunderboltOutlined, WifiOutlined,
   AlertOutlined, ReloadOutlined, CopyOutlined,
 } from '@ant-design/icons-vue'
 import ModuleShell from '@/components/proto/ModuleShell.vue'
 import DeviceGlyph from '@/components/proto/DeviceGlyph.vue'
+import DonutChart from '@/components/proto/DonutChart.vue'
+import LineChart from '@/components/proto/LineChart.vue'
+import { pad } from '@/utils'
 import { DEVICES } from '@/mock/devices'
-import { TYPE_META, STATUS_META, CAP_META, type Device, type DeviceType, type DeviceStatus } from '@/models/device'
+import { TYPE_META, STATUS_META, CAP_META, type Device, type DeviceType, type DeviceStatus, type Capability } from '@/models/device'
 
 document.title = '机器人设备管理 · 具身智能训练场'
 const MENU = [
+  { key: 'dash', label: '设备概览', icon: DashboardOutlined },
   { key: 'list', label: '设备台账', icon: DatabaseOutlined },
   { key: 'models', label: '型号库', icon: AppstoreOutlined },
   { key: 'maint', label: '维保记录', icon: ToolOutlined },
-  { key: 'access', label: '接入配置', icon: ApiOutlined },
+  { key: 'config', label: '机器人配置', icon: SettingOutlined },
 ]
-const tab = ref('list')
+const tab = ref('dash')
 
 /* ---------- 统计 ---------- */
 const count = (s: DeviceStatus) => DEVICES.filter((d) => d.status === s).length
 const KPIS = computed(() => [
   { label: '设备总数', v: DEVICES.length, unit: '台', k: '#4DD0E1' },
-  { label: '作业中', v: count('working'), unit: '台', k: '#26C6DA' },
+  { label: '运行中', v: count('working'), unit: '台', k: '#26C6DA' },
   { label: '在线空闲', v: count('online'), unit: '台', k: '#4DE8B0' },
   { label: '充电中', v: count('charging'), unit: '台', k: '#FFB74D' },
   { label: '离线', v: count('offline'), unit: '台', k: '#5B7486' },
@@ -32,14 +36,46 @@ const KPIS = computed(() => [
 ])
 const TYPES = Object.keys(TYPE_META) as DeviceType[]
 
+/* ---------- 概览 ---------- */
+const STATUSES = Object.keys(STATUS_META) as DeviceStatus[]
+const isOn = (d: Device) => d.status !== 'offline' && d.status !== 'fault'
+const onlineN = DEVICES.filter(isOn).length
+const statusDonut = STATUSES.map((s) => ({ label: STATUS_META[s].label, color: STATUS_META[s].color, value: count(s) }))
+const typeStats = TYPES.map((t) => {
+  const ds = DEVICES.filter((d) => d.type === t)
+  const on = ds.filter(isOn)
+  return { t, n: ds.length, on: on.length, rate: Math.round((on.length / ds.length) * 100), bat: Math.round(on.reduce((a, d) => a + d.battery, 0) / (on.length || 1)),
+    hours: ds.reduce((a, d) => a + d.hours, 0), seg: STATUSES.map((s) => ({ s, n: ds.filter((d) => d.status === s).length })).filter((x) => x.n) }
+})
+const HOURS = Array.from({ length: 24 }, (_, i) => i)
+const trendOn = HOURS.map((h) => Math.round(22 + 6 * Math.sin(((h - 4) / 24) * Math.PI * 2 - 1) + (h % 5) * 0.6))
+const trendRun = HOURS.map((h, i) => Math.max(2, Math.round(trendOn[i] * (h >= 8 && h <= 20 ? 0.62 : 0.2))))
+const trendLabels = HOURS.map((h) => (h % 4 === 0 ? pad(h) + ':00' : ''))
+const ALERTS = [
+  ...DEVICES.filter((d) => d.status === 'fault').map((d, i) => ({ lv: 'error', d, m: ['关节电机过流（E-2031）', '激光雷达通信超时', '电池温度过高 61℃', '主控板看门狗复位', '螺旋桨转速异常'][i % 5], t: `${pad(9 - i)}:${pad(42 - i * 7)}` })),
+  ...DEVICES.filter((d) => isOn(d) && d.battery < 45).slice(0, 3).map((d, i) => ({ lv: 'warning', d, m: `电量偏低 ${d.battery}%`, t: `${pad(8 - i)}:${pad(15 + i * 9)}` })),
+]
+const MAINT_DUE = DEVICES.filter((_, i) => i % 7 === 2).slice(0, 5).map((d, i) => ({ d, item: ['500 小时例行保养', '电池健康检测', '关节润滑', 'IMU 标定', '螺旋桨更换'][i], due: [2, 3, 5, 7, 9][i] }))
+const TOP_HOURS = [...DEVICES].sort((a, b) => b.hours - a.hours).slice(0, 5)
+const gotoType = (t: DeviceType | 'all') => { f.type = t; tab.value = 'list' }
+
+/* ---------- 机器人配置 ---------- */
+const cfgType = ref<DeviceType>('quadruped')
+const OVERRIDES = [DEVICES[3], DEVICES[12], DEVICES[27]].map((d, i) => ({ d, k: ['限速 40%', '遥测 50 Hz', '回充阈值 30%'][i] }))
+const THRESHOLDS = [
+  { k: '电池电量', w: 30, c: 15, u: '%', dur: '立即', n: true }, { k: '主控温度', w: 65, c: 80, u: '℃', dur: '30 秒', n: true },
+  { k: '电机温度', w: 70, c: 85, u: '℃', dur: '10 秒', n: true }, { k: 'CPU 负载', w: 85, c: 95, u: '%', dur: '1 分钟', n: false },
+  { k: '通信丢包率', w: 5, c: 15, u: '%', dur: '30 秒', n: true }, { k: '定位偏差', w: 0.3, c: 1, u: 'm', dur: '10 秒', n: false },
+]
+
 /* ---------- 筛选 ---------- */
-const f = reactive({ type: 'all' as DeviceType | 'all', status: undefined as DeviceStatus | undefined, scene: undefined as string | undefined, kw: '' })
+const f = reactive({ type: 'all' as DeviceType | 'all', status: undefined as DeviceStatus | undefined, group: undefined as string | undefined, kw: '' })
 const view = ref<'table' | 'card'>('table')
-const scenes = [...new Set(DEVICES.map((d) => d.scene))]
+const groups = [...new Set(DEVICES.map((d) => d.group))]
 const rows = computed(() => DEVICES.filter((d) =>
-  (f.type === 'all' || d.type === f.type) && (!f.status || d.status === f.status) && (!f.scene || d.scene === f.scene) &&
+  (f.type === 'all' || d.type === f.type) && (!f.status || d.status === f.status) && (!f.group || d.group === f.group) &&
   (!f.kw || `${d.name}${d.sn}${d.model}${d.id}`.toLowerCase().includes(f.kw.toLowerCase()))))
-const reset = () => Object.assign(f, { type: 'all', status: undefined, scene: undefined, kw: '' })
+const reset = () => Object.assign(f, { type: 'all', status: undefined, group: undefined, kw: '' })
 
 const columns = [
   { title: '设备', key: 'name', width: 230, fixed: 'left' },
@@ -48,11 +84,13 @@ const columns = [
   { title: '状态', key: 'status', width: 170 },
   { title: '电量', key: 'battery', width: 140, sorter: (a: Device, b: Device) => a.battery - b.battery },
   { title: '信号', key: 'signal', width: 70 },
-  { title: '所在场景', dataIndex: 'scene', width: 130 },
+  { title: '存放库位', dataIndex: 'location', width: 140 },
+  { title: '分组', dataIndex: 'group', width: 90 },
   { title: '能力标签', key: 'caps', width: 250 },
   { title: '最后在线', dataIndex: 'lastSeen', width: 100 },
   { title: '操作', key: 'op', width: 150, fixed: 'right' },
 ]
+const capsText = (cs: Capability[]) => cs.map((c) => CAP_META[c]).join('、')
 const batColor = (b: number) => (b < 20 ? '#FF6B6B' : b < 50 ? '#FFB74D' : '#4DE8B0')
 const selectedKeys = ref<string[]>([])
 
@@ -65,16 +103,9 @@ const MAINT = [
   { t: '2026-07-02', c: '固件升级 v2.3.1 → v2.4.0', who: '周工', type: '升级' },
   { t: '2026-05-20', c: '入场验收，完成标定', who: '周工', type: '验收' },
 ]
-const USAGE = [
-  { mod: '数据采集', item: '楼梯攀爬数据采集 #A12', t: '进行中', c: 'processing' },
-  { mod: '机器人仿真', item: '数字孪生体 · USD 模型已同步', t: '已绑定', c: 'success' },
-  { mod: '场景管理', item: '楼梯攀爬区 · 评测任务 3 项', t: '已绑定', c: 'success' },
-  { mod: '业务管理', item: '夜间巡检路线 R3', t: '已结束', c: 'default' },
-]
-
 /* ---------- 新增 ---------- */
 const addOpen = ref(false)
-const form = reactive({ type: 'quadruped' as DeviceType, name: '', sn: '', model: undefined, group: undefined, scene: undefined, protocol: 'ROS2', ip: '', caps: ['patrol'] as string[] })
+const form = reactive({ type: 'quadruped' as DeviceType, name: '', sn: '', model: undefined, group: undefined, protocol: 'ROS2', ip: '', caps: ['patrol'] as string[] })
 const submitAdd = () => { addOpen.value = false; message.success('设备已创建（原型演示）') }
 
 /* ---------- 型号库 / 维保 ---------- */
@@ -88,10 +119,98 @@ const MAINT_ROWS = DEVICES.slice(0, 14).map((d, i) => ({ key: i, dev: d, type: [
 
 <template>
   <ModuleShell v-model:active="tab" title="机器人设备管理" en="Robot Device" :menu="MENU">
-    <!-- ================= 设备台账 ================= -->
-    <template v-if="tab === 'list'">
+    <!-- ================= 设备概览 ================= -->
+    <template v-if="tab === 'dash'">
       <div class="pp-head">
-        <div><h2>设备台账</h2><p>统一管理训练场全部机器人设备，设备信息供业务、采集、仿真、场景等模块共用</p></div>
+        <div><h2>设备概览</h2><p>训练场机器人设备总体运行态势</p></div>
+        <div class="r">
+          <a-button @click="tab = 'list'"><DatabaseOutlined />设备台账</a-button>
+          <a-button type="primary" @click="addOpen = true"><PlusOutlined />新增设备</a-button>
+        </div>
+      </div>
+      <div class="pp-kpis">
+        <div v-for="k in KPIS" :key="k.label" class="pp-kpi" :style="{ '--k': k.k }">
+          <small><i class="kdot" :style="{ background: k.k }" />{{ k.label }}</small>
+          <b>{{ k.v }}<em>{{ k.unit }}</em></b><span class="bar" />
+        </div>
+      </div>
+
+      <!-- 五类设备 -->
+      <div class="db-types">
+        <div v-for="x in typeStats" :key="x.t" class="db-type" :style="{ '--c': TYPE_META[x.t].color }" @click="gotoType(x.t)">
+          <div class="db-type-h">
+            <span class="ic"><DeviceGlyph :type="x.t" :size="44" :color="TYPE_META[x.t].color" /></span>
+            <div><b>{{ TYPE_META[x.t].label }}</b><small>{{ x.n }} 台 · 在线 {{ x.on }}</small></div>
+            <RightOutlined class="go" />
+          </div>
+          <div class="db-type-rate"><span>在线率</span><b class="mono">{{ x.rate }}<em>%</em></b></div>
+          <div class="db-seg"><i v-for="g in x.seg" :key="g.s" :style="{ flex: g.n, background: STATUS_META[g.s].color }"><a-tooltip :title="`${STATUS_META[g.s].label} ${g.n} 台`"><span /></a-tooltip></i></div>
+          <div class="db-type-f"><span>平均电量 <b class="mono">{{ x.bat }}%</b></span><span>累计 <b class="mono">{{ x.hours.toLocaleString('en-US') }}</b> h</span></div>
+        </div>
+      </div>
+
+      <div class="db-row">
+        <div class="pp-panel db-p">
+          <div class="pp-panel-h"><h3>设备状态分布</h3></div>
+          <div class="db-donut">
+            <DonutChart :data="statusDonut" :size="180" :title="`${onlineN}`" sub="在线设备" />
+            <ul>
+              <li v-for="s in statusDonut" :key="s.label"><i :style="{ background: s.color }" />{{ s.label }}<b class="mono">{{ s.value }}</b><span class="mono muted">{{ Math.round((s.value / DEVICES.length) * 100) }}%</span></li>
+            </ul>
+          </div>
+        </div>
+        <div class="pp-panel db-p">
+          <div class="pp-panel-h"><h3>24 小时在线趋势</h3><span class="db-lg"><i style="background:#4DD0E1" />在线<i style="background:#4DE8B0" />运行中</span></div>
+          <div style="padding: 10px 14px 6px"><LineChart :series="[{ name: '在线', color: '#4DD0E1', data: trendOn }, { name: '运行中', color: '#4DE8B0', data: trendRun }]" :labels="trendLabels" :height="206" :min="0" :max="36" /></div>
+        </div>
+        <div class="pp-panel db-p">
+          <div class="pp-panel-h"><h3>实时告警</h3><a-tag color="error" style="margin-left:6px">{{ ALERTS.length }}</a-tag><a class="r" style="font-size:12px">全部</a></div>
+          <ul class="db-alerts">
+            <li v-for="a in ALERTS" :key="a.d.id + a.m" :class="a.lv" @click="open(a.d)">
+              <i class="lv" /><span class="mono muted">{{ a.t }}</span><b>{{ a.d.name }}</b><span class="m">{{ a.m }}</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="db-row b">
+        <div class="pp-panel db-p">
+          <div class="pp-panel-h"><h3>设备状态矩阵</h3><span class="muted" style="font-size:12px;margin-left:8px">点击方块查看设备详情</span>
+            <span class="db-lg r"><template v-for="s in STATUSES" :key="s"><i class="sq" :style="{ background: STATUS_META[s].color }" />{{ STATUS_META[s].label }}</template></span></div>
+          <div class="db-matrix">
+            <div v-for="t in TYPES" :key="t" class="db-mx-row">
+              <span class="db-mx-l"><DeviceGlyph :type="t" :size="20" :color="TYPE_META[t].color" />{{ TYPE_META[t].short }}</span>
+              <div class="db-mx-cells">
+                <a-tooltip v-for="d in DEVICES.filter((x) => x.type === t)" :key="d.id" :title="`${d.name} · ${STATUS_META[d.status].label} · 电量 ${d.battery}%`">
+                  <button type="button" class="db-cell" :class="d.status" :style="{ '--s': STATUS_META[d.status].color }" @click="open(d)">
+                    <span class="mono">{{ d.id.slice(-3) }}</span><i :style="{ width: d.battery + '%' }" />
+                  </button>
+                </a-tooltip>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="db-side">
+          <div class="pp-panel db-p">
+            <div class="pp-panel-h"><h3>保养提醒</h3><a class="r" style="font-size:12px" @click="tab = 'maint'">维保记录</a></div>
+            <ul class="db-list">
+              <li v-for="m in MAINT_DUE" :key="m.d.id"><DeviceGlyph :type="m.d.type" :size="20" :color="TYPE_META[m.d.type].color" /><b>{{ m.d.name }}</b><span class="muted">{{ m.item }}</span><a-tag :color="m.due <= 3 ? 'orange' : 'default'" class="r">{{ m.due }} 天后</a-tag></li>
+            </ul>
+          </div>
+          <div class="pp-panel db-p">
+            <div class="pp-panel-h"><h3>累计运行时长 TOP5</h3></div>
+            <ul class="db-list">
+              <li v-for="(d, i) in TOP_HOURS" :key="d.id"><em class="mono">{{ i + 1 }}</em><b>{{ d.name }}</b><div class="db-bar"><i :style="{ width: (d.hours / TOP_HOURS[0].hours) * 100 + '%', background: TYPE_META[d.type].color }" /></div><span class="mono">{{ d.hours }} h</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- ================= 设备台账 ================= -->
+    <template v-else-if="tab === 'list'">
+      <div class="pp-head">
+        <div><h2>设备台账</h2><p>统一管理训练场全部机器人设备档案、运行状态与接入信息</p></div>
         <div class="r">
           <a-button><ImportOutlined />批量导入</a-button>
           <a-button><ExportOutlined />导出</a-button>
@@ -123,7 +242,7 @@ const MAINT_ROWS = DEVICES.slice(0, 14).map((d, i) => ({ key: i, dev: d, type: [
           <div class="r">
             <a-input v-model:value="f.kw" allow-clear placeholder="搜索名称 / 编号 / 型号" style="width: 220px"><template #prefix><SearchOutlined class="muted" /></template></a-input>
             <a-select v-model:value="f.status" allow-clear placeholder="全部状态" style="width: 120px" :options="Object.entries(STATUS_META).map(([v, m]) => ({ value: v, label: m.label }))" />
-            <a-select v-model:value="f.scene" allow-clear placeholder="全部场景" style="width: 140px" :options="scenes.map((s) => ({ value: s, label: s }))" />
+            <a-select v-model:value="f.group" allow-clear placeholder="全部分组" style="width: 120px" :options="groups.map((s) => ({ value: s, label: s }))" />
             <a-tooltip title="重置"><a-button @click="reset"><ReloadOutlined /></a-button></a-tooltip>
             <a-radio-group v-model:value="view" button-style="solid">
               <a-radio-button value="table"><UnorderedListOutlined /></a-radio-button>
@@ -132,7 +251,7 @@ const MAINT_ROWS = DEVICES.slice(0, 14).map((d, i) => ({ key: i, dev: d, type: [
           </div>
         </div>
 
-        <div v-if="selectedKeys.length" class="dv-batch">已选 {{ selectedKeys.length }} 台<a-button size="small">批量分组</a-button><a-button size="small">下发任务</a-button><a-button size="small" danger>停用</a-button><a @click="selectedKeys = []">取消选择</a></div>
+        <div v-if="selectedKeys.length" class="dv-batch">已选 {{ selectedKeys.length }} 台<a-button size="small">批量分组</a-button><a-button size="small">批量配置</a-button><a-button size="small" danger>停用</a-button><a @click="selectedKeys = []">取消选择</a></div>
 
         <a-table v-if="view === 'table'" :columns="columns" :data-source="rows" row-key="id" size="middle" :scroll="{ x: 1500 }"
           :pagination="{ pageSize: 10, showTotal: (t: number) => `共 ${t} 条`, showSizeChanger: false }"
@@ -148,13 +267,13 @@ const MAINT_ROWS = DEVICES.slice(0, 14).map((d, i) => ({ key: i, dev: d, type: [
             <template v-else-if="column.key === 'type'"><a-tag :color="TYPE_META[record.type as DeviceType].color + '22'" :style="{ color: TYPE_META[record.type as DeviceType].color, borderColor: TYPE_META[record.type as DeviceType].color + '55' }">{{ TYPE_META[record.type as DeviceType].label }}</a-tag></template>
             <template v-else-if="column.key === 'model'"><div class="cell-main">{{ record.model }}<small>{{ record.vendor }}</small></div></template>
             <template v-else-if="column.key === 'status'">
-              <div class="cell-main"><a-badge :status="STATUS_META[record.status as DeviceStatus].badge" :text="STATUS_META[record.status as DeviceStatus].label" /><small v-if="record.task" class="ellipsis">{{ record.task }}</small></div>
+              <div class="cell-main"><a-badge :status="STATUS_META[record.status as DeviceStatus].badge" :text="STATUS_META[record.status as DeviceStatus].label" /></div>
             </template>
             <template v-else-if="column.key === 'battery'">
               <div class="dv-bat"><a-progress :percent="record.battery" :show-info="false" size="small" :stroke-color="batColor(record.battery)" /><span class="mono">{{ record.battery }}%</span></div>
             </template>
             <template v-else-if="column.key === 'signal'"><span class="dv-sig" :data-l="record.signal"><i /><i /><i /><i /></span></template>
-            <template v-else-if="column.key === 'caps'"><a-tag v-for="c in record.caps.slice(0, 2)" :key="c" class="dv-cap">{{ CAP_META[c as keyof typeof CAP_META] }}</a-tag><a-tooltip v-if="record.caps.length > 2" :title="record.caps.slice(2).map((c: string) => CAP_META[c as keyof typeof CAP_META]).join('、')"><a-tag class="dv-cap">+{{ record.caps.length - 2 }}</a-tag></a-tooltip></template>
+            <template v-else-if="column.key === 'caps'"><a-tag v-for="c in record.caps.slice(0, 2)" :key="c" class="dv-cap">{{ CAP_META[c as keyof typeof CAP_META] }}</a-tag><a-tooltip v-if="record.caps.length > 2" :title="capsText(record.caps.slice(2))"><a-tag class="dv-cap">+{{ record.caps.length - 2 }}</a-tag></a-tooltip></template>
             <template v-else-if="column.key === 'op'">
               <a-space :size="2">
                 <a-button type="link" size="small" @click="open(record)">详情</a-button>
@@ -178,7 +297,7 @@ const MAINT_ROWS = DEVICES.slice(0, 14).map((d, i) => ({ key: i, dev: d, type: [
             <div class="dv-card-meta">
               <span><ThunderboltOutlined /> <i class="mono" :style="{ color: batColor(d.battery) }">{{ d.battery }}%</i></span>
               <span><WifiOutlined /> <span class="dv-sig" :data-l="d.signal"><i /><i /><i /><i /></span></span>
-              <span class="ellipsis">{{ d.scene }}</span>
+              <span class="ellipsis">{{ d.location }}</span>
             </div>
           </div>
         </div>
@@ -228,31 +347,83 @@ const MAINT_ROWS = DEVICES.slice(0, 14).map((d, i) => ({ key: i, dev: d, type: [
       </div>
     </template>
 
-    <!-- ================= 接入配置 ================= -->
+    <!-- ================= 机器人配置 ================= -->
     <template v-else>
-      <div class="pp-head"><div><h2>接入配置</h2><p>设备接入网关与通信协议配置</p></div></div>
-      <a-row :gutter="16">
-        <a-col v-for="p in [{ n: 'ROS 2 网关', d: 'DDS Domain 42 · Fast DDS', c: 24, s: '运行中' }, { n: 'MAVLink 网关', d: 'UDP 14550 · 无人机', c: 6, s: '运行中' }, { n: '厂商 SDK 适配', d: '宇树 / 优必选 SDK', c: 4, s: '运行中' }, { n: 'NMEA 2000', d: '船载 CAN 总线 · 救生船', c: 4, s: '运行中' }]" :key="p.n" :span="6">
-          <div class="pp-panel" style="padding:18px">
-            <div style="display:flex;align-items:center;gap:8px"><ApiOutlined style="color:#4DD0E1;font-size:18px" /><b>{{ p.n }}</b><a-badge status="processing" :text="p.s" style="margin-left:auto" /></div>
-            <p class="muted" style="margin:10px 0 6px;font-size:13px">{{ p.d }}</p>
-            <div class="mono" style="font-size:22px">{{ p.c }} <small class="muted" style="font-size:12px">台设备已接入</small></div>
+      <div class="pp-head">
+        <div><h2>机器人配置</h2><p>按设备类型维护默认配置模板，支持对单台设备覆盖下发</p></div>
+        <div class="r"><a-button><ImportOutlined />导入模板</a-button><a-button type="primary" @click="message.success('配置已保存并下发（原型演示）')">保存并下发</a-button></div>
+      </div>
+      <div class="cf">
+        <div class="pp-panel cf-l">
+          <div class="pp-panel-h"><h3>配置模板</h3></div>
+          <button v-for="x in typeStats" :key="x.t" type="button" class="cf-item" :class="{ on: cfgType === x.t }" :style="{ '--c': TYPE_META[x.t].color }" @click="cfgType = x.t">
+            <DeviceGlyph :type="x.t" :size="30" :color="TYPE_META[x.t].color" /><span><b>{{ TYPE_META[x.t].label }}</b><small>默认模板 · 应用 {{ x.n }} 台</small></span><a-tag class="r">v3.{{ x.n % 4 }}</a-tag>
+          </button>
+          <div class="pp-panel-h" style="border-top:1px solid var(--line)"><h3>单机覆盖</h3><span class="muted r" style="font-size:12px">{{ OVERRIDES.length }} 台</span></div>
+          <div v-for="o in OVERRIDES" :key="o.d.id" class="cf-ov"><DeviceGlyph :type="o.d.type" :size="20" :color="TYPE_META[o.d.type].color" /><b>{{ o.d.name }}</b><small class="muted">{{ o.k }}</small></div>
+        </div>
+        <div class="pp-panel cf-r">
+          <div class="cf-head" :style="{ '--c': TYPE_META[cfgType].color }">
+            <span class="ic"><DeviceGlyph :type="cfgType" :size="40" :color="TYPE_META[cfgType].color" /></span>
+            <div><b>{{ TYPE_META[cfgType].label }} · 默认配置模板</b><small class="muted">最近修改：2026-10-16 14:20 · 周工</small></div>
+            <a-space class="r"><a-button size="small">版本历史</a-button><a-button size="small">恢复默认</a-button></a-space>
           </div>
-        </a-col>
-      </a-row>
-      <div class="pp-panel" style="margin-top:16px">
-        <div class="pp-panel-h"><h3>网关参数</h3></div>
-        <div class="pp-panel-b">
-          <a-form layout="vertical" style="max-width: 720px">
-            <a-row :gutter="16">
-              <a-col :span="12"><a-form-item label="心跳间隔（秒）"><a-input-number :value="5" style="width:100%" /></a-form-item></a-col>
-              <a-col :span="12"><a-form-item label="离线判定（秒）"><a-input-number :value="30" style="width:100%" /></a-form-item></a-col>
-              <a-col :span="12"><a-form-item label="遥测上报频率"><a-select value="10" :options="[{ value: '1', label: '1 Hz' }, { value: '10', label: '10 Hz' }, { value: '50', label: '50 Hz' }]" /></a-form-item></a-col>
-              <a-col :span="12"><a-form-item label="视频流协议"><a-select value="webrtc" :options="[{ value: 'webrtc', label: 'WebRTC' }, { value: 'rtsp', label: 'RTSP' }]" /></a-form-item></a-col>
-            </a-row>
-            <a-form-item label="低电量告警阈值"><a-slider :value="20" :marks="{ 10: '10%', 20: '20%', 30: '30%', 50: '50%' }" :max="50" /></a-form-item>
-            <a-button type="primary">保存配置</a-button>
-          </a-form>
+          <a-tabs class="cf-tabs">
+            <a-tab-pane key="net" tab="通信接入">
+              <a-form layout="vertical" class="cf-form">
+                <a-row :gutter="20">
+                  <a-col :span="8"><a-form-item label="接入协议"><a-select :value="cfgType === 'uav' ? 'MAVLink' : cfgType === 'usv' ? 'NMEA2000' : 'ROS2'" :options="['ROS2', 'MAVLink', 'SDK', 'NMEA2000'].map((v) => ({ value: v, label: v }))" /></a-form-item></a-col>
+                  <a-col :span="8"><a-form-item label="接入网关"><a-input value="10.20.0.5:7400" /></a-form-item></a-col>
+                  <a-col :span="8"><a-form-item label="DDS Domain / 系统 ID"><a-input-number :value="42" style="width:100%" /></a-form-item></a-col>
+                  <a-col :span="8"><a-form-item label="心跳间隔（秒）"><a-input-number :value="5" style="width:100%" /></a-form-item></a-col>
+                  <a-col :span="8"><a-form-item label="离线判定（秒）"><a-input-number :value="30" style="width:100%" /></a-form-item></a-col>
+                  <a-col :span="8"><a-form-item label="遥测上报频率"><a-select value="10" :options="[{ value: '1', label: '1 Hz' }, { value: '10', label: '10 Hz' }, { value: '50', label: '50 Hz' }]" /></a-form-item></a-col>
+                  <a-col :span="8"><a-form-item label="视频流协议"><a-radio-group value="webrtc" button-style="solid"><a-radio-button value="webrtc">WebRTC</a-radio-button><a-radio-button value="rtsp">RTSP</a-radio-button></a-radio-group></a-form-item></a-col>
+                  <a-col :span="8"><a-form-item label="视频码率"><a-select value="4" :options="[{ value: '2', label: '2 Mbps · 720P' }, { value: '4', label: '4 Mbps · 1080P' }, { value: '8', label: '8 Mbps · 2K' }]" /></a-form-item></a-col>
+                  <a-col :span="8"><a-form-item label="链路加密"><a-switch :checked="true" /> <span class="muted" style="margin-left:8px;font-size:12px">TLS 1.3</span></a-form-item></a-col>
+                </a-row>
+              </a-form>
+            </a-tab-pane>
+            <a-tab-pane key="safe" tab="运动与安全">
+              <a-form layout="vertical" class="cf-form">
+                <a-row :gutter="32">
+                  <a-col :span="12"><a-form-item label="最大速度限制"><a-slider :value="60" :marks="{ 0: '0', 50: '50%', 100: '100%' }" /></a-form-item></a-col>
+                  <a-col :span="12"><a-form-item label="避障安全距离（m）"><a-slider :value="0.8" :min="0.2" :max="3" :step="0.1" :marks="{ 0.2: '0.2', 1: '1.0', 2: '2.0', 3: '3.0' }" /></a-form-item></a-col>
+                  <a-col :span="12"><a-form-item label="低电量自动返航 / 回充阈值"><a-slider :value="20" :max="50" :marks="{ 10: '10%', 20: '20%', 30: '30%', 50: '50%' }" /></a-form-item></a-col>
+                  <a-col :span="12"><a-form-item label="通信丢失处理"><a-radio-group value="hold"><a-radio value="hold">原地保持</a-radio><a-radio value="home">自动返航</a-radio><a-radio value="stop">安全停机</a-radio></a-radio-group></a-form-item></a-col>
+                  <a-col :span="12"><a-form-item label="急停策略"><a-radio-group value="soft"><a-radio value="soft">软急停（保持姿态）</a-radio><a-radio value="hard">硬急停（断电）</a-radio></a-radio-group></a-form-item></a-col>
+                  <a-col :span="6"><a-form-item label="电子围栏"><a-switch :checked="true" /></a-form-item></a-col>
+                  <a-col :span="6"><a-form-item label="夜间静音模式"><a-switch /></a-form-item></a-col>
+                </a-row>
+              </a-form>
+            </a-tab-pane>
+            <a-tab-pane key="alarm" tab="告警阈值">
+              <a-table :data-source="THRESHOLDS" :pagination="false" size="middle" row-key="k" :columns="[{ title: '监测项', dataIndex: 'k' }, { title: '预警阈值', key: 'w', width: 180 }, { title: '严重阈值', key: 'c', width: 180 }, { title: '持续时间', key: 'dur', width: 140 }, { title: '通知', key: 'n', width: 100 }]">
+                <template #bodyCell="{ column, record }">
+                  <template v-if="column.key === 'w'"><a-input-number :value="record.w" :addon-after="record.u" size="small" style="width:140px" /></template>
+                  <template v-else-if="column.key === 'c'"><a-input-number :value="record.c" :addon-after="record.u" size="small" style="width:140px" /></template>
+                  <template v-else-if="column.key === 'dur'"><a-select :value="record.dur" size="small" style="width:100px" :options="['立即', '10 秒', '30 秒', '1 分钟'].map((v) => ({ value: v, label: v }))" /></template>
+                  <template v-else-if="column.key === 'n'"><a-switch :checked="record.n" size="small" /></template>
+                </template>
+              </a-table>
+            </a-tab-pane>
+            <a-tab-pane key="ota" tab="固件与 OTA">
+              <a-form layout="vertical" class="cf-form">
+                <a-row :gutter="20">
+                  <a-col :span="8"><a-form-item label="当前基线版本"><a-input value="v2.4.0" disabled /></a-form-item></a-col>
+                  <a-col :span="8"><a-form-item label="目标版本"><a-select value="v2.5.1" :options="['v2.5.1（推荐）', 'v2.5.0', 'v2.4.3'].map((v) => ({ value: v.split('（')[0], label: v }))" /></a-form-item></a-col>
+                  <a-col :span="8"><a-form-item label="升级时机"><a-radio-group value="idle" button-style="solid"><a-radio-button value="idle">空闲时</a-radio-button><a-radio-button value="now">立即</a-radio-button><a-radio-button value="cron">定时</a-radio-button></a-radio-group></a-form-item></a-col>
+                  <a-col :span="12"><a-form-item label="灰度比例"><a-slider :value="30" :marks="{ 10: '10%', 30: '30%', 50: '50%', 100: '全部' }" /></a-form-item></a-col>
+                  <a-col :span="12"><a-form-item label="失败自动回滚"><a-switch :checked="true" /></a-form-item></a-col>
+                </a-row>
+              </a-form>
+              <a-timeline style="margin-top:4px">
+                <a-timeline-item color="green">2026-10-08 · v2.4.0 全量升级完成（{{ typeStats.find((x) => x.t === cfgType)!.n }} 台）</a-timeline-item>
+                <a-timeline-item color="gray">2026-09-12 · v2.3.1 灰度 30% → 全量</a-timeline-item>
+                <a-timeline-item color="gray">2026-07-02 · v2.3.0 发布</a-timeline-item>
+              </a-timeline>
+            </a-tab-pane>
+          </a-tabs>
         </div>
       </div>
     </template>
@@ -266,7 +437,6 @@ const MAINT_ROWS = DEVICES.slice(0, 14).map((d, i) => ({ key: i, dev: d, type: [
             <div class="dv-hero-t"><b>{{ cur.name }}</b><a-badge :status="STATUS_META[cur.status].badge" :text="STATUS_META[cur.status].label" /></div>
             <div class="muted mono" style="font-size:12px">{{ cur.sn }} <CopyOutlined style="cursor:pointer" /></div>
             <div style="margin-top:10px"><a-tag>{{ TYPE_META[cur.type].label }}</a-tag><a-tag>{{ cur.model }}</a-tag><a-tag>{{ cur.vendor }}</a-tag><a-tag>{{ cur.group }}</a-tag></div>
-            <div v-if="cur.task" class="dv-hero-task"><i class="dot" />当前任务：{{ cur.task }}</div>
           </div>
           <a-space direction="vertical" class="dv-hero-op">
             <a-button type="primary" :disabled="cur.status === 'offline'"><ControlOutlined />远程控制</a-button>
@@ -282,7 +452,7 @@ const MAINT_ROWS = DEVICES.slice(0, 14).map((d, i) => ({ key: i, dev: d, type: [
               </div>
             </div>
             <a-descriptions :column="2" bordered size="small" class="dv-desc">
-              <a-descriptions-item label="所在场景">{{ cur.scene }}</a-descriptions-item>
+              <a-descriptions-item label="存放库位">{{ cur.location }}</a-descriptions-item>
               <a-descriptions-item label="最后在线">{{ cur.lastSeen }}</a-descriptions-item>
               <a-descriptions-item label="累计运行">{{ cur.hours }} 小时</a-descriptions-item>
               <a-descriptions-item label="固件版本">{{ cur.firmware }}</a-descriptions-item>
@@ -319,12 +489,6 @@ const MAINT_ROWS = DEVICES.slice(0, 14).map((d, i) => ({ key: i, dev: d, type: [
               <a-descriptions-item label="视频流"><span class="mono">webrtc://10.20.0.5/live/{{ cur.id }}</span></a-descriptions-item>
             </a-descriptions>
           </a-tab-pane>
-          <a-tab-pane key="u" tab="模块引用">
-            <p class="muted" style="font-size:13px;margin-top:0">该设备在其他模块中的使用情况</p>
-            <a-list :data-source="USAGE" size="small" class="dv-list">
-              <template #renderItem="{ item }"><a-list-item><a-tag color="cyan">{{ item.mod }}</a-tag>{{ item.item }}<template #actions><a-badge :status="item.c" :text="item.t" /></template></a-list-item></template>
-            </a-list>
-          </a-tab-pane>
           <a-tab-pane key="m" tab="维保记录">
             <a-timeline style="margin-top:8px">
               <a-timeline-item v-for="m in MAINT" :key="m.t" color="cyan"><b>{{ m.t }}</b> <a-tag style="margin-left:6px">{{ m.type }}</a-tag><div class="muted" style="margin-top:4px">{{ m.c }} · {{ m.who }}</div></a-timeline-item>
@@ -346,7 +510,7 @@ const MAINT_ROWS = DEVICES.slice(0, 14).map((d, i) => ({ key: i, dev: d, type: [
           <a-col :span="12"><a-form-item label="设备名称" required><a-input v-model:value="form.name" placeholder="如：机器狗-011" /></a-form-item></a-col>
           <a-col :span="12"><a-form-item label="序列号 SN" required><a-input v-model:value="form.sn" placeholder="设备铭牌序列号" /></a-form-item></a-col>
           <a-col :span="12"><a-form-item label="型号" required><a-select v-model:value="form.model" placeholder="从型号库选择" :options="MODEL_LIB.filter((m) => m.d.type === form.type).map((m) => ({ value: m.d.model, label: `${m.d.model}（${m.d.vendor}）` }))" /></a-form-item></a-col>
-          <a-col :span="12"><a-form-item label="所属分组"><a-select v-model:value="form.group" placeholder="请选择" :options="['训练一组', '训练二组', '巡检班', '采集班', '应急组'].map((v) => ({ value: v, label: v }))" /></a-form-item></a-col>
+          <a-col :span="12"><a-form-item label="所属分组"><a-select v-model:value="form.group" placeholder="请选择" :options="['一组', '二组', '三组', '应急组'].map((v) => ({ value: v, label: v }))" /></a-form-item></a-col>
           <a-col :span="12"><a-form-item label="接入协议"><a-select v-model:value="form.protocol" :options="['ROS2', 'MAVLink', 'SDK', 'NMEA2000'].map((v) => ({ value: v, label: v }))" /></a-form-item></a-col>
           <a-col :span="12"><a-form-item label="IP 地址"><a-input v-model:value="form.ip" placeholder="10.20.x.x" /></a-form-item></a-col>
         </a-row>
@@ -391,6 +555,62 @@ const MAINT_ROWS = DEVICES.slice(0, 14).map((d, i) => ({ key: i, dev: d, type: [
 .dv-model-b { flex: 1; min-width: 0; }
 .dv-model-t { display: flex; align-items: center; gap: 8px; } .dv-model-t b { font-size: 17px; }
 .dv-desc { margin: 10px 0; }
+
+/* 概览 */
+.db-types { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 16px; }
+.db-type { position: relative; padding: 14px 16px; cursor: pointer; background: linear-gradient(160deg, color-mix(in srgb, var(--c) 13%, rgba(12,30,48,.9)), rgba(10,27,43,.85) 60%); border: 1px solid rgba(77,208,225,.14); border-radius: 4px; transition: all .2s; overflow: hidden; }
+.db-type::before { content: ''; position: absolute; left: 0; top: 0; width: 100%; height: 2px; background: linear-gradient(90deg, var(--c), transparent); }
+.db-type:hover { border-color: var(--c); transform: translateY(-2px); box-shadow: 0 10px 24px rgba(0,0,0,.35); }
+.db-type-h { display: flex; align-items: center; gap: 12px; }
+.db-type-h .ic { width: 56px; height: 56px; flex: none; display: grid; place-items: center; background: rgba(6,18,30,.6); border: 1px solid color-mix(in srgb, var(--c) 40%, transparent); clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%); }
+.db-type-h b { display: block; font-size: 15px; } .db-type-h small { color: var(--muted); font-size: 12px; }
+.db-type-h .go { margin-left: auto; color: var(--faint); } .db-type:hover .go { color: var(--c); }
+.db-type-rate { display: flex; align-items: baseline; justify-content: space-between; margin: 12px 0 6px; font-size: 12px; color: var(--muted); }
+.db-type-rate b { font-size: 24px; color: #fff; } .db-type-rate em { font-style: normal; font-size: 12px; color: var(--muted); margin-left: 2px; }
+.db-seg { display: flex; gap: 2px; height: 6px; } .db-seg i { display: block; border-radius: 1px; } .db-seg i span { display: block; height: 6px; }
+.db-type-f { display: flex; justify-content: space-between; margin-top: 10px; font-size: 12px; color: var(--muted); } .db-type-f b { color: var(--text); font-weight: 500; }
+.db-row { display: grid; grid-template-columns: 1fr 1.35fr 1fr; gap: 16px; margin-bottom: 16px; }
+.db-row.b { grid-template-columns: 1.9fr 1fr; }
+.db-p { display: flex; flex-direction: column; min-width: 0; }
+.db-p .r { margin-left: auto; }
+.db-donut { display: flex; align-items: center; gap: 18px; padding: 14px 18px; }
+.db-donut ul { flex: 1; list-style: none; margin: 0; padding: 0; }
+.db-donut li { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 13px; border-bottom: 1px dashed var(--line); }
+.db-donut li i { width: 8px; height: 8px; border-radius: 2px; } .db-donut li b { margin-left: auto; font-weight: 600; } .db-donut li span { width: 36px; text-align: right; font-size: 12px; }
+.db-lg { margin-left: auto; display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.db-lg i { width: 12px; height: 3px; margin-left: 8px; } .db-lg i.sq { width: 8px; height: 8px; border-radius: 2px; }
+.db-alerts { list-style: none; margin: 0; padding: 4px 0; overflow: auto; max-height: 238px; }
+.db-alerts li { display: grid; grid-template-columns: 8px 44px 74px 1fr; align-items: center; gap: 10px; padding: 9px 16px; font-size: 13px; cursor: pointer; border-bottom: 1px dashed var(--line); }
+.db-alerts li:hover { background: rgba(77,208,225,.05); }
+.db-alerts .lv { width: 8px; height: 8px; border-radius: 50%; } .db-alerts li.error .lv { background: #FF6B6B; box-shadow: 0 0 8px #FF6B6B; } .db-alerts li.warning .lv { background: #FFB74D; }
+.db-alerts li .m { color: var(--muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; } .db-alerts li.error .m { color: #FF9C9C; }
+.db-matrix { padding: 12px 18px 16px; display: flex; flex-direction: column; gap: 10px; }
+.db-mx-row { display: flex; align-items: center; gap: 14px; }
+.db-mx-l { width: 78px; flex: none; display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+.db-mx-cells { display: flex; flex-wrap: wrap; gap: 8px; }
+.db-cell { position: relative; width: 62px; height: 40px; padding: 0; cursor: pointer; font: inherit; color: #fff; background: color-mix(in srgb, var(--s) 14%, rgba(10,27,43,.9)); border: 1px solid color-mix(in srgb, var(--s) 55%, transparent); border-radius: 3px; overflow: hidden; transition: transform .15s; }
+.db-cell:hover { transform: translateY(-2px); box-shadow: 0 0 12px color-mix(in srgb, var(--s) 50%, transparent); }
+.db-cell span { font-size: 12px; } .db-cell i { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--s); }
+.db-cell.fault { animation: db-pulse 1.6s ease-in-out infinite; } .db-cell.offline { color: var(--faint); }
+@keyframes db-pulse { 50% { box-shadow: 0 0 14px rgba(255,107,107,.6); } }
+.db-side { display: flex; flex-direction: column; gap: 16px; }
+.db-list { list-style: none; margin: 0; padding: 6px 16px 10px; }
+.db-list li { display: flex; align-items: center; gap: 10px; padding: 7px 0; font-size: 13px; border-bottom: 1px dashed var(--line); }
+.db-list li:last-child { border-bottom: 0; } .db-list li b { font-weight: 500; white-space: nowrap; } .db-list .r { margin-left: auto; margin-inline-end: 0; }
+.db-list em { width: 18px; font-style: normal; color: var(--cyan); }
+.db-bar { flex: 1; height: 6px; background: rgba(77,208,225,.08); } .db-bar i { display: block; height: 100%; }
+/* 机器人配置 */
+.cf { display: grid; grid-template-columns: 300px 1fr; gap: 16px; }
+.cf .r { margin-left: auto; }
+.cf-item { width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px 16px; font: inherit; color: var(--text); text-align: left; cursor: pointer; background: none; border: 0; border-left: 3px solid transparent; border-bottom: 1px dashed var(--line); }
+.cf-item:hover { background: rgba(77,208,225,.05); }
+.cf-item.on { background: linear-gradient(90deg, color-mix(in srgb, var(--c) 16%, transparent), transparent); border-left-color: var(--c); }
+.cf-item b { display: block; font-size: 14px; } .cf-item small { color: var(--muted); font-size: 12px; }
+.cf-ov { display: flex; align-items: center; gap: 8px; padding: 9px 16px; font-size: 13px; } .cf-ov small { margin-left: auto; }
+.cf-head { display: flex; align-items: center; gap: 14px; padding: 16px 20px; background: linear-gradient(135deg, color-mix(in srgb, var(--c) 12%, transparent), transparent 60%); border-bottom: 1px solid var(--line); }
+.cf-head .ic { width: 54px; height: 54px; display: grid; place-items: center; background: rgba(6,18,30,.6); border: 1px solid color-mix(in srgb, var(--c) 40%, transparent); clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%); }
+.cf-head b { display: block; font-size: 16px; } .cf-head small { font-size: 12px; }
+.cf-tabs { padding: 0 20px 16px; } .cf-form { padding-top: 8px; }
 </style>
 <style>
 /* 抽屉、弹窗挂载在 body 下 */

@@ -1,5 +1,6 @@
 /**
- * 机器人设备统一模型（设备管理模块为数据源，业务管理 / 数据采集 / 仿真 / 场景管理等模块共用）
+ * 机器人设备数据模型（设备管理模块）
+ * 字段按通用设备库设计，便于后续统一数据库；页面层各模块保持独立，不展示跨模块信息。
  */
 export type DeviceType = 'humanoid' | 'quadruped' | 'ugv' | 'uav' | 'usv'
 export type DeviceStatus = 'working' | 'online' | 'charging' | 'offline' | 'fault'
@@ -26,7 +27,7 @@ export interface Device {
   signal: number        // 0-4
   cpu: number
   temp: number
-  scene: string         // 所在场景
+  location: string      // 存放库位
   group: string
   protocol: 'ROS2' | 'MAVLink' | 'SDK' | 'NMEA2000'
   ipAddr: string
@@ -38,7 +39,6 @@ export interface Device {
   spec: DeviceSpec
   owner: string
   commissioned: string
-  task?: string         // 当前任务
 }
 
 export const TYPE_META: Record<DeviceType, { label: string; short: string; color: string }> = {
@@ -49,12 +49,12 @@ export const TYPE_META: Record<DeviceType, { label: string; short: string; color
   usv: { label: '无人救生船', short: '救生船', color: '#FFB74D' },
 }
 export const STATUS_META: Record<DeviceStatus, { label: string; badge: 'processing' | 'success' | 'warning' | 'default' | 'error'; color: string }> = {
-  working: { label: '作业中', badge: 'processing', color: '#26C6DA' },
+  working: { label: '运行中', badge: 'processing', color: '#26C6DA' },
   online: { label: '在线空闲', badge: 'success', color: '#4DE8B0' },
   charging: { label: '充电中', badge: 'warning', color: '#FFB74D' },
   offline: { label: '离线', badge: 'default', color: '#5B7486' },
   fault: { label: '故障', badge: 'error', color: '#FF6B6B' },
 }
 export const CAP_META: Record<Capability, string> = {
-  collect: '数据采集', patrol: '巡检', twin: '数字孪生', rescue: '应急救援', teleop: '遥操作', mapping: '建图定位',
+  collect: '多模态感知', patrol: '巡检', twin: '自主导航', rescue: '应急救援', teleop: '遥操作', mapping: '建图定位',
 }
