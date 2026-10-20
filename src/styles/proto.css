@@ -479,7 +479,10 @@
     .step .bar { display: none; }
   }
   @media (min-width: 761px) { .navscrim { display: none; } }
-  /* 赛博皮肤（.cy）的动效由皮肤自行控制，不受此全局规则影响 */
-  @media (prefers-reduced-motion: reduce) { :where(*:not(.cy, .cy *)), :where(*:not(.cy *))::before, :where(*:not(.cy *))::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  /* 赛博皮肤（.cy）与各模块原型页（.pp / .ss-wrap）的动效自行控制，不受此全局规则影响；
+     否则无限循环动画被压缩到 0.01ms 一轮，会表现为高频抖动/闪烁 */
+  @media (prefers-reduced-motion: reduce) {
+    :where(*:not(.cy, .cy *, .pp, .pp *, .ss-wrap, .ss-wrap *)), :where(*:not(.cy *, .pp *, .ss-wrap *))::before, :where(*:not(.cy *, .pp *, .ss-wrap *))::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  }
   [hidden] { display: none !important; }
 

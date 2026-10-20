@@ -298,7 +298,7 @@ const doImport = () => { urdfStep.value = 3; message.success('USD 生成完成�
 .sm-asset div { flex: 1; display: flex; flex-direction: column; line-height: 1.3; } .sm-asset b { font-size: 13px; } .sm-asset small { color: var(--muted); font-size: 11.5px; }
 .sm-view { position: relative; min-height: 0; overflow: hidden; border: 1px solid rgba(77,208,225,.25); border-radius: 3px; background: #071523; }
 .sm-scene { position: absolute; inset: 0; width: 100%; height: 100%; }
-.bob { animation: sm-bob 1.6s ease-in-out infinite; } @keyframes sm-bob { 50% { transform: translateY(-3px); } }
+.bob { animation: sm-bob 3.2s ease-in-out infinite; } @keyframes sm-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
 .sm-vbar { position: absolute; z-index: 2; left: 10px; right: 10px; top: 10px; display: flex; gap: 6px; align-items: center; }
 .glass { background: rgba(6,17,29,.7) !important; border-color: rgba(77,208,225,.2) !important; backdrop-filter: blur(6px); }
 .sm-stat { margin-left: auto; font-size: 11.5px; color: #9FE6EF; padding: 4px 10px; background: rgba(6,17,29,.7); border: 1px solid rgba(77,208,225,.2); border-radius: 3px; }

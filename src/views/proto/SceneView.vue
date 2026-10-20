@@ -2,7 +2,7 @@
 import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
-import { EnvironmentOutlined, FundProjectionScreenOutlined, PlusOutlined, SearchOutlined, EditOutlined, CalendarOutlined, MoreOutlined, ExpandOutlined } from '@ant-design/icons-vue'
+import { EnvironmentOutlined, FundProjectionScreenOutlined, PlusOutlined, SearchOutlined, EditOutlined, MoreOutlined, ExpandOutlined } from '@ant-design/icons-vue'
 import ModuleShell from '@/components/proto/ModuleShell.vue'
 import ScenePlan from '@/components/proto/ScenePlan.vue'
 import LineChart from '@/components/proto/LineChart.vue'
@@ -30,21 +30,30 @@ const KPIS = [
   { l: '今日预约', v: 14, u: '场', k: '#3FA9F5' },
 ]
 
-/* 本周排期（示例） */
-const DAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+/* 近 7 天使用记录（示例） */
 const TEAMS = ['一组', '二组', '三组', '应急组', '外部单位']
-const schedule = computed(() => {
-  const r = rng(cur.value.id.charCodeAt(4) * 13 + 7)
-  return DAYS.map((d, i) => {
-    const slots: { s: number; e: number; team: string }[] = []
-    let t = 8 + Math.floor(r() * 2)
-    while (t < 20 && cur.value.status !== 'draft') {
-      const len = 1 + Math.floor(r() * 3)
-      if (r() > 0.35 && t + len <= 21) slots.push({ s: t, e: t + len, team: TEAMS[Math.floor(r() * TEAMS.length)] })
-      t += len + Math.floor(r() * 2)
+const USES: Record<string, string[]> = {
+  综合: ['综合科目训练', '多场景联合演练', '设备验收测试'], 楼梯攀爬: ['台阶攀爬训练', '坡道通行测试', '负重攀爬训练'],
+  复杂地形: ['碎石路面通行', '越障能力测试', '地形适应训练'], 巡检模拟: ['仪表识读训练', '巡检路线演练', '异常识别测试'],
+  室内操作: ['抓取放置训练', '开门操作训练', '精细操作测试'], 水域救援: ['水面搜救演练', '落水目标识别', '编队巡航测试'],
+}
+const records = computed(() => {
+  if (cur.value.status === 'draft') return []
+  const r = rng(cur.value.id.charCodeAt(4) * 31 + 3)
+  const uses = USES[cur.value.type] ?? USES['综合']
+  const out: { k: number; date: string; s: string; e: string; team: string; use: string; dur: number; live: boolean }[] = []
+  for (let d = 0; d < 7 && out.length < 6; d++) {
+    const n = cur.value.status === 'maint' && d === 0 ? 0 : 1 + Math.floor(r() * 2)
+    let t = 8 + Math.floor(r() * 3)
+    for (let j = 0; j < n && out.length < 6; j++) {
+      const len = 1 + Math.floor(r() * 3) + (r() > 0.5 ? 0.5 : 0)
+      const end = t + len
+      const f = (h: number) => `${String(Math.floor(h)).padStart(2, '0')}:${h % 1 ? '30' : '00'}`
+      out.push({ k: out.length, date: `10-${String(20 - d).padStart(2, '0')}`, s: f(t), e: f(end), team: TEAMS[Math.floor(r() * TEAMS.length)], use: uses[Math.floor(r() * uses.length)], dur: len, live: d === 0 && j === 0 && cur.value.status === 'active' })
+      t = end + 1 + Math.floor(r() * 2)
     }
-    return { d, today: i === 0, slots }
-  })
+  }
+  return out
 })
 const usage = computed(() => { const r = rng(cur.value.area); return Array.from({ length: 30 }, (_, i) => (cur.value.status === 'draft' ? 0 : Math.round((cur.value.hours / 30) * (0.6 + r() * 0.8) * (i % 7 > 4 ? 0.5 : 1)))) })
 const usageLabels = Array.from({ length: 30 }, (_, i) => (i % 5 === 0 ? `10-${String(i + 1).padStart(2, '0')}` : ''))
@@ -62,8 +71,8 @@ const planOpen = ref(false)
 <template>
   <ModuleShell active="lib" title="场景管理" en="Training Ground" :menu="MENU" @update:active="onMenu">
     <div class="pp-head">
-      <div><h2>训练场景</h2><p>管理训练场物理场景的布局、场景要素、环境状态与使用排期</p></div>
-      <div class="r"><a-button @click="openScreen"><FundProjectionScreenOutlined />大屏展示</a-button><a-button type="primary" @click="addOpen = true"><PlusOutlined />新建场景</a-button></div>
+      <div><h2>训练场景</h2><p>管理训练场物理场景的布局、环境状态与使用记录</p></div>
+      <div class="r"><a-button type="primary" @click="addOpen = true"><PlusOutlined />新建场景</a-button></div>
     </div>
     <div class="pp-kpis">
       <div v-for="k in KPIS" :key="k.l" class="pp-kpi" :style="{ '--k': k.k }"><small>{{ k.l }}</small><b>{{ k.v }}<em>{{ k.u }}</em></b><span class="bar" /></div>
@@ -97,7 +106,7 @@ const planOpen = ref(false)
             <a-badge :status="SCENE_STATUS[cur.status].b" :text="SCENE_STATUS[cur.status].t" />
             <a-tag v-for="t in cur.tags" :key="t">{{ t }}</a-tag>
             <a-space class="r">
-              <a-button><EditOutlined />编辑布局</a-button><a-button type="primary" :disabled="cur.status !== 'active'"><CalendarOutlined />预约使用</a-button>
+              <a-button><EditOutlined />编辑布局</a-button>
               <a-dropdown><a-button><MoreOutlined /></a-button><template #overlay><a-menu><a-menu-item>{{ cur.status === 'maint' ? '结束维护' : '设为维护' }}</a-menu-item><a-menu-item>复制场景</a-menu-item><a-menu-item danger>停用</a-menu-item></a-menu></template></a-dropdown>
             </a-space>
           </div>
@@ -125,7 +134,7 @@ const planOpen = ref(false)
                 <a-descriptions-item label="累计使用" :span="2">{{ cur.hours.toLocaleString('en-US') }} 小时</a-descriptions-item>
               </a-descriptions>
             </div>
-            <div class="pp-panel">
+            <div class="pp-panel sc-envp">
               <div class="pp-panel-h"><h3>环境监测</h3><span class="muted r" style="font-size:12px">{{ cur.status === 'draft' ? '未接入' : '实时 · 1 分钟前' }}</span></div>
               <div class="sc-env">
                 <div v-for="e in ENV" :key="e.l" :class="{ warn: !e.ok }"><small>{{ e.l }}</small><b class="mono">{{ cur.status === 'draft' ? '--' : e.v }}<em>{{ e.u }}</em></b></div>
@@ -135,27 +144,26 @@ const planOpen = ref(false)
         </div>
 
         <div class="sc-row b">
-          <div class="pp-panel">
-            <div class="pp-panel-h"><h3>场景要素</h3><a-button size="small" class="r"><PlusOutlined />添加</a-button></div>
-            <a-table :data-source="cur.elements" row-key="name" size="small" :pagination="false" :columns="[{ title: '名称', dataIndex: 'name' }, { title: '类别', key: 'kind', width: 80 }, { title: '数量', dataIndex: 'qty', width: 70 }, { title: '规格', dataIndex: 'spec' }]">
-              <template #bodyCell="{ column, record }"><template v-if="column.key === 'kind'"><a-tag>{{ record.kind }}</a-tag></template></template>
+          <div class="pp-panel sc-rec">
+            <div class="pp-panel-h"><h3>使用记录</h3><span class="muted" style="font-size:12px;margin-left:8px">近 7 天 · {{ records.length }} 次</span><a class="r" style="font-size:12px">全部记录</a></div>
+            <a-table :data-source="records" row-key="k" size="small" :pagination="false" :locale="{ emptyText: '暂无使用记录' }" :columns="[{ title: '日期', key: 'date', width: 66 }, { title: '时段', key: 'time', width: 116 }, { title: '使用单位', dataIndex: 'team', width: 82 }, { title: '用途', dataIndex: 'use', ellipsis: true }, { title: '时长', key: 'dur', width: 64, align: 'right' }, { title: '状态', key: 'st', width: 84 }]">
+              <template #bodyCell="{ column, record }">
+                <template v-if="column.key === 'date'"><span class="mono">{{ record.date }}</span></template>
+                <template v-else-if="column.key === 'time'"><span class="mono">{{ record.s }} – {{ record.e }}</span></template>
+                <template v-else-if="column.key === 'dur'"><span class="mono">{{ record.dur }} h</span></template>
+                <template v-else-if="column.key === 'st'"><a-badge :status="record.live ? 'processing' : 'success'" :text="record.live ? '使用中' : '已完成'" /></template>
+              </template>
             </a-table>
           </div>
-          <div class="pp-panel">
-            <div class="pp-panel-h"><h3>本周使用排期</h3><span class="muted r" style="font-size:12px">08:00 – 21:00</span></div>
-            <div class="sc-sch">
-              <div class="sc-sch-h"><span /><div><i v-for="h in [8, 10, 12, 14, 16, 18, 20]" :key="h" :style="{ left: ((h - 8) / 13) * 100 + '%' }">{{ h }}</i></div></div>
-              <div v-for="d in schedule" :key="d.d" class="sc-sch-r" :class="{ today: d.today }">
-                <span>{{ d.d }}</span>
-                <div><a-tooltip v-for="(s, i) in d.slots" :key="i" :title="`${s.s}:00–${s.e}:00 · ${s.team}`"><i :style="{ left: ((s.s - 8) / 13) * 100 + '%', width: `calc(${((s.e - s.s) / 13) * 100}% - 3px)`, '--c': TYPE_COLOR[cur.type] }">{{ s.team }}</i></a-tooltip></div>
-              </div>
+          <div class="pp-panel sc-use">
+            <div class="pp-panel-h"><h3>近 30 天使用时长</h3><span class="muted r" style="font-size:12px">单位：小时 / 天</span></div>
+            <div class="sc-use-s">
+              <div><small>累计</small><b class="mono">{{ usage.reduce((a, b) => a + b, 0) }}<em>h</em></b></div>
+              <div><small>日均</small><b class="mono">{{ (usage.reduce((a, b) => a + b, 0) / 30).toFixed(1) }}<em>h</em></b></div>
+              <div><small>峰值</small><b class="mono">{{ Math.max(...usage) }}<em>h</em></b></div>
             </div>
+            <div class="sc-use-c"><LineChart :key="cur.id" :series="[{ name: '使用时长', color: TYPE_COLOR[cur.type], data: usage }]" :labels="usageLabels" :height="190" :min="0" /></div>
           </div>
-        </div>
-
-        <div class="pp-panel">
-          <div class="pp-panel-h"><h3>近 30 天使用时长</h3><span class="muted r" style="font-size:12px">单位：小时 / 天</span></div>
-          <div style="padding: 8px 14px 4px"><LineChart :key="cur.id" :series="[{ name: '使用时长', color: TYPE_COLOR[cur.type], data: usage }]" :labels="usageLabels" :height="150" :min="0" /></div>
         </div>
       </div>
     </div>
@@ -205,23 +213,23 @@ const planOpen = ref(false)
 .sc-hd-t h3 { margin: 2px 0 0; font-size: 22px; color: #fff; letter-spacing: 1px; } .sc-hd-t .mono { font-size: 12px; }
 .sc-hd p { margin: 10px 0 0; font-size: 13px; }
 .sc-row { display: grid; grid-template-columns: 1.55fr 1fr; gap: 16px; }
-.sc-row.b { grid-template-columns: 1fr 1.2fr; }
+.sc-row.b { grid-template-columns: 1.4fr 1fr; }
 .sc-plan { display: flex; flex-direction: column; }
 .sc-plan-b { padding: 12px; aspect-ratio: 16 / 10; }
 .sc-plan-b :deep(.plan) { border: 1px solid rgba(77,208,225,.18); border-radius: 3px; }
 .sc-lg { display: flex; gap: 12px; margin-left: 12px; font-size: 12px; color: var(--muted); } .sc-lg i { display: inline-block; width: 8px; height: 8px; margin-right: 4px; border-radius: 2px; }
-.sc-info { display: flex; flex-direction: column; gap: 16px; }
+.sc-info { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.sc-info > .sc-envp { flex: 1; display: flex; flex-direction: column; }
 .sc-desc { padding: 12px 16px 4px; } .sc-desc :deep(.ant-descriptions-item-label) { color: var(--muted); }
 .sc-rate { font-size: 12px !important; color: #FFB74D; } .sc-rate :deep(.ant-rate-star:not(:last-child)) { margin-inline-end: 2px; }
-.sc-env { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; padding: 14px 16px 16px; }
-.sc-env > div { padding: 10px 12px; background: rgba(77,208,225,.05); border: 1px solid rgba(77,208,225,.12); border-left: 2px solid #4DE8B0; border-radius: 3px; }
+.sc-env { flex: 1; display: grid; grid-template-columns: repeat(2, 1fr); grid-auto-rows: 1fr; gap: 10px; padding: 14px 16px 16px; }
+.sc-env > div { display: flex; flex-direction: column; justify-content: center; padding: 10px 14px; background: rgba(77,208,225,.05); border: 1px solid rgba(77,208,225,.12); border-left: 2px solid #4DE8B0; border-radius: 3px; }
 .sc-env > div.warn { border-left-color: #FFB74D; } .sc-env > div.warn b { color: #FFB74D; }
 .sc-env small { display: block; font-size: 12px; color: var(--muted); } .sc-env b { font-size: 22px; font-weight: 600; } .sc-env em { font-style: normal; font-size: 12px; color: var(--muted); margin-left: 3px; }
-.sc-sch { padding: 10px 16px 14px; }
-.sc-sch-h, .sc-sch-r { display: grid; grid-template-columns: 40px 1fr; align-items: center; gap: 8px; }
-.sc-sch-h > div { position: relative; height: 18px; } .sc-sch-h i { position: absolute; transform: translateX(-50%); font: 11px var(--mono); font-style: normal; color: var(--faint); }
-.sc-sch-r { height: 30px; font-size: 12px; color: var(--muted); }
-.sc-sch-r > div { position: relative; height: 22px; background: repeating-linear-gradient(90deg, rgba(77,208,225,.06) 0 1px, transparent 1px calc(100% / 13)); border-bottom: 1px dashed var(--line); }
-.sc-sch-r.today > span { color: var(--cyan); font-weight: 600; }
-.sc-sch-r i { position: absolute; top: 2px; bottom: 2px; padding: 0 6px; font-style: normal; font-size: 11px; line-height: 18px; color: #fff; white-space: nowrap; overflow: hidden; background: color-mix(in srgb, var(--c) 30%, transparent); border-left: 2px solid var(--c); border-radius: 2px; }
+.sc-rec, .sc-use { display: flex; flex-direction: column; min-width: 0; }
+.sc-rec :deep(.ant-table) { background: transparent; }
+.sc-use-s { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 12px 16px 0; }
+.sc-use-s > div { padding: 8px 12px; background: rgba(77,208,225,.05); border: 1px solid rgba(77,208,225,.12); border-radius: 3px; }
+.sc-use-s small { display: block; font-size: 12px; color: var(--muted); } .sc-use-s b { font-size: 20px; font-weight: 600; color: #fff; } .sc-use-s em { font-style: normal; font-size: 12px; color: var(--muted); margin-left: 3px; }
+.sc-use-c { flex: 1; display: flex; align-items: flex-end; padding: 10px 14px 8px; }
 </style>
