@@ -32,19 +32,12 @@ const fall = reactive({ on: true, roll: 45, pitch: 45 })
 </script>
 
 <template>
-  <div class="pp-head">
-    <div><h2>告警中心</h2><p>AI 视觉识别、传感器与本体异常告警的查看与处置，并配置识别规则</p></div>
-    <div class="r"><a-button v-if="tab === 'list'"><ExportOutlined />导出</a-button></div>
+  <div class="bz-tbar">
+    <a-segmented v-model:value="tab" size="small" :options="[{ value: 'list', label: '告警列表' }, { value: 'rule', label: '识别配置' }]" />
+    <span class="sp" />
+    <a-button v-if="tab === 'list'" size="small"><ExportOutlined />导出</a-button>
   </div>
-  <a-segmented v-model:value="tab" class="al-seg" :options="[{ value: 'list', label: '告警列表' }, { value: 'rule', label: '识别配置' }]" />
-
   <template v-if="tab === 'list'">
-    <div class="pp-kpis">
-      <div class="pp-kpi" style="--k:#FF6B6B"><small>待处理</small><b>{{ cnt('待处理') }}<em>条</em></b><span class="bar" /></div>
-      <div class="pp-kpi" style="--k:#4DE8B0"><small>非误报</small><b>{{ cnt('非误报') }}<em>条</em></b><span class="bar" /></div>
-      <div class="pp-kpi" style="--k:#5B7486"><small>误报</small><b>{{ cnt('误报') }}<em>条</em></b><span class="bar" /></div>
-      <div class="pp-kpi" style="--k:#FFB74D"><small>误报率</small><b>{{ scoped.length ? Math.round((cnt('误报') / scoped.length) * 100) : 0 }}<em>%</em></b><span class="bar" /></div>
-    </div>
     <div class="pp-panel">
       <div class="al-filter">
         <a-radio-group v-model:value="f.scope" size="small" button-style="solid"><a-radio-button value="cur">{{ robot.id }}</a-radio-button><a-radio-button value="all">全部机器人</a-radio-button></a-radio-group>

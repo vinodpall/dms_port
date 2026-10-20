@@ -73,10 +73,6 @@ const delRoute = (id: string) => del('路线及其任务组', () => { db.routes.
 </script>
 
 <template>
-  <div class="pp-head">
-    <div><h2>建图与定位</h2><p>{{ isIns ? 'INS 机器人使用 GPS 坐标，完成 INS 初始化并开启 INS 后即可录制路线' : '录包 → 生成地图 → 生成栅格地图 → 开启导航定位，为录制路线做准备' }}</p></div>
-  </div>
-  <a-segmented v-model:value="sub" class="bz-seg" :options="subs" />
 
   <!-- ================= 录包建图 ================= -->
   <div v-if="sub === 'build'" class="bz-2">
@@ -223,7 +219,7 @@ const delRoute = (id: string) => del('路线及其任务组', () => { db.routes.
         <BizMap :seed="curMapSeed" :mode="isIns ? 'sat' : navMap ? 'grid' : 'blank'" :zones="!isIns && !!navMap" :ghost="ghost" :robot="hasNav || isIns ? rt.pose : null" :pick="relo" :arrow="arrow" @pick="onPick" />
         <div v-if="relo" class="bz-ov">重定位：在地图上点击机器人实际位置，确认后提交初始位姿</div>
         <div v-else-if="!hasNav" class="bz-ov tip">{{ isIns ? (rt.insOrigin ? '开启 INS 后显示机器人实时位置' : '请先进行 INS 初始化') : '开始导航后显示机器人实时位置' }}</div>
-        <div v-else class="bz-ov"><a-badge :status="rt.locOk ? 'success' : 'processing'" />{{ rt.locOk ? '定位正常' : '定位中…' }}<a v-if="!rt.run" style="margin-left:8px" @click="emit('go', 'route')">去录制路线 →</a></div>
+        <div v-else class="bz-ov"><a-badge :status="rt.locOk ? 'success' : 'processing'" />{{ rt.locOk ? '定位正常' : '定位中…' }}<a v-if="!rt.run" style="margin-left:8px" @click="emit('go', 'task', 'route')">去录制路线 →</a></div>
       </div>
     </div>
   </div>

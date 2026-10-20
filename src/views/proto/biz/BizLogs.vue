@@ -10,14 +10,13 @@ const cur = ref<(typeof OP_LOGS)[number] | null>(null)
 </script>
 
 <template>
-  <div class="pp-head"><div><h2>操作日志</h2><p>记录机器人控制、任务下发、地图编辑与告警处理等业务操作</p></div><div class="r"><a-button><ExportOutlined />导出</a-button></div></div>
   <div class="pp-panel">
     <div class="lg-filter">
       <span>操作用户</span><a-select v-model:value="f.user" style="width:120px" :options="['全部', '周工', '赵工', '张杰'].map((v) => ({ value: v, label: v }))" />
       <span>关联设备</span><a-select v-model:value="f.robot" style="width:120px" :options="['全部', ...ROBOTS.map((r) => r.id)].map((v) => ({ value: v, label: v }))" />
       <span>操作类型</span><a-input v-model:value="f.type" allow-clear placeholder="搜索操作类型" style="width:160px" />
       <span>时间</span><a-range-picker show-time style="width:340px" />
-      <a-button @click="Object.assign(f, { user: '全部', robot: '全部', type: '' })">重置</a-button>
+      <a-button @click="Object.assign(f, { user: '全部', robot: '全部', type: '' })">重置</a-button><span style="flex:1" /><a-button><ExportOutlined />导出</a-button>
     </div>
     <a-table :data-source="rows" row-key="k" size="middle" :pagination="{ pageSize: 10, size: 'small' }"
       :columns="[{ title: '操作用户', dataIndex: 'user', width: 100 }, { title: '地址', key: 'ip', width: 130 }, { title: '关联设备', key: 'robot', width: 110 }, { title: '操作类型', key: 'type', width: 110 }, { title: '操作描述', dataIndex: 'desc' }, { title: '结果', key: 'ok', width: 90 }, { title: '操作时间', key: 'time', width: 180 }, { title: '操作内容', key: 'op', width: 100 }]">

@@ -11,7 +11,7 @@ import { TASK_TYPES, PRESETS, GAITS, GROUNDS, OBS_MODES, PROMPTS, type TaskPoint
 import { routeLen } from './geo'
 import {
   rt, isDog, isIns, hasNav, myMaps, myRoutes, myGroups, db, curId, routeById, shortName, lastRoute,
-  startTrackRec, stopTrackRec, newPointFromPose, savePoint, gotoPoint, gotoStart, startDist, gaitName,
+  startTrackRec, stopTrackRec, openLaunch, newPointFromPose, savePoint, gotoPoint, gotoStart, startDist, gaitName,
 } from './store'
 
 const props = defineProps<{ sub: string }>()
@@ -102,10 +102,6 @@ const cols = computed(() => [
 </script>
 
 <template>
-  <div class="pp-head">
-    <div><h2>路线与任务点</h2><p>{{ isIns ? '开启 INS 后遥控机器人录制路线，再在路线上建立任务组、添加任务点' : '导航开启后遥控机器人沿巡检路径录制循迹路线，再在路线上建立任务组、添加任务点' }}</p></div>
-  </div>
-  <a-segmented v-model:value="sub" class="bz-seg" :options="[{ value: 'route', label: '循迹路线' }, { value: 'points', label: '任务点配置' }]" />
 
   <div class="bz-2">
     <!-- 左：路线列表 -->
@@ -169,7 +165,7 @@ const cols = computed(() => [
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'n'">{{ record.points.length }}</template>
           <template v-else-if="column.key === 't'"><span class="muted">{{ [...new Set(record.points.map((p: TaskPoint) => p.type))].join('、') || '—' }}</span></template>
-          <template v-else-if="column.key === 'op'"><span class="bz-ops"><a @click="gid = record.id; sub = 'points'">任务点</a><a @click="emit('go', 'task')">去执行</a></span></template>
+          <template v-else-if="column.key === 'op'"><span class="bz-ops"><a @click="gid = record.id; sub = 'points'">任务点</a><a @click="openLaunch(record.kind === '发布点' ? '发布点任务' : '循迹任务', { route: record.route, group: record.id })">下发</a></span></template>
         </template>
         <template #emptyText><div class="bz-empty" style="padding:16px">暂无任务组<br /><a-button size="small" @click="sub = 'points'">去创建</a-button></div></template>
       </a-table>

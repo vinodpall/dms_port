@@ -23,9 +23,11 @@ const del = () => Modal.confirm({ title: '删除记录', content: `确定删除�
 </script>
 
 <template>
-  <div class="pp-head"><div><h2>巡检记录</h2><p>{{ robot.name }}（{{ robot.id }}）每个任务点的识别结果与采集图片，以及每轮巡检的执行情况</p></div>
-    <div class="r"><a-button v-if="tab === 'rec'" danger :disabled="!sel.length" @click="del"><DeleteOutlined />删除</a-button><a-button @click="message.success('已导出 Excel')"><ExportOutlined />导出</a-button></div></div>
-  <a-segmented v-model:value="tab" class="bz-seg" :options="[{ value: 'rec', label: '循迹记录' }, { value: 'round', label: '巡检轮次' }]" />
+  <div class="bz-tbar">
+    <a-segmented v-model:value="tab" size="small" :options="[{ value: 'rec', label: '任务点记录' }, { value: 'round', label: '巡检轮次' }]" />
+    <span class="sp" />
+    <a-button v-if="tab === 'rec'" size="small" danger :disabled="!sel.length" @click="del"><DeleteOutlined />删除</a-button><a-button size="small" @click="message.success('已导出 Excel')"><ExportOutlined />导出</a-button>
+  </div>
 
   <div v-if="tab === 'rec'" class="pp-panel">
     <div class="rc-filter">

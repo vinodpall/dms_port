@@ -48,9 +48,9 @@ export interface Step { k: string; t: string; d: string; done: boolean; tab: str
 export const steps = computed<Step[]>(() => {
   const s = rt.value; const routes = myRoutes.value; const pts = myGroups.value.filter((g) => g.kind === '循迹').reduce((a, g) => a + g.points.length, 0)
   const tail: Step[] = [
-    { k: 'route', t: '录制循迹路线', d: routes.length ? `${routes.length} 条路线` : '暂无路线', done: routes.length > 0, tab: 'route', tip: '定位开启后遥控机器人沿巡检路径行走一遍，完成录制' },
-    { k: 'point', t: '路线上添加任务点', d: pts ? `${myGroups.value.filter((g) => g.kind === '循迹').length} 个任务组 · ${pts} 个任务点` : '暂无任务点', done: pts > 0, tab: 'route', sub: 'points', tip: '为路线创建任务组，在巡检位置添加任务点（拍照/测温/表计…）' },
-    { k: 'run', t: isIns.value ? '启动巡检任务' : '起点启动任务', d: s.run ? `执行中 · ${Math.round(s.run.progress * 100)}%` : '未在执行', done: !!s.run, tab: 'task', tip: isIns.value ? 'INS 不重新初始化即可直接启动任务' : '机器人位于路线起点、导航开启后启动循迹任务' },
+    { k: 'route', t: '录制循迹路线', d: routes.length ? `${routes.length} 条路线` : '暂无路线', done: routes.length > 0, tab: 'task', sub: 'route', tip: '定位开启后遥控机器人沿巡检路径行走一遍，完成录制' },
+    { k: 'point', t: '路线上添加任务点', d: pts ? `${myGroups.value.filter((g) => g.kind === '循迹').length} 个任务组 · ${pts} 个任务点` : '暂无任务点', done: pts > 0, tab: 'task', sub: 'points', tip: '为路线创建任务组，在巡检位置添加任务点（拍照/测温/表计…）' },
+    { k: 'run', t: isIns.value ? '启动巡检任务' : '起点启动任务', d: s.run ? `执行中 · ${Math.round(s.run.progress * 100)}%` : '未在执行', done: !!s.run, tab: 'home', tip: isIns.value ? 'INS 不重新初始化即可直接启动任务' : '机器人位于路线起点、导航开启后启动循迹任务' },
   ]
   if (isIns.value) return [
     { k: 'origin', t: 'INS 初始化', d: s.insOrigin ? `原点已设置 · ${s.insOrigin.time.slice(5)}` : '未初始化', done: !!s.insOrigin, tab: 'nav', sub: 'loc', tip: '设置 INS 原点（GPS 经纬高），仅需一次；重新初始化会使已录路线坐标失效' },
@@ -216,6 +216,13 @@ export function stopRun() {
   confirm('关闭任务', `确定要关闭「${s.run.name}」吗？`, () => { s.run = null; s.pause = false; message.success('任务已关闭') }, true)
 }
 export const togglePause = () => { const s = rt.value; s.pause = !s.pause; message.success(s.pause ? '暂停指令已发送' : '恢复指令已发送') }
+/* 任务下发弹窗（全局唯一，在 BizView 挂载） */
+export const launchReq = reactive({ open: false, kind: '循迹任务' as Running['kind'], route: '', group: '', multi: '', n: 0 })
+export function openLaunch(kind: Running['kind'], o: { route?: string; group?: string; multi?: string } = {}) {
+  if (!robot.value.online) return message.error('机器人离线，无法下发任务')
+  if (rt.value.run) return message.error('当前有其他任务正在运行')
+  Object.assign(launchReq, { open: true, kind, route: o.route ?? '', group: o.group ?? '', multi: o.multi ?? '', n: launchReq.n + 1 })
+}
 export const gaitName = (n: number) => GAITS[n - 1] ?? '—'
 
 /* 任务进度推进（演示） */

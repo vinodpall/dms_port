@@ -44,3 +44,4 @@
 .bz-bar b { color: var(--text); font-weight: 500; } .bz-bar .sp { flex: 1; }
 .bz-ops a { margin-right: 12px; font-size: 12.5px; } .bz-ops a.d { color: #FF6B6B; } .bz-ops a.dis { color: var(--faint); cursor: not-allowed; }
 .bz-form .ant-form-item { margin-bottom: 14px; }
+.bz-tbar { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; } .bz-tbar .sp { flex: 1; }
