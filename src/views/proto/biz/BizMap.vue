@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { rng } from '@/utils'
-/** 巡检地图（原型）：栅格 / 点云 / 卫星三种底图 + 功能区 + 路线 + 任务点 + 机器人位姿。坐标系 160×100 */
-const props = withDefaults(defineProps<{ seed?: number; mode?: 'grid' | 'cloud' | 'sat'; zones?: boolean; route?: number | null; points?: number; robot?: { x: number; y: number; yaw: number } | null; progress?: number; edit?: boolean; selPoint?: number; labels?: boolean; hideRoute?: boolean }>(),
-  { seed: 11, mode: 'grid', zones: true, route: 0, points: 0, robot: null, progress: 0, edit: false, selPoint: -1, labels: true, hideRoute: false })
+import { ROUTE_SET, routeAt, routeLen, type P } from './geo'
+/** 巡检地图（原型）：栅格 / 点云 / 卫星底图 + 功能区 + 路线 + 任务点 + 机器人位姿。坐标系 160×100 */
+export interface MapPt { mx: number; my: number; st?: 'done' | 'cur' | 'todo' | 'bad' }
+const props = withDefaults(defineProps<{ seed?: number; mode?: 'grid' | 'cloud' | 'sat' | 'blank'; zones?: boolean; shape?: number | null; pts?: MapPt[]; progress?: number; draw?: number | null; robot?: { x: number; y: number; yaw: number } | null; edit?: boolean; sel?: number; labels?: boolean; arrow?: { x: number; y: number; yaw: number } | null; pick?: boolean; ghost?: number[] }>(),
+  { seed: 11, mode: 'grid', zones: true, shape: null, pts: () => [], progress: 0, draw: null, robot: null, edit: false, sel: -1, labels: true, arrow: null, pick: false, ghost: () => [] })
+const emit = defineEmits<{ pick: [x: number, y: number] }>()
 const uid = Math.random().toString(36).slice(2, 7)
-/* 墙体（建筑平面） */
 const WALLS: [number, number, number, number][] = [
   [6, 6, 154, 6], [154, 6, 154, 94], [154, 94, 6, 94], [6, 94, 6, 6],
   [6, 42, 30, 42], [38, 42, 70, 42], [78, 42, 104, 42], [112, 42, 154, 42],
@@ -16,31 +18,15 @@ const ROOMS = [
   { x: 6, y: 6, w: 40, h: 36, t: '配电室' }, { x: 46, y: 6, w: 46, h: 36, t: '机房' }, { x: 92, y: 6, w: 32, h: 36, t: 'UPS 间' }, { x: 124, y: 6, w: 30, h: 36, t: '控制室' },
   { x: 6, y: 58, w: 34, h: 36, t: '充电区' }, { x: 40, y: 58, w: 42, h: 36, t: '变压器室' }, { x: 82, y: 58, w: 36, h: 36, t: '电池室' }, { x: 118, y: 58, w: 36, h: 36, t: '消防泵房' },
 ]
-const ROUTE_SET: [number, number][][] = [
-  [[16, 82], [26, 50], [34, 50], [34, 26], [20, 20], [34, 14], [34, 50], [74, 50], [74, 24], [86, 16], [74, 34], [74, 50], [108, 50], [108, 26], [108, 50], [150, 50], [140, 76], [128, 86], [120, 50], [66, 50], [60, 76], [48, 84], [66, 50], [26, 50], [16, 82]],
-  [[16, 82], [26, 50], [74, 50], [74, 20], [60, 14], [74, 20], [74, 50], [108, 50], [108, 18], [116, 30], [108, 50]],
-  [[26, 50], [150, 50], [140, 26], [134, 14], [128, 50], [100, 50], [100, 80], [90, 86], [100, 50], [26, 50]],
-  [[16, 82], [18, 66], [26, 50], [12, 50]],
-]
-const route = computed(() => (props.route === null || props.route === undefined ? null : ROUTE_SET[((props.route % ROUTE_SET.length) + ROUTE_SET.length) % ROUTE_SET.length]))
-const segLen = (a: [number, number], b: [number, number]) => Math.hypot(b[0] - a[0], b[1] - a[1])
-const total = computed(() => (route.value ? route.value.slice(1).reduce((s, p, i) => s + segLen(route.value![i], p), 0) : 0))
-const at = (f: number): [number, number] => {
-  const r = route.value!; let d = f * total.value
-  for (let i = 1; i < r.length; i++) { const l = segLen(r[i - 1], r[i]); if (d <= l) { const k = d / (l || 1); return [r[i - 1][0] + (r[i][0] - r[i - 1][0]) * k, r[i - 1][1] + (r[i][1] - r[i - 1][1]) * k] } d -= l }
-  return r[r.length - 1]
-}
-const path = (r: [number, number][]) => 'M' + r.map((p) => p.join(' ')).join(' L')
-const donePath = computed(() => {
-  if (!route.value || props.progress <= 0) return ''
-  const out: [number, number][] = [route.value[0]]; let d = props.progress * total.value
-  for (let i = 1; i < route.value.length; i++) { const l = segLen(route.value[i - 1], route.value[i]); if (d >= l) { out.push(route.value[i]); d -= l } else { out.push(at(props.progress)); break } }
+const path = (r: P[]) => 'M' + r.map((p) => p.join(' ')).join(' L')
+const partial = (i: number, f: number) => {
+  const r = ROUTE_SET[i]; const out: P[] = [r[0]]; let d = f * routeLen(i)
+  for (let k = 1; k < r.length; k++) { const l = Math.hypot(r[k][0] - r[k - 1][0], r[k][1] - r[k - 1][1]); if (d >= l) { out.push(r[k]); d -= l } else { const p = routeAt(i, f); out.push([p.x, p.y]); break } }
   return path(out)
-})
-const pts = computed(() => (route.value && props.points ? Array.from({ length: props.points }, (_, i) => { const f = (i + 0.6) / (props.points + 0.2); const [x, y] = at(f); return { x, y, done: f <= props.progress, i } }) : []))
-const robotPos = computed(() => props.robot ?? (route.value && props.progress > 0 ? { ...pick(at(props.progress)), yaw: 0 } : null))
-function pick(p: [number, number]) { return { x: p[0], y: p[1] } }
-/* 点云：沿墙体采样 */
+}
+const route = computed(() => (props.shape === null || props.shape === undefined ? null : ROUTE_SET[props.shape]))
+const donePath = computed(() => (props.shape !== null && props.progress > 0 ? partial(props.shape, props.progress) : ''))
+const drawPath = computed(() => (props.shape !== null && props.draw !== null ? partial(props.shape, Math.max(0.001, props.draw)) : ''))
 const cloud = computed(() => {
   const r = rng(props.seed * 7 + 1); const out: { x: number; y: number; c: string }[] = []
   for (const [x1, y1, x2, y2] of WALLS) { const n = Math.ceil(Math.hypot(x2 - x1, y2 - y1) * 2.2); for (let i = 0; i < n; i++) { const k = r(); const h = r(); out.push({ x: x1 + (x2 - x1) * k + (r() - 0.5) * 1.6, y: y1 + (y2 - y1) * k + (r() - 0.5) * 1.6, c: h > 0.66 ? '#FF8A50' : h > 0.33 ? '#4DE8B0' : '#4DD0E1' }) } }
@@ -53,10 +39,16 @@ const ZONE_SHAPES = [
   { k: 'narrow', x: 112, y: 44, w: 10, h: 12, c: '#4DD0E1' }, { k: 'grass', x: 44, y: 80, w: 16, h: 10, c: '#4DE8B0' },
 ]
 const sat = computed(() => { const r = rng(props.seed); return Array.from({ length: 30 }, () => ({ x: r() * 160, y: r() * 100, r: 1.5 + r() * 3 })) })
+const onClick = (e: MouseEvent) => {
+  if (!props.pick) return
+  const svg = e.currentTarget as SVGSVGElement; const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY
+  const m = svg.getScreenCTM(); if (!m) return; const p = pt.matrixTransform(m.inverse()); emit('pick', +p.x.toFixed(1), +p.y.toFixed(1))
+}
+const ptColor = (st?: string) => (st === 'done' ? '#26C6DA' : st === 'bad' ? '#FF6B6B' : '#0B1A28')
 </script>
 
 <template>
-  <svg class="bm" viewBox="0 0 160 100" preserveAspectRatio="xMidYMid meet">
+  <svg class="bm" :class="{ pick }" viewBox="0 0 160 100" preserveAspectRatio="xMidYMid meet" @click="onClick">
     <defs>
       <pattern :id="`g-${uid}`" width="4" height="4" patternUnits="userSpaceOnUse"><path d="M4 0H0V4" fill="none" stroke="rgba(77,208,225,.07)" stroke-width=".2" /></pattern>
       <pattern :id="`z-forbid-${uid}`" width="2" height="2" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="2" height="2" fill="rgba(255,107,107,.12)" /><line x1="0" y1="0" x2="0" y2="2" stroke="#FF6B6B" stroke-width=".5" /></pattern>
@@ -75,6 +67,9 @@ const sat = computed(() => { const r = rng(props.seed); return Array.from({ leng
       <rect v-for="(b, i) in [[8, 8, 54, 30], [90, 8, 60, 28], [8, 62, 50, 30], [92, 62, 26, 30], [124, 62, 28, 30]]" :key="i" :x="b[0]" :y="b[1]" :width="b[2]" :height="b[3]" fill="#3B4650" stroke="#566370" stroke-width=".4" />
       <circle v-for="(t, i) in sat" :key="`t${i}`" :cx="t.x" :cy="t.y" :r="t.r" fill="#1F4A2C" opacity=".85" />
     </template>
+    <template v-else-if="mode === 'blank'">
+      <rect width="160" height="100" fill="#071320" /><rect width="160" height="100" :fill="`url(#g-${uid})`" />
+    </template>
     <template v-else>
       <rect width="160" height="100" :fill="mode === 'cloud' ? '#050E18' : '#0B1A28'" />
       <rect width="160" height="100" :fill="`url(#g-${uid})`" />
@@ -91,30 +86,37 @@ const sat = computed(() => { const r = rng(props.seed); return Array.from({ leng
       <rect v-for="(z, i) in ZONE_SHAPES" :key="i" :x="z.x" :y="z.y" :width="z.w" :height="z.h" :fill="`url(#z-${z.k}-${uid})`" :stroke="z.c" stroke-width=".35" :stroke-dasharray="edit ? '1 .8' : ''" />
     </g>
 
+    <!-- 其他路线（淡显） -->
+    <path v-for="g in ghost" :key="`gh${g}`" :d="path(ROUTE_SET[g])" fill="none" stroke="rgba(143,179,199,.28)" stroke-width=".5" stroke-dasharray="1 1" />
     <!-- 路线 -->
-    <g v-if="route && !hideRoute">
+    <g v-if="route && draw === null">
       <path :d="path(route)" fill="none" stroke="rgba(77,232,176,.25)" stroke-width="2.4" stroke-linejoin="round" />
       <path :d="path(route)" fill="none" stroke="#4DE8B0" stroke-width=".6" stroke-dasharray="1.6 1.2" stroke-linejoin="round" />
       <path v-if="donePath" :d="donePath" fill="none" stroke="#26C6DA" stroke-width="1.1" stroke-linejoin="round" />
       <template v-if="edit"><circle v-for="(p, i) in route" :key="`e${i}`" :cx="p[0]" :cy="p[1]" r=".9" fill="#0B1A28" stroke="#4DE8B0" stroke-width=".35" /></template>
-      <circle :cx="route[0][0]" :cy="route[0][1]" r="1.6" fill="none" stroke="#FFB74D" stroke-width=".5" />
+      <g :transform="`translate(${route[0][0]} ${route[0][1]})`"><circle r="1.8" fill="rgba(255,183,77,.2)" stroke="#FFB74D" stroke-width=".5" /><text y="-2.8" class="bm-tag">起点</text></g>
     </g>
+    <!-- 录制中 -->
+    <g v-if="drawPath"><path :d="drawPath" fill="none" stroke="#FF6B6B" stroke-width="1" stroke-linejoin="round" /><circle :cx="route![0][0]" :cy="route![0][1]" r="1.4" fill="#FF6B6B" /></g>
     <!-- 任务点 -->
-    <g v-for="p in pts" :key="`p${p.i}`" :transform="`translate(${p.x} ${p.y})`">
-      <circle v-if="p.i === selPoint" r="3.4" fill="none" stroke="#FFB74D" stroke-width=".4" />
-      <circle r="2" :fill="p.done ? '#26C6DA' : '#0B1A28'" :stroke="p.done ? '#7FF3FF' : '#FFB74D'" stroke-width=".4" />
-      <text y=".9" class="bm-pt" :fill="p.done ? '#04121D' : '#FFD08A'">{{ p.i + 1 }}</text>
+    <g v-for="(p, i) in pts" :key="`p${i}`" :transform="`translate(${p.mx} ${p.my})`">
+      <circle v-if="i === sel" r="3.6" fill="none" stroke="#FFB74D" stroke-width=".45" />
+      <circle r="2" :fill="ptColor(p.st)" :stroke="p.st === 'done' ? '#7FF3FF' : p.st === 'bad' ? '#FF9C9C' : p.st === 'cur' ? '#FFFFFF' : '#FFB74D'" stroke-width=".4" />
+      <text y=".9" class="bm-pt" :fill="p.st === 'done' ? '#04121D' : p.st === 'bad' ? '#fff' : '#FFD08A'">{{ i + 1 }}</text>
     </g>
+    <!-- 重定位箭头 -->
+    <g v-if="arrow" :transform="`translate(${arrow.x} ${arrow.y}) rotate(${arrow.yaw})`"><line x1="0" y1="0" x2="9" y2="0" stroke="#FF6B6B" stroke-width=".8" /><path d="M9 -2 L12 0 L9 2 Z" fill="#FF6B6B" /><circle r="1.2" fill="#FF6B6B" /></g>
     <!-- 机器人 -->
-    <g v-if="robotPos" :transform="`translate(${robotPos.x} ${robotPos.y})`">
+    <g v-if="robot" :transform="`translate(${robot.x} ${robot.y})`">
       <circle r="7" :fill="`url(#rb-${uid})`" class="bm-pulse" />
-      <g :transform="`rotate(${robotPos.yaw})`"><path d="M3.2 0 L-1.8 2.2 L-0.8 0 L-1.8 -2.2 Z" fill="#7FF3FF" stroke="#04121D" stroke-width=".25" /></g>
+      <g :transform="`rotate(${robot.yaw})`"><path d="M3.2 0 L-1.8 2.2 L-0.8 0 L-1.8 -2.2 Z" fill="#7FF3FF" stroke="#04121D" stroke-width=".25" /></g>
     </g>
   </svg>
 </template>
 
 <style scoped>
-.bm { display: block; width: 100%; height: 100%; }
+.bm { display: block; width: 100%; height: 100%; } .bm.pick { cursor: crosshair; }
+.bm-tag { font-size: 2.4px; fill: #FFB74D; text-anchor: middle; }
 .bm-room { font-size: 3px; fill: rgba(158,195,214,.45); text-anchor: middle; dominant-baseline: middle; letter-spacing: .2px; }
 .bm-pt { font: 600 2.2px var(--mono); text-anchor: middle; }
 .bm-pulse { transform-box: fill-box; transform-origin: center; animation: bm-pulse 2.8s ease-in-out infinite; }

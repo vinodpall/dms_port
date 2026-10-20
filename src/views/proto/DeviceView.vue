@@ -165,7 +165,7 @@ const MAINT_ROWS = DEVICES.slice(0, 14).map((d, i) => ({ key: i, dev: d, type: [
         <div class="pp-panel db-p">
           <div class="pp-panel-h"><h3>累计运行时长 TOP5</h3><span class="muted r" style="font-size:12px">单位：小时</span></div>
           <ul class="db-list">
-            <li v-for="(d, i) in TOP_HOURS" :key="d.id"><em class="mono">{{ i + 1 }}</em><DeviceGlyph :type="d.type" :size="20" :color="TYPE_META[d.type].color" /><b>{{ d.name }}</b><div class="db-bar"><i :style="{ width: (d.hours / TOP_HOURS[0].hours) * 100 + '%', background: TYPE_META[d.type].color }" /></div><span class="mono">{{ d.hours.toLocaleString('en-US') }}</span></li>
+            <li v-for="(d, i) in TOP_HOURS" :key="d.id"><em class="mono">{{ i + 1 }}</em><b>{{ d.name }}</b><div class="db-bar"><i :style="{ width: (d.hours / TOP_HOURS[0].hours) * 100 + '%', background: TYPE_META[d.type].color }" /></div><span class="mono">{{ d.hours.toLocaleString('en-US') }}</span></li>
           </ul>
         </div>
         <div class="pp-panel db-p">
@@ -228,7 +228,6 @@ const MAINT_ROWS = DEVICES.slice(0, 14).map((d, i) => ({ key: i, dev: d, type: [
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'name'">
               <div class="dv-cell">
-                <span class="dv-av" :style="{ '--c': TYPE_META[record.type as DeviceType].color }"><DeviceGlyph :type="record.type" :size="26" :color="TYPE_META[record.type as DeviceType].color" /></span>
                 <div class="cell-main"><a @click="open(record)">{{ record.name }}</a><small class="mono">{{ record.sn }}</small></div>
               </div>
             </template>
@@ -307,7 +306,7 @@ const MAINT_ROWS = DEVICES.slice(0, 14).map((d, i) => ({ key: i, dev: d, type: [
       <div class="pp-panel">
         <a-table :data-source="MAINT_ROWS" size="middle" :pagination="false" :columns="[{ title: '设备', key: 'dev' }, { title: '类型', key: 'type' }, { title: '内容', dataIndex: 'content' }, { title: '负责人', dataIndex: 'who' }, { title: '日期', dataIndex: 'date' }, { title: '状态', key: 'state' }]">
           <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'dev'"><div class="dv-cell"><span class="dv-av" :style="{ '--c': TYPE_META[record.dev.type as DeviceType].color }"><DeviceGlyph :type="record.dev.type" :size="22" :color="TYPE_META[record.dev.type as DeviceType].color" /></span>{{ record.dev.name }}</div></template>
+            <template v-if="column.key === 'dev'"><div class="dv-cell"><i class="dv-dot" :style="{ background: TYPE_META[record.dev.type as DeviceType].color }" />{{ record.dev.name }}</div></template>
             <template v-else-if="column.key === 'type'"><a-tag :color="({ 保养: 'cyan', 维修: 'orange', 升级: 'blue', 巡检: 'green' } as any)[record.type]">{{ record.type }}</a-tag></template>
             <template v-else-if="column.key === 'state'"><a-badge :status="record.state === '进行中' ? 'processing' : 'success'" :text="record.state" /></template>
           </template>
@@ -408,6 +407,7 @@ const MAINT_ROWS = DEVICES.slice(0, 14).map((d, i) => ({ key: i, dev: d, type: [
 </template>
 
 <style scoped>
+.dv-dot { width: 7px; height: 7px; flex: none; border-radius: 50%; }
 .kdot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
 .dv-types { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 16px; }
 .dv-type { display: flex; align-items: center; gap: 12px; padding: 12px 14px; text-align: left; cursor: pointer; color: var(--text); font: inherit;

@@ -2,8 +2,9 @@
 import { computed, reactive, ref } from 'vue'
 import { ExportOutlined } from '@ant-design/icons-vue'
 import { OP_LOGS, ROBOTS } from '@/mock/biz'
+import { curId } from './store'
 
-const f = reactive({ user: '全部', robot: '全部', type: '' })
+const f = reactive({ user: '全部', robot: curId.value, type: '' })
 const rows = computed(() => OP_LOGS.filter((l) => (f.user === '全部' || l.user === f.user) && (f.robot === '全部' || l.robot === f.robot) && (!f.type || l.type.includes(f.type))))
 const cur = ref<(typeof OP_LOGS)[number] | null>(null)
 </script>

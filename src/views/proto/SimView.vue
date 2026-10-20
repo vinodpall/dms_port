@@ -144,7 +144,7 @@ const doImport = () => { urdfStep.value = 3; message.success('USD 生成完成�
             <a-tab-pane key="assets"><template #tab><AppstoreOutlined />机器人资产</template>
               <div class="sm-assets">
                 <div v-for="a in ASSETS" :key="a.model" class="sm-asset" draggable="true">
-                  <span class="art"><DeviceGlyph :type="a.type" :size="34" :color="a.c" /></span>
+                  <i class="dot" :style="{ background: a.c }" />
                   <div><b>{{ a.model }}</b><small>{{ a.vendor }} · {{ a.kind }}</small></div>
                   <a-tag color="green" class="usd">USD</a-tag>
                 </div>
@@ -294,6 +294,7 @@ const doImport = () => { urdfStep.value = 3; message.success('USD 生成完成�
 .sm-assets { padding: 10px; display: flex; flex-direction: column; gap: 8px; }
 .sm-asset { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid rgba(77,208,225,.12); border-radius: 3px; background: rgba(16,38,59,.5); cursor: grab; }
 .sm-asset:hover { border-color: rgba(77,208,225,.45); }
+.sm-asset .dot { width: 7px; height: 7px; flex: none; border-radius: 50%; }
 .sm-asset .art { width: 40px; height: 40px; display: grid; place-items: center; background: rgba(77,208,225,.06); border-radius: 3px; }
 .sm-asset div { flex: 1; display: flex; flex-direction: column; line-height: 1.3; } .sm-asset b { font-size: 13px; } .sm-asset small { color: var(--muted); font-size: 11.5px; }
 .sm-view { position: relative; min-height: 0; overflow: hidden; border: 1px solid rgba(77,208,225,.25); border-radius: 3px; background: #071523; }
