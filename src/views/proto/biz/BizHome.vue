@@ -2,13 +2,13 @@
 /** 首页：对齐 robot_web Home.vue 三栏结构 —— 左 视频/任务统计 · 中 地图/实时警情 · 右 状态/控制/任务下发 */
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
-import { AimOutlined, ExpandOutlined, PauseOutlined, CaretRightOutlined, SendOutlined, ThunderboltOutlined } from '@ant-design/icons-vue'
+import { AimOutlined, ExpandOutlined, PauseOutlined, CaretRightOutlined, SendOutlined, AudioOutlined, AudioMutedOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons-vue'
 import BizMap from './BizMap.vue'
 import CamShot from './CamShot.vue'
 import { KIND_META, GAITS, ZONES, SENSORS, alarmColor, type BizAlarm } from '@/mock/biz'
 import {
   robot, rt, isDog, isIns, hasNav, locText, db, curId, myMaps, myRoutes, myGroups, routeById, groupById,
-  togglePause, stopRun, toggleNav, toggleIns, openLaunch,
+  togglePause, stopRun, toggleNav, toggleIns, toggleMsf, openLaunch,
 } from './store'
 
 const emit = defineEmits<{ go: [tab: string, sub?: string] }>()
@@ -33,18 +33,46 @@ const mapMode = ref<'cloud' | 'grid' | 'sat'>(isIns.value ? 'sat' : 'grid')
 const alarms = computed(() => db.alarms.filter((a) => a.robot === curId.value).slice(0, 6))
 const pic = ref<BizAlarm | null>(null)
 
-/* 控制 */
-const gait = ref(0); const force = ref(false); const talk = ref(false)
+/* 机器狗控制（对齐 robot_web robot-control-grid） */
+const gait = ref(0); const force = ref(false); const talk = ref(false); const moving = ref(false); const crawl = ref(false); const manual = ref(true)
 const act = (t: string) => message.success(`${t}指令已发送`)
-const setGait = (i: number) => { if (run.value) return message.error('任务执行中，无法切换步态'); gait.value = i; act(`切换${GAITS[i]}`) }
+const setGait = (i: number) => { if (run.value) return message.error('任务执行中，无法切换步态'); gait.value = i; act(GAITS[i]) }
+const ctl = (k: string) => {
+  const s = rt.value
+  if (k === 'stand') { act(s.standing ? '趴下' : '起立'); s.standing = !s.standing; if (!s.standing) moving.value = false }
+  else if (k === 'move') { if (!s.standing) return message.error('请先起立'); act(moving.value ? '停止运动' : '开始运动'); moving.value = !moving.value }
+  else if (k === 'crawl') { act(crawl.value ? '正常姿态' : '匍匐姿态'); crawl.value = !crawl.value }
+  else if (k === 'auto') { act(manual.value ? '非手动模式' : '手动模式'); manual.value = !manual.value }
+  else if (k === 'force') { force.value = !force.value; act(force.value ? '开启力控模式' : '关闭力控模式') }
+  else if (k === 'stop') message.error('已触发急停')
+}
+const posture = computed(() => (!rt.value.standing ? '趴下' : crawl.value ? '匍匐' : '站立'))
+
+/* 无人车传感器数据（对齐 robot_web sensor-data-card：左右切换传感器 + 曲线） */
+const si = ref(0)
+const sensor = computed(() => SENSORS[si.value])
+const stepS = (d: number) => { si.value = (si.value + d + SENSORS.length) % SENSORS.length }
+const hist = ref<number[]>([])
+const tick = () => { const v = sensor.value.v; const n = hist.value.length ? hist.value[hist.value.length - 1] : v; hist.value = [...hist.value.slice(-29), +(n + (v - n) * 0.3 + (Math.random() - 0.5) * Math.max(0.2, v * 0.04)).toFixed(2)] }
+watch(si, () => { hist.value = []; for (let i = 0; i < 30; i++) tick() }, { immediate: true })
+const tm2 = setInterval(tick, 1500); onBeforeUnmount(() => clearInterval(tm2))
+const chart = computed(() => {
+  const l = hist.value; const hi = sensor.value.hi; const lo = sensor.value.lo
+  const max = Math.max(...l, hi ?? -Infinity) * 1.08; const min = Math.min(...l, lo ?? Infinity) * 0.92
+  const y = (v: number) => 92 - ((v - min) / (max - min || 1)) * 84
+  const pts = l.map((v, i) => `${(i / (l.length - 1)) * 300},${y(v).toFixed(1)}`).join(' ')
+  return { pts, area: `0,100 ${pts} 300,100`, hi: hi != null ? y(hi) : null, lo: lo != null ? y(lo) : null, cur: l[l.length - 1] }
+})
+const rtkOpen = ref(false)
+const gps = computed(() => rt.value.insOrigin ?? { lat: 30.274612, lng: 120.155391, alt: 12.4 })
 
 /* 任务下发 */
 const gridMaps = computed(() => myMaps.value.filter((m) => m.grid))
-const navSel = ref(''); const rSel = ref(''); const pSel = ref(''); const mSel = ref('')
+const navSel = ref<string | undefined>(); const rSel = ref(''); const pSel = ref(''); const mSel = ref('')
 const pubGroups = computed(() => myGroups.value.filter((g) => g.kind === '发布点'))
 const myMulti = computed(() => db.multi.filter((m) => m.robot === curId.value))
 watch(curId, () => {
-  navSel.value = rt.value.navMap || gridMaps.value[0]?.name || ''
+  navSel.value = rt.value.navMap || gridMaps.value[0]?.name || undefined
   rSel.value = run.value?.route ?? myRoutes.value.find((r) => !rt.value.navMap || r.map === rt.value.navMap)?.id ?? myRoutes.value[0]?.id ?? ''
   pSel.value = pubGroups.value[0]?.id ?? ''; mSel.value = myMulti.value[0]?.id ?? ''
 }, { immediate: true })
@@ -117,36 +145,72 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
       <div class="pp-panel">
         <div class="pp-panel-h"><h3>{{ KIND_META[robot.kind].t }}状态</h3><a-badge :status="!on ? 'default' : run ? 'processing' : 'success'" :text="!on ? '离线' : run ? '任务中' : '在线'" style="margin-left:8px" /></div>
         <div class="hm-big">
-          <div><small>当前速度</small><b class="mono">{{ speed.toFixed(2) }}<em>m/s</em></b></div>
+          <div><small>当前速度</small><b class="mono">{{ on ? speed.toFixed(2) : '--' }}<em>m/s</em></b></div>
           <div><small>剩余电量</small><b class="mono" :class="{ low: robot.battery < 30 }">{{ on ? robot.battery : '--' }}<em>%</em></b></div>
-          <div><small>网络延迟</small><b class="mono">{{ on ? latency : '--' }}<em>ms</em></b></div>
-          <div><small>累计里程</small><b class="mono">{{ robot.mileage.toFixed(0) }}<em>m</em></b></div>
+          <div v-if="isDog"><small>累计里程</small><b class="mono">{{ (robot.mileage / 1000).toFixed(2) }}<em>km</em></b></div>
+          <div v-else><small>网络延迟</small><b class="mono">{{ on ? latency : '--' }}<em>ms</em></b></div>
         </div>
-        <div class="hm-kv">
-          <span>X / Y</span><b class="mono">{{ pose.x }}, {{ pose.y }}</b><span>角度</span><b class="mono">{{ rt.pose.yaw }}°</b>
-          <span>定位</span><b :class="hasNav ? 'ok' : 'warn'">{{ hasNav ? (rt.nav ? '激光导航' : rt.ins ? 'INS' : 'MSF') : '未开启' }}</b><span>RTK</span><b>{{ robot.rtk ? (rt.ins || rt.msf ? '固定解' : '待机') : '无' }}</b>
-          <span>电压</span><b class="mono">{{ isDog ? '52.4 V' : '48.1 V' }}</b><span>电流</span><b class="mono">{{ isDog ? '6.8 A' : '9.2 A' }}</b>
-          <span>CPU</span><b class="mono">38%</b><span>内存</span><b class="mono">46%</b>
-          <template v-if="isDog"><span>步态</span><b>{{ GAITS[gait] }}</b><span>姿态</span><b>站立</b></template>
-          <template v-else><span>磁盘</span><b class="mono">63%</b><span>避障</span><b>{{ rt.obsMode }}</b></template>
+        <div class="hm-grid">
+          <div><small>X坐标</small><b class="mono">{{ pose.x }}</b></div>
+          <div><small>Y坐标</small><b class="mono">{{ pose.y }}</b></div>
+          <div><small>高度</small><b class="mono">0.00</b></div>
+          <div><small>角度</small><b class="mono">{{ rt.pose.yaw }}°</b></div>
+          <a-popover v-if="!isDog" v-model:open="rtkOpen" trigger="click" placement="left">
+            <template #content><div class="hm-rtk"><span>经度</span><b class="mono">{{ gps.lng.toFixed(6) }}°</b><span>纬度</span><b class="mono">{{ gps.lat.toFixed(6) }}°</b><span>海拔</span><b class="mono">{{ gps.alt }} m</b><span>航向</span><b class="mono">{{ ((rt.pose.yaw * Math.PI) / 180).toFixed(3) }} rad</b></div></template>
+            <div class="lk"><small>RTK</small><b :class="rt.ins || rt.msf ? 'ok' : 'warn'">{{ rt.ins || rt.msf ? '固定解' : '浮点解' }}</b></div>
+          </a-popover>
+          <div v-else><small>状态</small><b>{{ !on ? '离线' : run ? '任务中' : rt.standing ? (moving ? '运动中' : '站立') : '趴下' }}</b></div>
+          <div><small>电压</small><b class="mono">{{ isDog ? '52.4V' : '48.1V' }}</b></div>
+          <div><small>电流</small><b class="mono">{{ isDog ? '6.8A' : '9.2A' }}</b></div>
+          <template v-if="isDog">
+            <div><small>地面</small><b>实心地面</b></div>
+            <div><small>步态</small><b :title="GAITS[gait]">{{ GAITS[gait] }}</b></div>
+            <div><small>姿态</small><b>{{ posture }}</b></div>
+          </template>
+          <template v-else>
+            <div><small>CPU</small><b class="mono">38%</b></div>
+            <div><small>内存</small><b class="mono">46%</b></div>
+            <div><small>磁盘</small><b class="mono" style="color:#FFB74D">83%</b></div>
+          </template>
         </div>
       </div>
 
-      <div class="pp-panel">
-        <div class="pp-panel-h"><h3>{{ isDog ? '机器人控制' : '传感器数据' }}</h3></div>
-        <div v-if="isDog" class="hm-ctl">
-          <div class="sw"><span>语音对讲</span><a-switch v-model:checked="talk" size="small" :disabled="!on" /><span>力控模式</span><a-switch v-model:checked="force" size="small" :disabled="!on" /></div>
-          <div class="gaits"><button v-for="(g, i) in GAITS" :key="g" type="button" :class="{ on: gait === i }" :disabled="!on" @click="setGait(i)">{{ g }}</button></div>
-          <div class="row3"><a-button size="small" :disabled="!on" @click="act('开始充电')"><ThunderboltOutlined />开始充电</a-button><a-button size="small" :disabled="!on" @click="act('结束充电')">结束充电</a-button><a-button size="small" :disabled="!on" @click="act('重置充电')">重置充电</a-button></div>
+      <!-- 机器狗：机器人控制 -->
+      <div v-if="isDog" class="pp-panel">
+        <div class="pp-panel-h"><h3>机器人控制</h3><a-tooltip :title="talk ? '关闭语音对讲' : '开启语音对讲'"><a-button type="text" size="small" class="r" :class="{ 'hm-mic': talk }" :disabled="!on" @click="talk = !talk"><AudioOutlined v-if="talk" /><AudioMutedOutlined v-else /></a-button></a-tooltip></div>
+        <div class="hm-ctl">
+          <button type="button" :disabled="!on" @click="ctl('stand')">{{ rt.standing ? '趴下' : '起立' }}</button>
+          <button type="button" :class="{ on: force }" :disabled="!on" @click="ctl('force')">力控模式</button>
+          <button type="button" class="stop" :disabled="!on" @click="ctl('stop')">急停</button>
+          <button type="button" :class="{ on: moving }" :disabled="!on" @click="ctl('move')">{{ moving ? '停止运动' : '开始运动' }}</button>
+          <button type="button" :class="{ on: crawl }" :disabled="!on" @click="ctl('crawl')">{{ crawl ? '正常姿态' : '匍匐姿态' }}</button>
+          <button type="button" :class="{ on: !manual }" :disabled="!on" @click="ctl('auto')">{{ manual ? '非手动模式' : '手动模式' }}</button>
+          <button v-for="(g, i) in GAITS" :key="g" type="button" :class="{ on: gait === i }" :disabled="!on" @click="setGait(i)">{{ g }}</button>
+          <button v-for="c in ['开始充电', '结束充电', '重置充电']" :key="c" type="button" :disabled="!on" @click="act(c)">{{ c }}</button>
         </div>
-        <div v-else class="hm-sensors"><div v-for="s in SENSORS.slice(0, 6)" :key="s.en"><small>{{ s.cn }}</small><b class="mono">{{ on ? s.v : '--' }}<em>{{ s.unit }}</em></b></div></div>
+      </div>
+      <!-- 无人车：传感器数据 -->
+      <div v-else class="pp-panel">
+        <div class="pp-panel-h"><h3>传感器数据</h3>
+          <span class="r hm-stog"><a-button type="text" size="small" @click="stepS(-1)"><LeftOutlined /></a-button><b>{{ sensor.cn }}</b><a-button type="text" size="small" @click="stepS(1)"><RightOutlined /></a-button></span></div>
+        <div v-if="on" class="hm-chart">
+          <div class="cv"><b class="mono">{{ chart.cur }}</b><em>{{ sensor.unit }}</em><small>阈值 {{ sensor.lo != null ? sensor.lo + ' ~ ' : '≤ ' }}{{ sensor.hi }}</small></div>
+          <svg viewBox="0 0 300 100" preserveAspectRatio="none">
+            <defs><linearGradient id="hm-sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4DE8B0" stop-opacity=".35" /><stop offset="1" stop-color="#4DE8B0" stop-opacity="0" /></linearGradient></defs>
+            <line v-if="chart.hi != null" x1="0" x2="300" :y1="chart.hi" :y2="chart.hi" stroke="#FF6B6B" stroke-dasharray="4 3" stroke-width="1" vector-effect="non-scaling-stroke" />
+            <line v-if="chart.lo != null" x1="0" x2="300" :y1="chart.lo" :y2="chart.lo" stroke="#FFB74D" stroke-dasharray="4 3" stroke-width="1" vector-effect="non-scaling-stroke" />
+            <polygon :points="chart.area" fill="url(#hm-sg)" />
+            <polyline :points="chart.pts" fill="none" stroke="#4DE8B0" stroke-width="1.6" vector-effect="non-scaling-stroke" />
+          </svg>
+        </div>
+        <div v-else class="hm-empty sm">设备离线</div>
       </div>
 
       <div class="pp-panel hm-grow">
         <div class="pp-panel-h"><h3>任务下发</h3><span class="muted sub">{{ locText }}</span></div>
         <div class="hm-send">
-          <div v-if="!isIns" class="ln"><label>导航地图</label><a-select v-model:value="navSel" size="small" :disabled="rt.nav" placeholder="选择地图" :options="gridMaps.map((m) => ({ value: m.name, label: m.name }))" /><a-switch :checked="rt.nav" size="small" :disabled="!on || rt.ins || rt.msf" @click="toggleNav(navSel)" /></div>
-          <div v-else class="ln"><label>INS 定位</label><span class="muted ins">{{ rt.insOrigin ? '原点已设置' : '未初始化' }}</span><a-switch :checked="rt.ins" size="small" :disabled="!on" @click="toggleIns" /></div>
+          <div class="ln loc"><a-select v-model:value="navSel" size="small" :disabled="hasNav" :placeholder="gridMaps.length ? '选择地图' : '暂无地图'" :options="gridMaps.map((m) => ({ value: m.name, label: m.name }))" />
+            <span class="tg"><button type="button" :class="{ on: rt.nav }" :disabled="!on || rt.ins || rt.msf" @click="toggleNav(navSel ?? '')">导航</button><button type="button" :class="{ on: rt.ins }" :disabled="!on || rt.nav || rt.msf" @click="toggleIns">INS</button><button type="button" :class="{ on: rt.msf }" :disabled="!on || rt.nav || rt.ins" @click="toggleMsf(navSel ?? '', isIns ? '卫星定位' : '融合定位')">MSF</button></span></div>
           <div class="ln"><label>循迹任务</label><a-select v-model:value="rSel" size="small" placeholder="选择路线" :options="navRoutes.map((r) => ({ value: r.id, label: r.name }))" /><a-button size="small" type="primary" :disabled="!on || !!run" @click="openLaunch('循迹任务', { route: rSel })"><SendOutlined />下发</a-button></div>
           <div v-if="!isIns" class="ln"><label>发布点任务</label><a-select v-model:value="pSel" size="small" placeholder="选择任务组" :options="pubGroups.map((g) => ({ value: g.id, label: g.name }))" /><a-button size="small" type="primary" :disabled="!on || !!run" @click="openLaunch('发布点任务', { group: pSel })"><SendOutlined />下发</a-button></div>
           <div class="ln"><label>多任务组</label><a-select v-model:value="mSel" size="small" placeholder="选择多任务组" :options="myMulti.map((m) => ({ value: m.id, label: m.name }))" /><a-button size="small" type="primary" :disabled="!on || !!run" @click="openLaunch('多任务组', { multi: mSel })"><SendOutlined />下发</a-button></div>
@@ -187,19 +251,27 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
 .hm-big { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px 14px 4px; }
 .hm-big > div { padding: 7px 10px; background: rgba(77,208,225,.05); border: 1px solid rgba(77,208,225,.12); border-radius: 3px; }
 .hm-big small { display: block; font-size: 11.5px; color: var(--muted); } .hm-big b { font-size: 18px; font-weight: 600; color: #fff; } .hm-big b.low { color: #FF6B6B; } .hm-big em { font-style: normal; font-size: 11px; color: var(--muted); margin-left: 3px; }
-.hm-kv { display: grid; grid-template-columns: auto 1fr auto 1fr; gap: 7px 10px; padding: 10px 14px 14px; font-size: 12.5px; } .hm-kv span { color: var(--muted); } .hm-kv b { font-weight: 500; text-align: right; white-space: nowrap; }
-.hm-kv b.ok { color: #4DE8B0; } .hm-kv b.warn { color: #FFB74D; }
-.hm-ctl { padding: 10px 14px 14px; }
-.hm-ctl .sw { display: grid; grid-template-columns: 1fr auto 1fr auto; gap: 8px; align-items: center; margin-bottom: 10px; font-size: 12.5px; color: var(--muted); }
-.hm-ctl .gaits { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-.hm-ctl .gaits button { padding: 5px 0; font: inherit; font-size: 12px; color: var(--muted); cursor: pointer; background: rgba(77,208,225,.05); border: 1px solid var(--line); border-radius: 3px; }
-.hm-ctl .gaits button:hover:not(:disabled) { color: var(--text); border-color: var(--line-strong); } .hm-ctl .gaits button.on { color: #fff; border-color: var(--accent); background: var(--accent-soft); } .hm-ctl .gaits button:disabled { cursor: not-allowed; opacity: .5; }
-.hm-ctl .row3 { display: flex; gap: 6px; margin-top: 10px; } .hm-ctl .row3 > * { flex: 1; padding-inline: 4px; }
-.hm-sensors { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 12px 14px 14px; } .hm-sensors > div { display: flex; justify-content: space-between; align-items: baseline; padding: 5px 8px; font-size: 12px; background: rgba(77,232,176,.06); border-left: 2px solid #4DE8B0; }
-.hm-sensors small { color: var(--muted); } .hm-sensors em { font-style: normal; font-size: 10px; color: var(--muted); margin-left: 2px; }
+.hm-big { grid-template-columns: repeat(3, 1fr) !important; } .hm-big b { font-size: 16px !important; }
+.hm-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; padding: 10px 12px 14px; }
+.hm-grid > div { min-width: 0; padding: 5px 1px; text-align: center; background: rgba(77,208,225,.04); border-radius: 3px; }
+.hm-grid small { display: block; font-size: 11px; color: var(--muted); } .hm-grid b { display: block; font-size: 12px; font-weight: 500; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.hm-grid b.ok { color: #4DE8B0; } .hm-grid b.warn { color: #FFB74D; } .hm-grid .lk { cursor: pointer; border: 1px dashed rgba(77,232,176,.35); }
+.hm-rtk { display: grid; grid-template-columns: auto auto; gap: 6px 16px; font-size: 12.5px; } .hm-rtk span { color: var(--muted); } .hm-rtk b { font-weight: 500; text-align: right; }
+.hm-mic { color: #4DE8B0 !important; }
+.hm-ctl { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 12px 14px 14px; }
+.hm-ctl button { padding: 5px 0; font: inherit; font-size: 12px; color: var(--muted); cursor: pointer; background: rgba(77,208,225,.05); border: 1px solid var(--line); border-radius: 3px; }
+.hm-ctl button:hover:not(:disabled) { color: var(--text); border-color: var(--line-strong); } .hm-ctl button.on { color: #fff; border-color: var(--accent); background: var(--accent-soft); }
+.hm-ctl button.stop { color: #fff; background: rgba(255,107,107,.55); border-color: #FF6B6B; } .hm-ctl button:disabled { cursor: not-allowed; opacity: .5; }
+.hm-ctl button:nth-child(7), .hm-ctl button:nth-child(16) { margin-top: 4px; } .hm-ctl button:nth-child(8), .hm-ctl button:nth-child(9), .hm-ctl button:nth-child(17), .hm-ctl button:nth-child(18) { margin-top: 4px; }
+.hm-stog { gap: 0 !important; } .hm-stog b { min-width: 64px; text-align: center; font-size: 12.5px; font-weight: 500; }
+.hm-chart { padding: 8px 14px 12px; } .hm-chart .cv { display: flex; align-items: baseline; gap: 4px; } .hm-chart .cv b { font-size: 20px; color: #4DE8B0; } .hm-chart .cv em { font-style: normal; font-size: 11px; color: var(--muted); } .hm-chart .cv small { margin-left: auto; font-size: 11px; color: var(--faint); }
+.hm-chart svg { display: block; width: 100%; height: 110px; margin-top: 6px; border-bottom: 1px solid var(--line); }
 .hm-send { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px 14px; }
 .hm-send .ln { display: grid; grid-template-columns: 70px minmax(0, 1fr) auto; align-items: center; gap: 8px; font-size: 12.5px; }
-.hm-send .ln:first-child { padding-bottom: 10px; border-bottom: 1px dashed var(--line); }
+.hm-send .ln.loc { grid-template-columns: minmax(0, 1fr) auto; padding-bottom: 10px; border-bottom: 1px dashed var(--line); }
+.hm-send .tg { display: flex; } .hm-send .tg button { height: 24px; padding: 0 10px; font: inherit; font-size: 12px; color: var(--muted); cursor: pointer; background: rgba(77,208,225,.05); border: 1px solid var(--line-strong); margin-left: -1px; }
+.hm-send .tg button:first-child { border-radius: 3px 0 0 3px; } .hm-send .tg button:last-child { border-radius: 0 3px 3px 0; }
+.hm-send .tg button.on { color: #04121D; font-weight: 600; background: var(--cyan); border-color: var(--cyan); } .hm-send .tg button:disabled { cursor: not-allowed; opacity: .4; }
 .hm-send label { color: var(--muted); } .hm-send .ins { font-size: 12px; }
 .hm-pic { aspect-ratio: 16 / 9; position: relative; overflow: hidden; border-radius: 3px; }
 </style>
