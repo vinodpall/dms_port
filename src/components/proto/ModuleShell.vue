@@ -8,13 +8,23 @@ import { useClock } from '@/composables/entry'
 import { useSession } from '@/stores/session'
 import '@/styles/pages.css'
 
-export interface ShellMenu { key: string; label: string; icon?: unknown }
-const props = withDefaults(defineProps<{ title: string; en: string; menu?: ShellMenu[]; active?: string; flush?: boolean }>(), { menu: () => [], active: '', flush: false })
+export interface ShellMenu { key: string; label: string; icon?: unknown; group?: string; badge?: number; soft?: boolean }
+const props = withDefaults(defineProps<{ title: string; en: string; menu?: ShellMenu[]; active?: string; flush?: boolean; noBell?: boolean }>(), { menu: () => [], active: '', flush: false, noBell: false })
 const emit = defineEmits<{ 'update:active': [string] }>()
 const router = useRouter()
 const session = useSession()
 const { time } = useClock()
 const selected = computed(() => [props.active])
+const groups = computed(() => {
+  const out: { g: string; items: ShellMenu[] }[] = []
+  for (const m of props.menu) {
+    const g = m.group ?? ''
+    let last = out[out.length - 1]
+    if (!last || last.g !== g) { last = { g, items: [] }; out.push(last) }
+    last.items.push(m)
+  }
+  return out
+})
 const logout = () => { session.logout(); router.replace({ name: 'login' }) }
 </script>
 
@@ -30,7 +40,7 @@ const logout = () => { session.logout(); router.replace({ name: 'login' }) }
       <div class="pp-top-r">
         <slot name="extra" />
         <a-tooltip title="返回模块导航"><a-button type="text" class="pp-ico" @click="router.push('/portal')"><AppstoreOutlined /></a-button></a-tooltip>
-        <a-badge :count="3" size="small" :offset="[-6, 6]"><a-button type="text" class="pp-ico"><BellOutlined /></a-button></a-badge>
+        <a-badge v-if="!noBell" :count="3" size="small" :offset="[-6, 6]"><a-button type="text" class="pp-ico"><BellOutlined /></a-button></a-badge>
         <a-button type="text" class="pp-ico"><QuestionCircleOutlined /></a-button>
         <span class="pp-clock">{{ time }}</span>
         <a-dropdown placement="bottomRight">
@@ -44,7 +54,14 @@ const logout = () => { session.logout(); router.replace({ name: 'login' }) }
     <div class="pp-body">
       <aside v-if="menu.length" class="pp-side">
         <a-menu mode="inline" :selected-keys="selected" class="pp-menu" @click="(e: any) => emit('update:active', String(e.key))">
-          <a-menu-item v-for="m in menu" :key="m.key"><template #icon><component :is="m.icon" /></template>{{ m.label }}</a-menu-item>
+          <template v-for="(g, gi) in groups" :key="gi">
+            <a-menu-item-group v-if="g.g" :title="g.g">
+              <a-menu-item v-for="m in g.items" :key="m.key"><template #icon><component :is="m.icon" /></template>{{ m.label }}<span v-if="m.badge" class="pp-mbadge" :class="{ soft: m.soft }">{{ m.badge }}</span></a-menu-item>
+            </a-menu-item-group>
+            <template v-else>
+              <a-menu-item v-for="m in g.items" :key="m.key"><template #icon><component :is="m.icon" /></template>{{ m.label }}<span v-if="m.badge" class="pp-mbadge" :class="{ soft: m.soft }">{{ m.badge }}</span></a-menu-item>
+            </template>
+          </template>
         </a-menu>
         <div class="pp-side-foot"><i class="dot" /> 系统运行正常</div>
       </aside>
