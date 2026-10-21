@@ -120,11 +120,6 @@ const coverage = computed(() => (clip.value ? Math.min(100, Math.round((sorted.v
 const nowSeg = computed(() => sorted.value.find((s) => t.value >= s.s && t.value < s.e))
 const nextName = (c: Clip) => { const l = dict.sequenceFor(c.scen); return l.find((n) => !c.segs.some((s) => s.n === n)) ?? l[0] ?? '未命名' }
 const subOpts = computed(() => (clip.value ? store.namesFor(clip.value.scen).map((n) => ({ value: n, label: n + (dict.byName(n)?.level === 'abnormal' ? '（异常）' : '') })) : []))
-const actOpts = computed(() => (clip.value ? dict.actionsFor(clip.value.scen).filter((x) => x.level === 'basic').map((x) => ({ value: x.name })) : []))
-const objOpts = computed(() => (clip.value ? dict.objectsFor(clip.value.scen).map((x) => ({ value: x.name })) : []))
-const selSeg = computed(() => clip.value?.segs.find((s) => s.id === sel.value))
-/** 标注内容完整度：主物体、描述、结果 */
-const segDone = (s: Seg) => !!s.objMain && !!s.desc?.trim() && !!s.result && (s.result === 'ok' || !!s.failReason?.trim())
 
 /** 规则预切分：按字典中该场景子任务的标准顺序生成初始区间，标注员再微调 */
 async function doPresplit(how: 'seq' | 'force') {
@@ -473,7 +468,7 @@ function clearBatch() { router.replace({ name: 'annotate' }) }
 </script>
 
 <template>
-  <PageHead title="标注工作台" desc="从任务池领取数据后标注：子任务区间 + 动作、主/辅助物体、语义描述、执行结果；提交前自动自检">
+  <PageHead title="标注工作台" desc="从任务池领取数据后，按子任务切分时间区间；提交前自动自检">
     <div class="row" style="gap:8px">
       <span class="muted" style="margin-right:4px">任务池 {{ store.pool.length }} 条 · 我的待处理 {{ store.mine(me).filter((c) => c.status === 'todo' || c.status === 'rejected').length }} 条</span>
       <a-button @click="router.push({ name: 'dict' })"><AppIcon name="layers" size="sm" />标注字典 <span class="mono muted" style="margin-left:4px">{{ dict.version }}</span></a-button>
@@ -496,7 +491,8 @@ function clearBatch() { router.replace({ name: 'annotate' }) }
         </div>
         <div v-if="view === 'pool'" class="claim">
           <a-select v-model:value="poolScen" size="small" style="width:96px" aria-label="场景" :options="[{ value: 'all', label: '全部场景' }, { value: 'qmd', label: SCEN.qmd.short }, { value: 'fhd', label: SCEN.fhd.short }]" />
-          <a-input-number v-model:value="claimN" size="small" :min="1" :max="10" style="width:64px" aria-label="领取条数" />
+          <a-input-number v-model:value="claimN" size="small" :min="1" :max="10" style="width:60px" aria-label="领取条数" />
+          <span class="ct">条</span><span class="grow" />
           <a-button size="small" type="primary" :disabled="!poolClips.length" @click="doClaim()">批量领取</a-button>
         </div>
       </template>
@@ -582,7 +578,7 @@ function clearBatch() { router.replace({ name: 'annotate' }) }
 
         <div class="row between" style="margin-top:6px">
           <span style="font-weight:600;font-size:13.5px">子任务切片明细 ({{ sorted.length }})</span>
-          <span class="muted" style="font-size:12px">选中切片后在下方填写动作、物体、描述与结果；子任务来自 <a @click="router.push({ name: 'dict' })">标注字典 {{ dict.version }}</a></span>
+          <span class="muted" style="font-size:12px">子任务名称来自 <a @click="router.push({ name: 'dict' })">标注字典 {{ dict.version }}</a></span>
         </div>
 
         <table class="stbl" aria-label="子任务切片列表">
@@ -593,7 +589,6 @@ function clearBatch() { router.replace({ name: 'annotate' }) }
               <th style="width:130px">开始时间 (s)</th>
               <th style="width:130px">结束时间 (s)</th>
               <th style="width:80px">有效时长</th>
-              <th style="width:110px">标注内容</th>
               <th style="width:130px">操作</th>
             </tr>
           </thead>
@@ -611,6 +606,7 @@ function clearBatch() { router.replace({ name: 'annotate' }) }
                   @change="changed"
                 />
                 <span v-else>{{ s.n }}</span>
+                <div v-if="s.flag" class="tag crit" style="font-size:11px;margin-top:4px;display:inline-block">审核意见：{{ s.flag }}</div>
               </td>
               <td>
                 <a-input-number
@@ -641,10 +637,6 @@ function clearBatch() { router.replace({ name: 'annotate' }) }
                 <span v-else class="num">{{ s.e.toFixed(1) }}</span>
               </td>
               <td class="num muted">{{ (s.e - s.s).toFixed(1) }} s</td>
-              <td>
-                <span v-if="s.result === 'fail'" class="tag crit" style="font-size:11px">失败</span>
-                <span class="tag" :class="segDone(s) ? 'good' : 'warn'" style="font-size:11px">{{ segDone(s) ? '已完整' : '待补充' }}</span>
-              </td>
               <td @click.stop>
                 <div class="row" style="gap:6px">
                   <a-button size="small" type="text" @click="t = s.s">定位</a-button>
@@ -653,27 +645,12 @@ function clearBatch() { router.replace({ name: 'annotate' }) }
               </td>
             </tr>
             <tr v-if="!sorted.length">
-              <td colspan="7" class="muted" style="text-align:center;padding:24px">
+              <td colspan="6" class="muted" style="text-align:center;padding:24px">
                 暂无切片数据{{ editable ? '，可点「规则预切分」自动生成，或在时间轴上拖拽 / 按 A 键新增' : '' }}
               </td>
             </tr>
           </tbody>
         </table>
-
-        <div v-if="selSeg" class="card detail">
-          <div class="row between" style="margin-bottom:10px">
-            <b style="font-size:13.5px"><i class="dot" :style="{ background: colorOf(clip.scen, selSeg.n), display: 'inline-block', marginRight: '6px' }" />标注详情 · {{ selSeg.n }} <span class="muted num" style="font-weight:400">{{ selSeg.s.toFixed(1) }}–{{ selSeg.e.toFixed(1) }}s</span></b>
-            <span v-if="selSeg.flag" class="tag crit" style="font-size:12px">审核意见：{{ selSeg.flag }}</span>
-          </div>
-          <div class="dgrid">
-            <label>基础动作<a-select v-model:value="selSeg.act" size="small" allow-clear :disabled="!editable" placeholder="可选" :options="actOpts" @change="changed" /></label>
-            <label>主操作物体 <i class="req">*</i><a-select v-model:value="selSeg.objMain" size="small" :disabled="!editable" placeholder="必填" :options="objOpts" @change="changed" /></label>
-            <label>辅助物体<a-select v-model:value="selSeg.objSub" mode="multiple" size="small" :disabled="!editable" placeholder="可多选" :options="objOpts.filter((o) => o.value !== selSeg?.objMain)" @change="changed" /></label>
-            <label>执行结果<a-radio-group v-model:value="selSeg.result" size="small" :disabled="!editable" button-style="solid" @change="changed"><a-radio-button value="ok">成功</a-radio-button><a-radio-button value="fail">失败</a-radio-button></a-radio-group></label>
-            <label class="wide">语义描述 <span class="muted">（5–200 字，描述做了什么、怎么做）</span><a-textarea v-model:value="selSeg.desc" :rows="2" :maxlength="200" show-count :disabled="!editable" placeholder="如：右手抓取轮毂边缘，平移放入夹具定位销上" @blur="changed" /></label>
-            <label v-if="selSeg.result === 'fail'" class="wide">失败原因 <i class="req">*</i><a-input v-model:value="selSeg.failReason" size="small" :disabled="!editable" placeholder="如：防护堵未压到底，边缘翘起" @blur="changed" /></label>
-          </div>
-        </div>
 
         <div class="actbar">
           <span class="muted grow" style="font-size:12px">
@@ -810,7 +787,7 @@ function clearBatch() { router.replace({ name: 'annotate' }) }
     <template #footer>
       <div class="row between" style="width:100%">
         <span class="muted" style="font-size:12px">
-          {{ valModal.report?.hasFatal ? '阻断问题必须修正后才可提交' : `按抽检规则（${review.skillOf(clip?.owner ?? me) === 'new' ? '新人全审' : '熟练 ' + review.rateOf(clip?.owner ?? me) + '% 抽检'}）决定是否人工审核` }}
+          {{ valModal.report?.hasFatal ? '阻断问题必须修正后才可提交' : (review.sampleRate >= 100 ? '提交后进入审核员待审池' : `按 ${review.sampleRate}% 抽检比例决定是否人工审核`) }}
         </span>
         <div class="row" style="gap:8px">
           <a-button @click="valModal.open = false">返回修改</a-button>
@@ -859,9 +836,14 @@ function clearBatch() { router.replace({ name: 'annotate' }) }
 .dgrid label.wide { grid-column: span 2; }
 .req { color: var(--crit); font-style: normal; }
 .vseg { display: flex; gap: 2px; padding: 3px; border-radius: 8px; background: var(--surface-3); margin-bottom: 8px; }
-.vseg button { flex: 1; height: 28px; border: 0; border-radius: 6px; background: none; color: var(--muted); font-size: 12.5px; cursor: pointer; }
+.vseg button { flex: 1 1 0; min-width: 0; height: 28px; padding: 0 4px; border: 0; border-radius: 6px; background: none; color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
 .vseg button[aria-selected="true"] { background: var(--surface); color: var(--text); font-weight: 600; box-shadow: 0 1px 2px rgba(15,30,55,.12); }
-.claim { display: flex; gap: 6px; align-items: center; }
+.claim { display: flex; gap: 6px; align-items: center; width: 100%; min-width: 0; }
+.claim :deep(.ant-btn), .claim :deep(.ant-input-number), .claim :deep(.ant-select-selector) { height: 28px !important; }
+.claim :deep(.ant-input-number-input) { height: 26px; }
+.claim :deep(.ant-select-selection-item) { line-height: 26px !important; }
+.claim .grow { flex: 1; min-width: 0; }
+.claim .ct { font-size: 12px; color: var(--muted); white-space: nowrap; }
 .dot { display: block; width: 10px; height: 10px; border-radius: 3px; }
 .actbar { position: sticky; bottom: 0; display: flex; align-items: center; gap: 10px; padding: 12px 0 2px; margin-top: 4px; border-top: 1px solid var(--line); background: var(--surface); flex-wrap: wrap; }
 kbd { font: 11px var(--font-mono); padding: 1px 5px; border: 1px solid var(--line-strong); border-radius: 4px; background: var(--surface-2); }

@@ -11,13 +11,10 @@ import { useSession } from './session'
 /** 待标注 → 已提交（待审核）→ 已通过；审核打回后回到“被打回”，修改后可再次提交 */
 export type ClipStatus = 'todo' | 'rejected' | 'submitted' | 'approved'
 /**
- * 子任务级标注片段。n 为子任务（复合/异常动作），其余为扩展标注内容：
- * act 基础动作、objMain 主操作物体、objSub 辅助物体、desc 语义描述、result 执行结果及失败原因。
- * flag 为审核员标记的问题说明。
+ * 子任务切片：n 为子任务名称（来自字典），s/e 为起止时间；flag 为审核员标记的问题说明。
  */
 export interface Seg {
   id: number; s: number; e: number; n: string; flag?: string
-  act?: string; objMain?: string; objSub?: string[]; desc?: string; result?: 'ok' | 'fail'; failReason?: string
 }
 export type Prio = 'urgent' | 'normal'
 export interface Clip {
@@ -37,7 +34,7 @@ export interface Clip {
 
 /** 子任务候选来自统一字典（复合动作 + 异常动作） */
 function dictNames(scen?: ScenKey) {
-  try { return useDict().actionsFor(scen).filter((x) => x.level !== 'basic').map((x) => x.name) } catch { return [] }
+  try { return useDict().actionsFor(scen).map((x) => x.name) } catch { return [] }
 }
 /** 兼容旧代码按场景索引 SUB_NAMES[scen] 的访问方式 */
 export const SUB_NAMES = new Proxy({} as Record<ScenKey, string[]>, {
@@ -56,12 +53,6 @@ export const colorOf = (_scen: unknown, name: string) => {
   let idx = dictNames().indexOf(name)
   if (idx < 0) idx = hashStr(name)
   return SUB_COLORS[idx % SUB_COLORS.length]
-}
-
-/** 子任务 → [默认基础动作, 默认主物体] */
-const SEG_DEF: Record<string, [string, string]> = {
-  取件上台: ['抓取', '铝合金轮毂'], 夹紧密封: ['按压', '气密专用夹具'], 充气保压: ['', '铝合金轮毂'], 读数判定: ['', '数字精密压力表'], 取下放回: ['放置', '铝合金轮毂'],
-  取防护堵: ['抓取', '橡胶防护堵'], 对准孔位: ['移动', '橡胶防护堵'], 压入到位: ['按压', '橡胶防护堵'], 检查确认: ['按压', '铝合金轮毂'],
 }
 
 export const CLIP_ST: Record<ClipStatus, [string, string]> = {
@@ -133,16 +124,7 @@ export const useAnnotate = defineStore('cl-annotate', () => {
     const cuts = [0]
     for (let k = 1; k < parts; k++) cuts.push(+((dur * k) / preset.length + (r() - 0.5)).toFixed(1))
     cuts.push(parts === preset.length ? dur : +((dur * parts) / preset.length).toFixed(1))
-    return Array.from({ length: parts }, (_, k) => detail({ id: newSegId(), s: cuts[k], e: cuts[k + 1], n: preset[k % preset.length] }, k < 3))
-  }
-  /** 按子任务带出默认的动作 / 主物体；full 时附带语义描述 */
-  function detail(seg: Seg, full = false): Seg {
-    const d = SEG_DEF[seg.n]
-    if (d) { seg.act = d[0] || undefined; seg.objMain = d[1] }
-    seg.objSub = seg.n.includes('防护堵') || seg.n === '对准孔位' || seg.n === '压入到位' ? ['铝合金轮毂'] : []
-    seg.result = 'ok'
-    if (full) seg.desc = dict.byName(seg.n)?.desc
-    return seg
+    return Array.from({ length: parts }, (_, k) => ({ id: newSegId(), s: cuts[k], e: cuts[k + 1], n: preset[k % preset.length] }))
   }
 
   function mk(i: number, scen: ScenKey, batch: string, status: ClipStatus, parts: number, extra: Partial<Clip> = {}): Clip {
@@ -211,7 +193,7 @@ export const useAnnotate = defineStore('cl-annotate', () => {
     c.segs = names.map((n, k) => {
       const s = +acc.toFixed(1)
       acc += (span * w[k]) / sum
-      return detail({ id: newSegId(), s, e: +(k === names.length - 1 ? c.dur - 0.3 : acc - 0.1).toFixed(1), n })
+      return { id: newSegId(), s, e: +(k === names.length - 1 ? c.dur - 0.3 : acc - 0.1).toFixed(1), n }
     })
     return c.segs.length
   }
@@ -390,16 +372,11 @@ export const useAnnotate = defineStore('cl-annotate', () => {
       }
     }
 
-    // 7. 标注内容完整性：字典有效、主物体必填、语义描述长度、失败须填原因
+    // 7. 子任务标签必须在当前字典中
     if (totalSegs < 3) issues.push({ id: 'iss-few', severity: 'warn', rule: '子任务区间过少', desc: `仅 ${totalSegs} 个子任务区间，完整作业通常不少于 3 个` })
     for (const seg of segs) {
       const at = { segId: seg.id, segName: seg.n, time: seg.s }
       if (!dict.isValid(seg.n)) issues.push({ id: `iss-dict-${seg.id}`, severity: 'fatal', rule: '标签不在字典中', desc: `[${seg.n}] 不在当前字典 ${dict.version} 中或已停用，请重新选择`, ...at })
-      if (!seg.objMain) issues.push({ id: `iss-obj-${seg.id}`, severity: 'fatal', rule: '主物体未填写', desc: `[${seg.n}] 未选择主操作物体`, ...at })
-      const len = (seg.desc ?? '').trim().length
-      if (!len) issues.push({ id: `iss-desc-${seg.id}`, severity: 'info', rule: '缺少语义描述', desc: `[${seg.n}] 未填写语义描述（建议 5–200 字）`, ...at })
-      else if (len < 5 || len > 200) issues.push({ id: `iss-desc-${seg.id}`, severity: 'warn', rule: '语义描述长度不符', desc: `[${seg.n}] 描述 ${len} 字，应为 5–200 字`, ...at })
-      if (seg.result === 'fail' && !seg.failReason?.trim()) issues.push({ id: `iss-fail-${seg.id}`, severity: 'fatal', rule: '失败未填原因', desc: `[${seg.n}] 标记为执行失败，但未填写失败原因`, ...at })
     }
 
     const hasFatal = issues.some((i) => i.severity === 'fatal')

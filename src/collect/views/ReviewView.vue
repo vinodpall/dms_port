@@ -10,7 +10,7 @@ import VideoWall from '@/collect/components/annotate/VideoWall.vue'
 import SliceTimeline from '@/collect/components/annotate/SliceTimeline.vue'
 import { fmtT } from '@/collect/components/annotate/motion'
 import { CLIP_ST, colorOf, useAnnotate, type Clip, type Seg } from '@/collect/stores/annotate'
-import { DIMS, ISSUE_KIND, REJECT_TPL, SEV, VERDICT, useReview, type IssueKind, type IssueSev, type Skill, type Verdict } from '@/collect/stores/review'
+import { ISSUE_KIND, REJECT_TPL, SEV, VERDICT, useReview, type IssueKind, type IssueSev, type Verdict } from '@/collect/stores/review'
 import { useDict } from '@/collect/stores/dict'
 import { useLogs } from '@/collect/stores/logs'
 import { useSession } from '@/collect/stores/session'
@@ -86,11 +86,54 @@ const sorted = computed(() => (clip.value ? clip.value.segs.slice().sort((a, b) 
 const coverage = computed(() => (clip.value ? Math.min(100, Math.round((sorted.value.reduce((a, s) => a + (s.e - s.s), 0) / clip.value.dur) * 100)) : 0))
 const issues = computed(() => (clip.value ? rv.getIssues(clip.value.id) : []))
 const issueOf = (seg: Seg) => issues.value.find((x) => x.segId === seg.id)
-const score = computed(() => (clip.value ? rv.calculateScore(clip.value.id) : 0))
-const scoreObj = computed(() => (clip.value ? rv.getScore(clip.value.id) : null))
-const hi = computed(() => (scoreObj.value ? DIMS.filter(([k]) => scoreObj.value![k] >= 8).length : 0))
-const suggestion = computed<Verdict>(() => (clip.value ? rv.suggest(clip.value.id) : 'pass'))
 const fatalN = computed(() => issues.value.filter((x) => x.severity === 'fatal').length)
+
+/* 审核员直接修正切片：领取时保存原始快照，与当前切片对比得出修改项；有修改时「通过」即为「修改后通过」 */
+const orig = ref<Record<string, Seg[]>>({})
+const cloneSegs = (l: Seg[]) => l.map((x) => ({ id: x.id, s: x.s, e: x.e, n: x.n }))
+watch([() => clip.value?.id, reviewable], () => {
+  const c = clip.value
+  if (c && reviewable.value && !orig.value[c.id]) orig.value[c.id] = cloneSegs(c.segs)
+}, { immediate: true })
+const edits = computed<string[]>(() => {
+  const c = clip.value, o = c ? orig.value[c.id] : undefined
+  if (!c || !o) return []
+  const out: string[] = []
+  for (const a of o) {
+    const b = c.segs.find((x) => x.id === a.id)
+    if (!b) { out.push(`删除「${a.n}」`); continue }
+    if (b.n !== a.n) out.push(`「${a.n}」改为「${b.n}」`)
+    if (b.s !== a.s || b.e !== a.e) out.push(`「${b.n}」区间 ${a.s.toFixed(1)}–${a.e.toFixed(1)}s → ${b.s.toFixed(1)}–${b.e.toFixed(1)}s`)
+  }
+  for (const b of c.segs) if (!o.some((a) => a.id === b.id)) out.push(`新增「${b.n}」${b.s.toFixed(1)}–${b.e.toFixed(1)}s`)
+  return out
+})
+function revertEdits() {
+  const c = clip.value, o = c ? orig.value[c.id] : undefined
+  if (!c || !o) return
+  c.segs = cloneSegs(o)
+  toast('已撤销全部修改')
+}
+const subOpts = computed(() => (clip.value ? store.namesFor(clip.value.scen).map((n) => ({ value: n, label: n })) : []))
+function bounds(seg: Seg): [number, number] {
+  const i = sorted.value.findIndex((x) => x.id === seg.id)
+  return [i > 0 ? sorted.value[i - 1].e : 0, i < sorted.value.length - 1 ? sorted.value[i + 1].s : clip.value?.dur ?? 0]
+}
+function setTime(seg: Seg, key: 's' | 'e', v: unknown) {
+  const n = Number(v)
+  if (v === null || v === '' || Number.isNaN(n)) return
+  const [lo, hi] = bounds(seg)
+  const s = key === 's' ? n : seg.s, e = key === 'e' ? n : seg.e
+  if (s < lo - 0.001 || e > hi + 0.001 || e - s < 0.3) return toast('时间范围无效：不能与相邻切片重叠，且时长至少 0.3s', { type: 'warn' })
+  seg[key] = +n.toFixed(1)
+}
+function delSeg(seg: Seg) {
+  const c = clip.value
+  if (!c) return
+  c.segs = c.segs.filter((x) => x.id !== seg.id)
+  rv.removeIssue(c.id, seg.id)
+  if (sel.value === seg.id) sel.value = null
+}
 
 /* 问题标记：类型 + 严重度 */
 const issueModal = reactive({ open: false, seg: null as Seg | null, kind: 'boundary' as IssueKind, severity: 'warn' as IssueSev, desc: '' })
@@ -120,7 +163,8 @@ const KIND_OPTS = (Object.keys(ISSUE_KIND) as IssueKind[]).map((k) => ({ value: 
 const dec = reactive({ open: false, v: 'pass' as Verdict, reasons: [] as string[], text: '' })
 function openDecision(v: Verdict) {
   if (!reviewable.value) return
-  if (v === 'pass' && issues.value.length) return toast('存在已标记问题，请选择「修改后通过」或「驳回」', { type: 'warn' })
+  if (v === 'pass' && edits.value.length) v = 'fixpass'
+  if (v === 'pass' && fatalN.value) return toast('存在致命问题，请先直接修正切片或驳回', { type: 'warn' })
   const flagged = sorted.value.filter((s) => issueOf(s)).map((s) => `「${s.n}」${issueOf(s)!.desc}`).join('；')
   Object.assign(dec, { open: true, v, reasons: [], text: v === 'reject' || v === 'redo' ? flagged : '' })
 }
@@ -128,15 +172,16 @@ function confirmDecision() {
   const c = clip.value
   if (!c) return
   const text = dec.text.trim()
-  const need = dec.v !== 'pass'
-  if (need && !text && !dec.reasons.length) return toast(dec.v === 'fixpass' ? '请说明修改了哪些内容' : '请选择驳回原因或填写说明', { type: 'warn' })
-  const reason = [...dec.reasons, text].filter(Boolean).join('；')
+  if ((dec.v === 'reject' || dec.v === 'redo') && !text && !dec.reasons.length) return toast('请选择原因或填写说明', { type: 'warn' })
+  const reason = dec.v === 'fixpass' ? [edits.value.join('；'), text].filter(Boolean).join('；') : [...dec.reasons, text].filter(Boolean).join('；')
+  if (dec.v === 'reject') revertEdits()
+  delete orig.value[c.id]
   const annotator = c.owner ?? '未知'
   if (dec.v === 'pass' || dec.v === 'fixpass') store.approve(c)
   else if (dec.v === 'reject') store.reject(c, reason, me.value)
   else store.redo(c, reason, me.value)
-  rv.record({ clipId: c.id, annotator, reviewer: me.value, verdict: dec.v, score: score.value, reasons: dec.v === 'pass' ? [] : dec.reasons.length ? dec.reasons : [text] })
-  logs.addLog({ user: me.value, role: session.info.name, module: 'review', moduleName: '审核工作台', action: VERDICT[dec.v][1], target: `${c.file} · 批次 ${c.batch}`, status: dec.v === 'pass' || dec.v === 'fixpass' ? undefined : 'warn', summary: `${VERDICT[dec.v][1]}：评分 ${score.value}${reason ? '，' + reason : ''}` })
+  rv.record({ clipId: c.id, annotator, reviewer: me.value, verdict: dec.v, reasons: dec.v === 'pass' ? [] : dec.v === 'fixpass' ? ['审核员修正 ' + edits.value.length + ' 处'] : dec.reasons.length ? dec.reasons : [text] })
+  logs.addLog({ user: me.value, role: session.info.name, module: 'review', moduleName: '审核工作台', action: VERDICT[dec.v][1], target: `${c.file} · 批次 ${c.batch}`, status: dec.v === 'pass' || dec.v === 'fixpass' ? undefined : 'warn', summary: VERDICT[dec.v][1] + (reason ? '：' + reason : '') })
   dec.open = false
   toast({ pass: '已通过，数据进入格式转换', fixpass: '已修改并通过', reject: `已驳回给 ${annotator} 修改`, redo: '已退回重做，数据回到标注任务池' }[dec.v])
 }
@@ -169,17 +214,10 @@ onBeforeUnmount(() => {
 const st = computed(() => rv.stats)
 const maxReason = computed(() => Math.max(1, ...st.value.reasons.map((r) => r[1])))
 const maxVerdict = computed(() => Math.max(1, ...st.value.verdicts.map((r) => r.n)))
-const SKILL: Record<Skill, string> = { new: '新人', skilled: '熟练' }
-function setSkill(name: string, v: Skill) {
-  const a = rv.annotators.find((x) => x.name === name)
-  if (a) a.skill = v
-  else rv.annotators.push({ name, skill: v })
-  toast(`${name} 设为${SKILL[v]}，抽检比例 ${rv.sampleRate[v]}%`)
-}
 </script>
 
 <template>
-  <PageHead title="审核工作台" desc="从待审池领取后审核：6 维度 10 分制评分、问题按严重度标记，四种结论；按标注员熟练度抽检">
+  <PageHead title="审核工作台" desc="从待审池领取后审核：小问题直接修正切片后通过，大问题标记后驳回或退回重做">
     <div class="row" style="gap:8px;align-items:center">
       <div class="seg" role="tablist">
         <button type="button" role="tab" :aria-selected="activeTab === 'review'" @click="activeTab = 'review'"><span>审核</span></button>
@@ -200,9 +238,10 @@ function setSkill(name: string, v: Skill) {
             <button type="button" role="tab" :aria-selected="view === 'done'" @click="view = 'done'">已审 <span class="num">{{ done.length }}</span></button>
           </div>
           <div v-if="view === 'pool'" class="claim">
-            <span class="muted" style="font-size:12px">加急优先</span><span class="grow" />
-            <a-input-number v-model:value="claimN" size="small" :min="1" :max="10" style="width:64px" aria-label="领取条数" />
-            <a-button size="small" type="primary" :disabled="!store.reviewPool.length" @click="doClaim()">批量领取</a-button>
+            <span class="ct">每次领取</span>
+            <a-input-number v-model:value="claimN" size="small" :min="1" :max="10" style="width:60px" aria-label="领取条数" />
+            <span class="ct">条</span><span class="grow" />
+            <a-button size="small" type="primary" :disabled="!store.reviewPool.length" title="按加急优先、时限从近到远领取" @click="doClaim()">批量领取</a-button>
           </div>
         </template>
         <template #meta="{ clip: c }">
@@ -222,10 +261,9 @@ function setSkill(name: string, v: Skill) {
                 <span class="mono ell">{{ clip.file }}</span>
                 <StatusBadge :kind="CLIP_ST[clip.status][0] as BadgeKind" :text="CLIP_ST[clip.status][1]" />
                 <span v-if="clip.status === 'submitted'" class="tag" :class="clip.prio === 'urgent' ? 'crit' : ''">{{ clip.prio === 'urgent' ? '加急' : '普通' }} · {{ dueText(clip) }}</span>
-                <span class="score-pill" :class="score >= 8 ? 'good' : 'warn'">{{ score }} / 10</span>
               </div>
               <div class="muted" style="font-size:12.5px;margin-top:2px">
-                {{ SCEN[clip.scen].name }} · {{ clip.dur }} 秒 · 批次 {{ clip.batch }} · 标注员 {{ clip.owner ?? '-' }}（{{ SKILL[rv.skillOf(clip.owner ?? '')] }}，抽检 {{ rv.rateOf(clip.owner ?? '') }}%）
+                {{ SCEN[clip.scen].name }} · {{ clip.dur }} 秒 · 批次 {{ clip.batch }} · 标注员 {{ clip.owner ?? '-' }}
               </div>
             </div>
           </div>
@@ -250,52 +288,47 @@ function setSkill(name: string, v: Skill) {
             <span class="muted" style="font-size:12.5px">覆盖率 {{ coverage }}% · 切片 {{ sorted.length }} 个 · 问题 {{ issues.length }} 个</span>
           </div>
 
-          <SliceTimeline v-model:t="t" :clip="clip" :selected="sel" :editable="false" @select="sel = $event" />
+          <SliceTimeline v-model:t="t" :clip="clip" :selected="sel" :editable="reviewable" @select="sel = $event" />
 
-          <div v-if="scoreObj" class="card score-card">
-            <div class="row between" style="margin-bottom:8px">
-              <div class="row" style="gap:6px"><AppIcon name="shield" size="sm" /><b style="font-size:13.5px">6 维度评分（10 分制）</b><span class="muted" style="font-size:12px">≥5 个维度 ≥8 分且无维度低于 6 分建议通过</span></div>
-              <span class="row" style="gap:8px">
-                <span class="muted" style="font-size:12px">{{ hi }}/6 维度 ≥8</span>
-                <span class="tag" :class="VERDICT[suggestion][0]">建议：{{ VERDICT[suggestion][1] }}</span>
-              </span>
-            </div>
-            <div class="dim-grid">
-              <div v-for="d in DIMS" :key="d[0]" class="dim-item">
-                <div class="row between"><span class="lbl">{{ d[1] }}</span><b class="num" :style="{ color: scoreObj[d[0]] >= 8 ? 'var(--good-solid)' : scoreObj[d[0]] < 6 ? 'var(--crit-solid)' : 'var(--warn-solid)' }">{{ scoreObj[d[0]] }}</b></div>
-                <a-slider v-model:value="scoreObj[d[0]]" :min="1" :max="10" :disabled="!reviewable" :tooltip-open="false" style="margin:4px 4px 0" />
-                <span class="dim-hint">{{ d[2] }}</span>
-              </div>
-            </div>
+          <div v-if="reviewable" class="callout" :class="edits.length ? 'info' : ''">
+            <AppIcon :name="edits.length ? 'pencil' : 'info'" />
+            <span class="grow" v-if="!edits.length">小问题可直接在时间轴拖动边界，或在下表修改子任务、起止时间、删除切片；修改后点「修改后通过」即可，无需退回标注员</span>
+            <span class="grow" v-else><b>已修正 {{ edits.length }} 处：</b>{{ edits.slice(0, 3).join('；') }}{{ edits.length > 3 ? ' 等' : '' }}</span>
+            <a-button v-if="edits.length" size="small" @click="revertEdits">撤销全部修改</a-button>
           </div>
 
           <div style="font-weight:600;font-size:13.5px;margin-top:4px">逐段核对 ({{ sorted.length }})</div>
           <table class="stbl" aria-label="切片明细与问题标记">
             <thead>
-              <tr><th style="width:26px" /><th style="width:96px">子任务</th><th style="width:96px">区间</th><th style="width:130px">动作 / 物体</th><th>语义描述</th><th style="width:70px">结果</th><th style="width:170px">问题</th><th style="width:130px">操作</th></tr>
+              <tr><th style="width:26px" /><th>子任务</th><th style="width:120px">开始 (s)</th><th style="width:120px">结束 (s)</th><th style="width:70px">时长</th><th style="width:220px">问题</th><th style="width:150px">操作</th></tr>
             </thead>
             <tbody>
               <tr v-for="s in sorted" :key="s.id" :class="{ sel: sel === s.id, flag: !!issueOf(s) }" @click="sel = s.id">
                 <td><i class="dot" :style="{ background: colorOf(clip.scen, s.n) }" /></td>
-                <td><b>{{ s.n }}</b><span v-if="!dict.isValid(s.n)" class="tag crit" style="font-size:10.5px;margin-left:4px">非字典</span></td>
-                <td class="num muted">{{ s.s.toFixed(1) }}–{{ s.e.toFixed(1) }}s</td>
-                <td style="font-size:12px">{{ s.act || '—' }} · <b>{{ s.objMain || '缺主物体' }}</b><span v-if="s.objSub?.length" class="muted"> + {{ s.objSub.join('、') }}</span></td>
-                <td class="muted" style="font-size:12px">{{ s.desc || '—' }}</td>
-                <td><span class="tag" :class="s.result === 'fail' ? 'crit' : 'good'" style="font-size:11px" :title="s.failReason">{{ s.result === 'fail' ? '失败' : '成功' }}</span></td>
+                <td>
+                  <a-select v-if="reviewable" v-model:value="s.n" size="small" style="width:100%" aria-label="子任务" :options="subOpts" @click.stop />
+                  <b v-else>{{ s.n }}</b>
+                  <span v-if="!dict.isValid(s.n)" class="tag crit" style="font-size:10.5px;margin-left:4px">非字典</span>
+                </td>
+                <td @click.stop><a-input-number v-if="reviewable" :value="s.s" size="small" :min="0" :max="clip.dur" :step="0.1" style="width:100%" aria-label="开始时间" @change="(v: unknown) => setTime(s, 's', v)" /><span v-else class="num">{{ s.s.toFixed(1) }}</span></td>
+                <td @click.stop><a-input-number v-if="reviewable" :value="s.e" size="small" :min="0" :max="clip.dur" :step="0.1" style="width:100%" aria-label="结束时间" @change="(v: unknown) => setTime(s, 'e', v)" /><span v-else class="num">{{ s.e.toFixed(1) }}</span></td>
+                <td class="num muted">{{ (s.e - s.s).toFixed(1) }} s</td>
                 <td>
                   <template v-if="issueOf(s)"><span class="tag" :class="SEV[issueOf(s)!.severity][0]" style="font-size:11px">{{ SEV[issueOf(s)!.severity][1] }}</span> <span style="font-size:12px">{{ ISSUE_KIND[issueOf(s)!.kind] }}：{{ issueOf(s)!.desc }}</span></template>
                   <span v-else class="muted" style="font-size:12px">—</span>
                 </td>
                 <td @click.stop>
-                  <div class="row" style="gap:4px">
+                  <div class="row" style="gap:2px">
                     <a-button size="small" type="text" @click="t = s.s">定位</a-button>
                     <template v-if="reviewable">
-                      <a-button v-if="!issueOf(s)" size="small" danger @click="openTagIssue(s)">标记</a-button>
-                      <a-button v-else size="small" @click="removeIssue(s)">取消</a-button>
+                      <a-button v-if="!issueOf(s)" size="small" type="text" @click="openTagIssue(s)">标记</a-button>
+                      <a-button v-else size="small" type="text" @click="removeIssue(s)">取消标记</a-button>
+                      <a-button size="small" type="text" danger @click="delSeg(s)">删除</a-button>
                     </template>
                   </div>
                 </td>
               </tr>
+              <tr v-if="!sorted.length"><td colspan="7" class="muted" style="text-align:center;padding:20px">没有切片</td></tr>
             </tbody>
           </table>
 
@@ -304,8 +337,7 @@ function setSkill(name: string, v: Skill) {
             <template v-if="reviewable">
               <a-button danger @click="openDecision('redo')">退回重做</a-button>
               <a-button danger @click="openDecision('reject')">驳回</a-button>
-              <a-button @click="openDecision('fixpass')">修改后通过</a-button>
-              <a-button type="primary" :disabled="fatalN > 0" :title="fatalN ? '存在致命问题，不能直接通过' : undefined" @click="openDecision('pass')"><AppIcon name="check" size="sm" />通过</a-button>
+              <a-button type="primary" :disabled="fatalN > 0 && !edits.length" :title="fatalN && !edits.length ? '存在致命问题，请直接修正切片或驳回' : undefined" @click="openDecision('pass')"><AppIcon name="check" size="sm" />{{ edits.length ? '修改后通过' : '通过' }}</a-button>
             </template>
             <a-button v-else-if="inPool" type="primary" @click="doClaim(clip)">领取此条</a-button>
             <span v-else-if="clip.status === 'approved'" style="color:var(--good-solid);font-weight:600;display:flex;align-items:center;gap:4px"><AppIcon name="check" size="sm" />已通过并归档</span>
@@ -321,7 +353,7 @@ function setSkill(name: string, v: Skill) {
       <div class="card kpi"><span class="k">今日审核</span><span class="v">{{ st.today }}<small>条</small></span><span class="d">累计 {{ st.total }} 条</span></div>
       <div class="card kpi"><span class="k">通过率</span><span class="v">{{ st.passRate }}<small>%</small></span><span class="d">含修改后通过</span></div>
       <div class="card kpi"><span class="k">驳回率</span><span class="v">{{ st.rejectRate }}<small>%</small></span><span class="d">含退回重做</span></div>
-      <div class="card kpi"><span class="k">平均分</span><span class="v">{{ st.avg }}<small>/ 10</small></span><span class="d">6 维度平均</span></div>
+      <div class="card kpi"><span class="k">修改后通过</span><span class="v">{{ st.fixRate }}<small>%</small></span><span class="d">审核员直接修正的占比</span></div>
     </div>
     <div class="stat-grid">
       <div class="card pad">
@@ -329,34 +361,15 @@ function setSkill(name: string, v: Skill) {
         <div v-for="x in st.verdicts" :key="x.v" class="bar-row"><span class="bl">{{ VERDICT[x.v][1] }}</span><span class="bt"><i :class="VERDICT[x.v][0]" :style="{ width: (x.n / maxVerdict) * 100 + '%' }" /></span><span class="num">{{ x.n }}</span></div>
       </div>
       <div class="card pad">
-        <b>常见驳回 / 修改原因</b>
+        <b>常见驳回原因</b>
         <div v-for="r in st.reasons.slice(0, 6)" :key="r[0]" class="bar-row"><span class="bl wide" :title="r[0]">{{ r[0] }}</span><span class="bt"><i class="warn" :style="{ width: (r[1] / maxReason) * 100 + '%' }" /></span><span class="num">{{ r[1] }}</span></div>
         <div v-if="!st.reasons.length" class="muted">暂无</div>
       </div>
       <div class="card pad">
         <b>抽检比例</b>
-        <div class="muted" style="font-size:12px;margin:4px 0 10px">提交时按标注员等级随机抽检，未抽中的免检通过</div>
-        <div class="row" style="gap:10px;margin-bottom:8px"><span style="width:48px">新人</span><a-input-number v-model:value="rv.sampleRate.new" :min="10" :max="100" :step="10" size="small" addon-after="%" style="width:110px" /></div>
-        <div class="row" style="gap:10px"><span style="width:48px">熟练</span><a-input-number v-model:value="rv.sampleRate.skilled" :min="10" :max="100" :step="10" size="small" addon-after="%" style="width:110px" /></div>
+        <div class="muted" style="font-size:12px;margin:4px 0 10px;line-height:1.6">标注员提交后按比例随机抽中进入待审池，未抽中的免检通过；100% 为全检</div>
+        <div class="row" style="gap:10px"><a-input-number v-model:value="rv.sampleRate" :min="10" :max="100" :step="10" addon-after="%" style="width:130px" aria-label="抽检比例" /></div>
       </div>
-    </div>
-    <div class="card" style="margin-top:16px">
-      <div class="pad" style="padding-bottom:0"><b>标注员绩效</b></div>
-      <table class="stbl" style="margin-top:8px" aria-label="标注员绩效">
-        <thead><tr><th>标注员</th><th style="width:120px">等级</th><th>审核条数</th><th>通过率</th><th>一次通过率</th><th>驳回 / 重做</th><th>平均分</th><th>抽检比例</th></tr></thead>
-        <tbody>
-          <tr v-for="p in st.people" :key="p.name">
-            <td><b>{{ p.name }}</b></td>
-            <td><a-select :value="p.skill" size="small" style="width:90px" :options="[{ value: 'new', label: '新人' }, { value: 'skilled', label: '熟练' }]" @change="(v: unknown) => setSkill(p.name, v as Skill)" /></td>
-            <td class="num">{{ p.total }}</td>
-            <td class="num" :style="{ color: p.passRate >= 85 ? 'var(--good-solid)' : 'var(--warn-solid)' }">{{ p.passRate }}%</td>
-            <td class="num">{{ p.firstPass }}%</td>
-            <td class="num">{{ p.rejects }}</td>
-            <td class="num">{{ p.avg }}</td>
-            <td class="num muted">{{ rv.rateOf(p.name) }}%</td>
-          </tr>
-        </tbody>
-      </table>
     </div>
   </template>
 
@@ -376,14 +389,18 @@ function setSkill(name: string, v: Skill) {
 
   <a-modal v-model:open="dec.open" :title="VERDICT[dec.v][1]" centered :ok-text="'确认' + VERDICT[dec.v][1]" cancel-text="取消" :ok-button-props="{ danger: dec.v === 'reject' || dec.v === 'redo' }" @ok="confirmDecision">
     <div class="callout" :class="VERDICT[dec.v][0]" style="margin-bottom:12px"><span>{{ VERDICT[dec.v][2] }}</span></div>
-    <div class="muted" style="font-size:12.5px;margin-bottom:10px">评分 {{ score }} / 10 · 系统建议「{{ VERDICT[suggestion][1] }}」</div>
+    <div v-if="dec.v === 'fixpass'" style="margin-bottom:10px;font-size:12.5px">
+      <div style="font-weight:600;margin-bottom:4px">本次修正（{{ edits.length }} 处）</div>
+      <ul style="margin:0;padding-left:18px;color:var(--muted);line-height:1.7"><li v-for="x in edits" :key="x">{{ x }}</li></ul>
+    </div>
+    <div v-if="dec.v === 'reject' && edits.length" class="muted" style="font-size:12px;margin-bottom:10px">驳回时会撤销你对切片的修改，由标注员按意见修改。</div>
     <template v-if="dec.v === 'reject' || dec.v === 'redo'">
       <div style="font-weight:600;margin-bottom:6px">原因（可多选）</div>
       <a-checkbox-group v-model:value="dec.reasons" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px">
         <a-checkbox v-for="r in REJECT_TPL" :key="r" :value="r">{{ r }}</a-checkbox>
       </a-checkbox-group>
     </template>
-    <a-textarea v-if="dec.v !== 'pass'" v-model:value="dec.text" :rows="3" :maxlength="200" show-count :placeholder="dec.v === 'fixpass' ? '说明修改了哪些内容，如：第 2 段结束时间改为 8.4s' : '补充说明修改要求'" />
+    <a-textarea v-if="dec.v !== 'pass'" v-model:value="dec.text" :rows="3" :maxlength="200" show-count style="margin-bottom:18px" :placeholder="dec.v === 'fixpass' ? '补充说明（可选）' : '补充说明修改要求'" />
   </a-modal>
 
   <a-modal v-model:open="shortcutGuideOpen" title="审核快捷键" width="480px" centered :footer="null">
@@ -407,12 +424,16 @@ function setSkill(name: string, v: Skill) {
 .stbl tr.flag td { background: var(--crit-soft); }
 .dot { display: block; width: 10px; height: 10px; border-radius: 3px; }
 
-.score-card { padding: 12px 14px; background: var(--surface-2); border: 1px solid var(--line); }
 .vseg { display: flex; gap: 2px; padding: 3px; border-radius: 8px; background: var(--surface-3); margin-bottom: 8px; }
-.vseg button { flex: 1; height: 28px; border: 0; border-radius: 6px; background: none; color: var(--muted); font-size: 12.5px; cursor: pointer; }
+.vseg button { flex: 1 1 0; min-width: 0; height: 28px; padding: 0 4px; border: 0; border-radius: 6px; background: none; color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
 .vseg button[aria-selected="true"] { background: var(--surface); color: var(--text); font-weight: 600; box-shadow: 0 1px 2px rgba(15,30,55,.12); }
-.claim { display: flex; gap: 6px; align-items: center; }
-.stat-grid { display: grid; grid-template-columns: 1fr 1.3fr 1fr; gap: 16px; }
+.claim { display: flex; gap: 6px; align-items: center; width: 100%; min-width: 0; }
+.claim :deep(.ant-btn), .claim :deep(.ant-input-number), .claim :deep(.ant-select-selector) { height: 28px !important; }
+.claim :deep(.ant-input-number-input) { height: 26px; }
+.claim :deep(.ant-select-selection-item) { line-height: 26px !important; }
+.claim .grow { flex: 1; min-width: 0; }
+.claim .ct { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.stat-grid { display: grid; grid-template-columns: 1fr 1.3fr 1fr; gap: 16px; align-items: start; }
 .pad { padding: 14px 16px; }
 .bar-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-size: 12.5px; }
 .bar-row .bl { width: 84px; color: var(--muted); flex: none; }
@@ -422,14 +443,7 @@ function setSkill(name: string, v: Skill) {
 .bar-row .bt i.good { background: var(--good-solid); }
 .bar-row .bt i.warn { background: var(--warn-solid); }
 .bar-row .bt i.crit { background: var(--crit-solid); }
-.dim-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-.dim-item { background: var(--surface); padding: 10px 12px; border-radius: 6px; border: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; }
-.dim-item .lbl { font-size: 12.5px; font-weight: 600; }
-.dim-item .dim-hint { font-size: 11px; color: var(--muted); }
 
-.score-pill { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 12px; }
-.score-pill.good { background: var(--good-soft); color: var(--good-solid); }
-.score-pill.warn { background: var(--warn-soft); color: var(--warn-solid); }
 
 .actbar { position: sticky; bottom: 0; display: flex; align-items: center; gap: 10px; padding: 12px 0 2px; margin-top: 4px; border-top: 1px solid var(--line); background: var(--surface); flex-wrap: wrap; }
 kbd { font: 11px var(--font-mono); padding: 1px 5px; border: 1px solid var(--line-strong); border-radius: 4px; background: var(--surface-2); }
@@ -439,5 +453,5 @@ kbd { font: 11px var(--font-mono); padding: 1px 5px; border: 1px solid var(--lin
 .kbd-row .keys { display: flex; gap: 4px; align-items: center; }
 .kbd-row .desc { font-size: 13px; color: var(--text); }
 
-@media (max-width: 900px) { .ann2, .stat-grid { grid-template-columns: 1fr; } .dim-grid { grid-template-columns: 1fr; } }
+@media (max-width: 900px) { .ann2, .stat-grid { grid-template-columns: 1fr; } }
 </style>

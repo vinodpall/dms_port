@@ -5,17 +5,18 @@ import { useLogs } from './logs'
 
 /**
  * 统一标注字典：标注员选子任务/物体、审核员校验标签都用这一份。
- * 动作分三级：基础动作 / 复合动作（即子任务，标注的主粒度）/ 异常动作；每次修改递增小版本号。
+ * 动作即子任务（标注的唯一粒度），分标准子任务 / 异常子任务；物体用于任务配置。每次修改递增小版本号。
  */
 export type DictCat = 'action' | 'object'
-export type ActLevel = 'basic' | 'compound' | 'abnormal'
-export const LEVELS: Record<ActLevel, string> = { basic: '基础动作', compound: '复合动作（子任务）', abnormal: '异常动作' }
+export type ActLevel = 'compound' | 'abnormal'
+export const LEVELS: Record<ActLevel, string> = { compound: '标准子任务', abnormal: '异常子任务' }
 export interface DictItem {
   id: string; code: string; name: string; category: DictCat; level?: ActLevel; scen: ScenKey | 'common'
   aliases: string[]; desc: string; /** 该场景的核心必选子任务 */ required?: boolean
   status: 'active' | 'inactive'; updatedAt: string; updatedBy: string
 }
-export interface DictChange { ver: string; t: string; by: string; summary: string }
+export type DictOp = '新增' | '修改' | '启用' | '停用' | '删除'
+export interface DictChange { ver: string; t: string; by: string; op: DictOp; target: string; summary: string }
 
 const T = '2026-10-12 16:00'
 const A = (id: string, code: string, name: string, level: ActLevel, scen: DictItem['scen'], aliases: string[], desc: string, required = false): DictItem =>
@@ -24,10 +25,6 @@ const O = (id: string, code: string, name: string, scen: DictItem['scen'], alias
   ({ id, code, name, category: 'object', scen, aliases, desc, status: 'active', updatedAt: T, updatedBy: '陈静' })
 
 const DEFAULTS: DictItem[] = [
-  A('D-A01', 'GRASP', '抓取', 'basic', 'common', ['拿取', '拾取', 'Grasp'], '末端夹爪或人手接触工件并施加夹紧力提起'),
-  A('D-A02', 'MOVE', '移动', 'basic', 'common', ['搬运', 'Move'], '持物从一处平移到另一处'),
-  A('D-A03', 'RELEASE', '放置', 'basic', 'common', ['松开', 'Release'], '松开夹爪，工件稳定落位'),
-  A('D-A04', 'PRESS', '按压', 'basic', 'common', ['推压', 'Press'], '沿法向施加推力'),
   A('D-S01', 'LOAD', '取件上台', 'compound', 'qmd', ['上料', '取件'], '抓取工件移送至检测工位并安放平稳', true),
   A('D-S02', 'CLAMP', '夹紧密封', 'compound', 'qmd', ['固定', '闭合密封', 'Seal'], '气动机构闭合压紧，密封胶垫完全压实气阀孔', true),
   A('D-S03', 'INFLATE', '充气保压', 'compound', 'qmd', ['加压', '气密测试'], '向工件充入测试气体并保持稳定', true),
@@ -51,27 +48,30 @@ const DEFAULTS: DictItem[] = [
 export const useDict = defineStore('cl-dict', () => {
   const items = ref<DictItem[]>(DEFAULTS.map((x) => ({ ...x, aliases: [...x.aliases] })))
   const version = ref('v1.3')
+  const C = (ver: string, t: string, by: string, op: DictOp, target: string, summary: string): DictChange => ({ ver, t, by, op, target, summary })
   const changes = ref<DictChange[]>([
-    { ver: 'v1.3', t: '10-13 14:10', by: '陈静', summary: '新增异常动作「对位偏差」' },
-    { ver: 'v1.2', t: '10-12 16:00', by: '周工', summary: '气密性检测子任务定义调整' },
-    { ver: 'v1.1', t: '10-08 10:20', by: '陈静', summary: '合并标注与审核两套字典' },
+    C('v1.3', '2026-10-13 14:10', '陈静', '新增', '对位偏差', '新增异常子任务「对位偏差」（防护堵安装）'),
+    C('v1.2', '2026-10-12 16:00', '周工', '修改', '夹紧密封', '调整定义：以密封胶垫完全压实为结束边界'),
+    C('v1.2', '2026-10-12 15:52', '周工', '修改', '充气保压', '新增别名「气密测试」'),
+    C('v1.1', '2026-10-10 11:30', '陈静', '停用', '人工复检', '停用「人工复检」，并入「读数判定」'),
+    C('v1.1', '2026-10-08 10:20', '陈静', '新增', '检查确认', '新增防护堵安装子任务「检查确认」'),
+    C('v1.0', '2026-10-06 09:00', '陈静', '新增', '初始字典', '合并标注与审核两套字典，建立初始版本（16 个词条）'),
   ])
   const now = () => {
     const d = new Date(), p = (n: number) => String(n).padStart(2, '0')
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`
   }
-  function bump(by: string, summary: string) {
+  function bump(by: string, op: DictOp, target: string, summary: string) {
     const [maj, min] = version.value.slice(1).split('.').map(Number)
     version.value = `v${maj}.${min + 1}`
-    changes.value.unshift({ ver: version.value, t: '刚刚', by, summary })
+    changes.value.unshift({ ver: version.value, t: now(), by, op, target, summary })
     useLogs().addLog({ user: by, role: '审核员', module: 'vocab', moduleName: '标注字典', action: '字典变更', target: version.value, summary })
   }
   const active = computed(() => items.value.filter((x) => x.status === 'active'))
   const fits = (x: DictItem, scen?: ScenKey) => !scen || x.scen === 'common' || x.scen === scen
-  /** 标注下拉：某场景可用的动作（复合动作在前，其次异常、基础） */
+  /** 标注下拉：某场景可用的子任务（标准在前，异常在后） */
   function actionsFor(scen?: ScenKey) {
-    const order: Record<ActLevel, number> = { compound: 0, abnormal: 1, basic: 2 }
-    return active.value.filter((x) => x.category === 'action' && fits(x, scen)).sort((a, b) => order[a.level ?? 'basic'] - order[b.level ?? 'basic'])
+    return active.value.filter((x) => x.category === 'action' && fits(x, scen)).sort((a, b) => (a.level === 'abnormal' ? 1 : 0) - (b.level === 'abnormal' ? 1 : 0))
   }
   const objectsFor = (scen?: ScenKey) => active.value.filter((x) => x.category === 'object' && fits(x, scen))
   /** 某场景核心必选子任务 */
@@ -84,26 +84,33 @@ export const useDict = defineStore('cl-dict', () => {
   function add(x: Omit<DictItem, 'id' | 'updatedAt' | 'updatedBy' | 'status'>, by: string) {
     const id = 'D-' + (x.category === 'object' ? 'O' : 'A') + String(items.value.length + 1).padStart(2, '0') + Math.floor(Math.random() * 90 + 10)
     items.value.unshift({ ...x, id, status: 'active', updatedAt: now(), updatedBy: by })
-    bump(by, '新增词条「' + x.name + '」')
+    bump(by, '新增', x.name, '新增' + (x.category === 'object' ? '物体' : LEVELS[x.level ?? 'compound']) + '「' + x.name + '」')
   }
   function update(id: string, patch: Partial<DictItem>, by: string) {
     const it = items.value.find((x) => x.id === id)
     if (!it) return
+    const diff: string[] = []
+    if (patch.name && patch.name !== it.name) diff.push('名称「' + it.name + '」→「' + patch.name + '」')
+    if (patch.desc !== undefined && patch.desc !== it.desc) diff.push('定义')
+    if (patch.aliases && patch.aliases.join() !== it.aliases.join()) diff.push('别名')
+    if (patch.scen && patch.scen !== it.scen) diff.push('适用场景')
+    if (patch.level && patch.level !== it.level) diff.push('分级')
+    if (patch.required !== undefined && !!patch.required !== !!it.required) diff.push(patch.required ? '设为必选' : '取消必选')
     Object.assign(it, patch, { updatedAt: now(), updatedBy: by })
-    bump(by, '修改词条「' + it.name + '」')
+    bump(by, '修改', it.name, diff.length ? '修改' + diff.join('、') : '保存（无内容变化）')
   }
   function toggle(id: string, by: string) {
     const it = items.value.find((x) => x.id === id)
     if (!it) return
     it.status = it.status === 'active' ? 'inactive' : 'active'
     it.updatedAt = now(); it.updatedBy = by
-    bump(by, (it.status === 'active' ? '启用' : '停用') + '词条「' + it.name + '」')
+    bump(by, it.status === 'active' ? '启用' : '停用', it.name, (it.status === 'active' ? '启用' : '停用') + '「' + it.name + '」')
   }
   function remove(id: string, by: string) {
     const i = items.value.findIndex((x) => x.id === id)
     if (i < 0) return
     const [r] = items.value.splice(i, 1)
-    bump(by, '删除词条「' + r.name + '」')
+    bump(by, '删除', r.name, '删除「' + r.name + '」')
   }
   return { items, version, changes, active, actionsFor, objectsFor, requiredFor, sequenceFor, byName, isValid, add, update, toggle, remove }
 })

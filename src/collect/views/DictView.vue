@@ -3,13 +3,13 @@ import { computed, reactive, ref } from 'vue'
 import PageHead from '@/collect/components/PageHead.vue'
 import AppIcon from '@/components/AppIcon.vue'
 import { SCEN, type ScenKey } from '@/collect/constants'
-import { LEVELS, useDict, type ActLevel, type DictCat, type DictItem } from '@/collect/stores/dict'
+import { LEVELS, useDict, type ActLevel, type DictCat, type DictItem, type DictOp } from '@/collect/stores/dict'
 import { useAnnotate } from '@/collect/stores/annotate'
 import { useSession } from '@/collect/stores/session'
 import { toast } from '@/composables/toast'
 import { confirmDlg } from '@/collect/composables/confirm'
 
-/** 统一标注字典：标注员下拉选项与审核校验共用这一份，按动作分级 + 物体管理，每次修改递增版本 */
+/** 统一标注字典：标注员下拉选项与审核校验共用这一份；子任务分标准 / 异常，物体用于任务配置；每次修改递增版本 */
 const dict = useDict()
 const ann = useAnnotate()
 const session = useSession()
@@ -18,12 +18,12 @@ type Tab = 'all' | ActLevel | 'object'
 const tab = ref<Tab>('all')
 const scen = ref<'all' | ScenKey | 'common'>('all')
 const q = ref('')
-const TABS: [Tab, string][] = [['all', '全部'], ['compound', '复合动作（子任务）'], ['basic', '基础动作'], ['abnormal', '异常动作'], ['object', '物体']]
+const TABS: [Tab, string][] = [['all', '全部'], ['compound', '标准子任务'], ['abnormal', '异常子任务'], ['object', '物体']]
 const count = (t: Tab) => dict.items.filter((x) => match(x, t)).length
 function match(x: DictItem, t: Tab) {
   if (t === 'all') return true
   if (t === 'object') return x.category === 'object'
-  return x.category === 'action' && (x.level ?? 'basic') === t
+  return x.category === 'action' && (x.level ?? 'compound') === t
 }
 const rows = computed(() => dict.items.filter((x) => {
   if (!match(x, tab.value)) return false
@@ -32,7 +32,7 @@ const rows = computed(() => dict.items.filter((x) => {
   return !k || [x.name, x.code, ...x.aliases].some((v) => v.toLowerCase().includes(k))
 }))
 /** 被标注引用的次数，删除前提示 */
-const usage = (name: string) => ann.clips.reduce((a, c) => a + c.segs.filter((s) => s.n === name || s.act === name || s.objMain === name || s.objSub?.includes(name)).length, 0)
+const usage = (name: string) => ann.clips.reduce((a, c) => a + c.segs.filter((s) => s.n === name).length, 0)
 const SCEN_OPTS = (Object.keys(SCEN) as ScenKey[]).map((k) => ({ value: k, label: SCEN[k].short }))
 const LEVEL_OPTS = (Object.keys(LEVELS) as ActLevel[]).map((k) => ({ value: k, label: LEVELS[k] }))
 const scenLabel = (s: DictItem['scen']) => (s === 'common' ? '通用' : SCEN[s].short)
@@ -42,7 +42,7 @@ function openAdd() {
   Object.assign(modal, { open: true, id: '', code: '', name: '', category: tab.value === 'object' ? 'object' : 'action', level: tab.value === 'all' || tab.value === 'object' ? 'compound' : tab.value, scen: 'common', aliases: '', desc: '', required: false })
 }
 function openEdit(x: DictItem) {
-  Object.assign(modal, { open: true, id: x.id, code: x.code, name: x.name, category: x.category, level: x.level ?? 'basic', scen: x.scen, aliases: x.aliases.join('、'), desc: x.desc, required: !!x.required })
+  Object.assign(modal, { open: true, id: x.id, code: x.code, name: x.name, category: x.category, level: x.level ?? 'compound', scen: x.scen, aliases: x.aliases.join('、'), desc: x.desc, required: !!x.required })
 }
 function save() {
   const name = modal.name.trim(), code = modal.code.trim().toUpperCase()
@@ -57,12 +57,7 @@ function save() {
   }
   if (modal.id) {
     const old = dict.items.find((x) => x.id === modal.id)
-    if (old && old.name !== name) ann.clips.forEach((c) => c.segs.forEach((s) => {
-      if (s.n === old.name) s.n = name
-      if (s.act === old.name) s.act = name
-      if (s.objMain === old.name) s.objMain = name
-      if (s.objSub) s.objSub = s.objSub.map((o) => (o === old.name ? name : o))
-    }))
+    if (old && old.name !== name) ann.clips.forEach((c) => c.segs.forEach((s) => { if (s.n === old.name) s.n = name }))
     dict.update(modal.id, data, session.info.user)
     toast('已保存，字典升级为 ' + dict.version)
   } else {
@@ -82,27 +77,58 @@ function toggle(x: DictItem) {
   dict.toggle(x.id, session.info.user)
   toast((x.status === 'active' ? '已启用' : '已停用') + '，字典升级为 ' + dict.version)
 }
-const stat = computed(() => ({
-  compound: dict.active.filter((x) => x.level === 'compound').length,
-  abnormal: dict.active.filter((x) => x.level === 'abnormal').length,
-  object: dict.active.filter((x) => x.category === 'object').length,
+
+/** 操作记录子页 */
+const view = ref<'list' | 'log'>('list')
+const logQ = ref('')
+const logOp = ref<'all' | DictOp>('all')
+const logBy = ref('all')
+const OPS: DictOp[] = ['新增', '修改', '启用', '停用', '删除']
+const OP_CLS: Record<DictOp, string> = { 新增: 'good', 修改: 'info', 启用: 'good', 停用: 'warn', 删除: 'crit' }
+const byOpts = computed(() => [{ value: 'all', label: '全部操作人' }, ...[...new Set(dict.changes.map((c) => c.by))].map((v) => ({ value: v, label: v }))])
+const logs = computed(() => dict.changes.filter((c) => {
+  if (logOp.value !== 'all' && c.op !== logOp.value) return false
+  if (logBy.value !== 'all' && c.by !== logBy.value) return false
+  const k = logQ.value.trim()
+  return !k || c.target.includes(k) || c.summary.includes(k)
 }))
 </script>
 
 <template>
-  <PageHead title="标注字典" desc="标注与审核共用一份字典：动作分为基础 / 复合（子任务）/ 异常三级，物体单独管理；每次修改自动升级版本">
+  <template v-if="view === 'log'">
+    <PageHead title="字典操作记录" :desc="'当前版本 ' + dict.version + ' · 共 ' + dict.changes.length + ' 条记录，每次新增、修改、启停、删除都会升级版本'">
+      <a-button @click="view = 'list'"><AppIcon name="left" />返回字典</a-button>
+    </PageHead>
+    <div class="card">
+      <div class="toolbar">
+        <a-input v-model:value="logQ" class="grow" allow-clear placeholder="搜索词条或内容" aria-label="搜索操作记录"><template #prefix><AppIcon name="search" /></template></a-input>
+        <a-select v-model:value="logOp" style="width:130px" aria-label="操作类型" :options="[{ value: 'all', label: '全部操作' }, ...OPS.map((v) => ({ value: v, label: v }))]" />
+        <a-select v-model:value="logBy" style="width:130px" aria-label="操作人" :options="byOpts" />
+      </div>
+      <table class="stbl" aria-label="字典操作记录">
+        <thead><tr><th style="width:150px">时间</th><th style="width:90px">版本</th><th style="width:90px">操作人</th><th style="width:80px">操作</th><th style="width:140px">词条</th><th>内容</th></tr></thead>
+        <tbody>
+          <tr v-for="(c, i) in logs" :key="i">
+            <td class="num muted">{{ c.t }}</td>
+            <td><span class="mono ver">{{ c.ver }}</span></td>
+            <td>{{ c.by }}</td>
+            <td><span class="tag" :class="OP_CLS[c.op]">{{ c.op }}</span></td>
+            <td><b>{{ c.target }}</b></td>
+            <td class="muted">{{ c.summary }}</td>
+          </tr>
+          <tr v-if="!logs.length"><td colspan="6" class="muted" style="text-align:center;padding:24px">没有匹配的记录</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </template>
+
+  <template v-else>
+  <PageHead title="标注字典" :desc="'标注与审核共用一份字典 · 当前版本 ' + dict.version + '；子任务分标准 / 异常两类，物体用于任务配置'">
+    <a-button @click="view = 'log'"><AppIcon name="clock" />操作记录</a-button>
     <a-button type="primary" @click="openAdd"><AppIcon name="plus" />新增词条</a-button>
   </PageHead>
 
-  <div class="grid g4" style="margin-bottom:16px">
-    <div class="card kpi"><span class="k">当前版本</span><span class="v mono">{{ dict.version }}</span><span class="d">最近：{{ dict.changes[0]?.summary }}</span></div>
-    <div class="card kpi"><span class="k">子任务（复合动作）</span><span class="v">{{ stat.compound }}<small>个</small></span><span class="d">其中必选 {{ dict.active.filter((x) => x.required).length }} 个</span></div>
-    <div class="card kpi"><span class="k">异常动作</span><span class="v">{{ stat.abnormal }}<small>个</small></span><span class="d">用于标注失败、重抓等情况</span></div>
-    <div class="card kpi"><span class="k">物体</span><span class="v">{{ stat.object }}<small>个</small></span><span class="d">主物体 / 辅助物体下拉</span></div>
-  </div>
-
-  <div class="dict-grid">
-    <div class="card">
+  <div class="card">
       <div class="toolbar">
         <a-input v-model:value="q" class="grow" allow-clear placeholder="搜索名称、编码、别名" aria-label="搜索词条"><template #prefix><AppIcon name="search" /></template></a-input>
         <a-select v-model:value="scen" style="width:150px" aria-label="按场景筛选" :options="[{ value: 'all', label: '全部场景' }, { value: 'common', label: '通用' }, ...SCEN_OPTS]" />
@@ -111,35 +137,25 @@ const stat = computed(() => ({
         <div class="chips"><button v-for="t in TABS" :key="t[0]" type="button" class="chip" :aria-pressed="tab === t[0]" @click="tab = t[0]">{{ t[1] }} <span class="n num">{{ count(t[0]) }}</span></button></div>
       </div>
       <table class="stbl" aria-label="字典词条">
-        <thead><tr><th style="width:120px">编码</th><th style="width:120px">名称</th><th style="width:110px">分级</th><th style="width:100px;white-space:nowrap">场景</th><th>定义</th><th style="width:150px">别名</th><th style="width:60px">引用</th><th style="width:64px">启用</th><th style="width:100px">操作</th></tr></thead>
+        <thead><tr><th style="width:120px">编码</th><th style="width:120px">名称</th><th style="width:110px">分级</th><th style="width:100px;white-space:nowrap">场景</th><th>定义</th><th style="width:150px">别名</th><th style="width:60px">引用</th><th style="width:64px">启用</th><th style="width:120px">操作</th></tr></thead>
         <tbody>
           <tr v-for="x in rows" :key="x.id" :class="{ off: x.status !== 'active' }">
             <td class="mono"><b>{{ x.code }}</b></td>
             <td><b>{{ x.name }}</b> <span v-if="x.required" class="tag crit" style="font-size:11px">必选</span></td>
-            <td><span class="tag" :class="x.category === 'object' ? 'good' : x.level === 'abnormal' ? 'warn' : x.level === 'compound' ? 'info' : ''">{{ x.category === 'object' ? '物体' : LEVELS[x.level ?? 'basic'].replace('（子任务）', '') }}</span></td>
+            <td><span class="tag" :class="x.category === 'object' ? 'good' : x.level === 'abnormal' ? 'warn' : 'info'">{{ x.category === 'object' ? '物体' : LEVELS[x.level ?? 'compound'] }}</span></td>
             <td class="muted" style="white-space:nowrap">{{ scenLabel(x.scen) }}</td>
             <td class="muted" style="font-size:12.5px">{{ x.desc }}</td>
             <td><span v-for="a in x.aliases" :key="a" class="alias">{{ a }}</span></td>
             <td class="num muted">{{ usage(x.name) }}</td>
             <td><a-switch size="small" :checked="x.status === 'active'" :aria-label="'启用 ' + x.name" @change="toggle(x)" /></td>
-            <td><a-button size="small" type="link" @click="openEdit(x)">编辑</a-button><a-button size="small" type="link" danger @click="del(x)">删除</a-button></td>
+            <td style="white-space:nowrap"><a-button size="small" type="link" @click="openEdit(x)">编辑</a-button><a-button size="small" type="link" danger @click="del(x)">删除</a-button></td>
           </tr>
           <tr v-if="!rows.length"><td colspan="9" class="muted" style="text-align:center;padding:24px">没有匹配的词条</td></tr>
         </tbody>
       </table>
     </div>
 
-    <div class="card" style="padding:14px 16px">
-      <div style="font-weight:600;margin-bottom:10px">版本记录</div>
-      <ol class="vlog">
-        <li v-for="c in dict.changes.slice(0, 12)" :key="c.ver + c.t + c.summary">
-          <span class="mono ver">{{ c.ver }}</span>
-          <div><div>{{ c.summary }}</div><div class="muted" style="font-size:12px">{{ c.by }} · {{ c.t }}</div></div>
-        </li>
-      </ol>
-      <div class="muted" style="font-size:12px;margin-top:10px;line-height:1.6">标注提交时会校验标签是否在当前版本中；已停用词条不会出现在下拉中，但历史标注仍可查看。</div>
-    </div>
-  </div>
+  </template>
 
   <a-modal v-model:open="modal.open" :title="modal.id ? '编辑词条' : '新增词条'" centered ok-text="保存" cancel-text="取消" @ok="save">
     <a-form layout="vertical">
@@ -148,7 +164,7 @@ const stat = computed(() => ({
         <a-form-item label="名称" required style="flex:1"><a-input v-model:value="modal.name" placeholder="如 夹紧密封" /></a-form-item>
       </div>
       <div class="row" style="gap:12px">
-        <a-form-item label="类型" style="flex:1"><a-select v-model:value="modal.category" :options="[{ value: 'action', label: '动作' }, { value: 'object', label: '物体' }]" /></a-form-item>
+        <a-form-item label="类型" style="flex:1"><a-select v-model:value="modal.category" :options="[{ value: 'action', label: '子任务' }, { value: 'object', label: '物体' }]" /></a-form-item>
         <a-form-item v-if="modal.category === 'action'" label="分级" style="flex:1"><a-select v-model:value="modal.level" :options="LEVEL_OPTS" /></a-form-item>
         <a-form-item label="适用场景" style="flex:1"><a-select v-model:value="modal.scen" :options="[{ value: 'common', label: '通用' }, ...SCEN_OPTS]" /></a-form-item>
       </div>
@@ -162,7 +178,6 @@ const stat = computed(() => ({
 </template>
 
 <style scoped>
-.dict-grid { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 16px; align-items: start; }
 .stbl { width: 100%; border-collapse: collapse; font-size: 13px; }
 .stbl th { text-align: left; font-weight: 500; color: var(--muted); padding: 8px; border-bottom: 1px solid var(--line); background: var(--surface-2); }
 .stbl td { padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
@@ -171,5 +186,4 @@ const stat = computed(() => ({
 .vlog { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; font-size: 13px; }
 .vlog li { display: flex; gap: 10px; }
 .ver { flex: none; font-size: 12px; padding: 1px 6px; height: 20px; border-radius: 4px; background: var(--accent-soft); color: var(--accent); }
-@media (max-width: 1100px) { .dict-grid { grid-template-columns: 1fr; } }
 </style>
