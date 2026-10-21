@@ -404,7 +404,7 @@ const epCols = [
 
         <!-- 任务属性 -->
         <dl class="kv">
-          <dt>采集场景</dt><dd>{{ sc.name }}</dd><dt>采集模式</dt><dd>{{ mode.name }}</dd><dt>目标数据集</dt><dd>{{ dsName }} <span class="muted mono">{{ task.datasetId }}</span></dd><dt>采集参数</dt><dd>{{ task.params.fps }} fps · {{ task.params.res }} · {{ task.params.codec }}{{ task.params.audio ? ' · 含音频' : '' }}</dd><dt>语言指令</dt><dd>{{ task.lang || '—' }}</dd><dt>关键物体</dt><dd>{{ task.objects.join('、') || '—' }}</dd><dt>操作员</dt><dd>{{ op.n }}（{{ op.c }}）</dd>
+          <dt>采集场景</dt><dd>{{ sc.name }}</dd><dt>采集模式</dt><dd>{{ mode.name }}</dd><dt>目标数据集</dt><dd>{{ dsName }} <span class="muted mono">{{ task.datasetId }}</span></dd><dt>采集参数</dt><dd>{{ task.params.fps }} fps · {{ task.params.res }} · {{ task.params.codec }} <span class="muted">（来自设备配置）</span></dd><dt>语言指令</dt><dd>{{ task.lang || '—' }}</dd><dt>操作员</dt><dd>{{ op.n }}（{{ op.c }}）</dd>
           <dt>备注</dt><dd>{{ task.note || '—' }}</dd>
           <dt>采集设备</dt><dd><span v-for="d in devs" :key="d!.id" class="tag" style="margin:0 6px 6px 0">{{ d!.name }}</span></dd><dt>文件命名</dt><dd class="mono">{{ nextName }}</dd>
         </dl>

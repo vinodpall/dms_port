@@ -5,7 +5,7 @@ import { useLogs } from './logs'
 
 /**
  * 统一标注字典：标注员选子任务/物体、审核员校验标签都用这一份。
- * 动作即子任务（标注的唯一粒度），分标准子任务 / 异常子任务；物体用于任务配置。每次修改递增小版本号。
+ * 词条即子任务（标注的唯一粒度），分标准子任务 / 异常子任务。每次修改递增小版本号。
  */
 export type DictCat = 'action' | 'object'
 export type ActLevel = 'compound' | 'abnormal'
@@ -21,8 +21,6 @@ export interface DictChange { ver: string; t: string; by: string; op: DictOp; ta
 const T = '2026-10-12 16:00'
 const A = (id: string, code: string, name: string, level: ActLevel, scen: DictItem['scen'], aliases: string[], desc: string, required = false): DictItem =>
   ({ id, code, name, category: 'action', level, scen, aliases, desc, required, status: 'active', updatedAt: T, updatedBy: '陈静' })
-const O = (id: string, code: string, name: string, scen: DictItem['scen'], aliases: string[], desc: string): DictItem =>
-  ({ id, code, name, category: 'object', scen, aliases, desc, status: 'active', updatedAt: T, updatedBy: '陈静' })
 
 const DEFAULTS: DictItem[] = [
   A('D-S01', 'LOAD', '取件上台', 'compound', 'qmd', ['上料', '取件'], '抓取工件移送至检测工位并安放平稳', true),
@@ -37,12 +35,6 @@ const DEFAULTS: DictItem[] = [
   A('D-E01', 'REGRASP', '重新抓取', 'abnormal', 'common', ['二次抓取', '补抓'], '首次抓取失败或姿态不佳后的再次抓取'),
   A('D-E02', 'DROP', '工件掉落', 'abnormal', 'common', ['脱手', 'Drop'], '工件在搬运或放置中意外脱落'),
   A('D-E03', 'MISALIGN', '对位偏差', 'abnormal', 'fhd', ['偏位', '没对准'], '对准后仍明显偏离孔位，需要回退调整'),
-  O('D-O01', 'WHEEL_HUB', '铝合金轮毂', 'common', ['车轮', '工件', 'Hub'], '待检测/待装配的铝合金轮毂'),
-  O('D-O02', 'SEAL_FIXTURE', '气密专用夹具', 'qmd', ['夹具', '密封测试台'], '包含压紧气缸、密封圈的检测工装'),
-  O('D-O03', 'GAUGE', '数字精密压力表', 'qmd', ['气压表', '差压表'], '测量密封腔内微压降'),
-  O('D-O04', 'PLUG_CAP', '橡胶防护堵', 'fhd', ['防尘塞', '防护盖'], '安装于轮毂通孔用于防尘防划伤'),
-  O('D-O05', 'VALVE_PORT', '轮毂气门嘴孔', 'common', ['充气孔'], '轮毂侧壁安装气门嘴的孔位'),
-  O('D-O06', 'PLUG_TRAY', '防护堵料盒', 'fhd', ['料盘'], '存放待安装防护堵的料盒'),
 ]
 
 export const useDict = defineStore('cl-dict', () => {
@@ -55,7 +47,7 @@ export const useDict = defineStore('cl-dict', () => {
     C('v1.2', '2026-10-12 15:52', '周工', '修改', '充气保压', '新增别名「气密测试」'),
     C('v1.1', '2026-10-10 11:30', '陈静', '停用', '人工复检', '停用「人工复检」，并入「读数判定」'),
     C('v1.1', '2026-10-08 10:20', '陈静', '新增', '检查确认', '新增防护堵安装子任务「检查确认」'),
-    C('v1.0', '2026-10-06 09:00', '陈静', '新增', '初始字典', '合并标注与审核两套字典，建立初始版本（16 个词条）'),
+    C('v1.0', '2026-10-06 09:00', '陈静', '新增', '初始字典', '合并标注与审核两套字典，建立初始版本'),
   ])
   const now = () => {
     const d = new Date(), p = (n: number) => String(n).padStart(2, '0')

@@ -4,7 +4,7 @@ import { ref } from 'vue'
 import { MODES, OPS, SCEN, TODAY, type ModeKey, type ScenKey, type TaskStatus } from '@/collect/constants'
 import { clamp, rng } from '@/utils'
 import { useSettings } from './settings'
-import { useDevices, type Device } from './devices'
+import { cfgDef, cfgText, useDevices, type Device } from './devices'
 import { useAlerts } from './alerts'
 import { toast } from '@/composables/toast'
 
@@ -20,13 +20,14 @@ export const UPLOAD_STEPS = ['上传存储', '转码与对齐', '生成元数据
 export interface Upload { state: 'running' | 'done'; step: number; count: number; retry: string[] }
 /** 本次采集（一个会话）：从开始采集到结束本次 */
 export interface Session { eps: number; marks: Mark[]; fails: number; sec: number }
+/** fps / res / codec 为创建时从设备配置带出的主视频参数快照（仅用于展示）；autoRetry 为任务选项 */
 export interface Params { fps: number; res: string; codec: string; audio: boolean; autoRetry: boolean }
 export const DEF_PARAMS: Params = { fps: 30, res: '1080p', codec: 'H.265', audio: false, autoRetry: true }
 
 export interface Task {
   id: string; scen: ScenKey; mode: ModeKey; name: string; op: number; /** 备注（手动输入） */ note: string; status: TaskStatus
   /** 本任务选用的设备 */ devices: string[]
-  /** 目标数据集 */ datasetId: string; params: Params; /** 语言指令（供标注语义复用） */ lang: string; /** 关键物体 */ objects: string[]
+  /** 目标数据集 */ datasetId: string; params: Params; /** 语言指令 */ lang: string
   /** 已入库有效数据条数 */ done: number
   /** 当前阶段：0 设备自检 / 1 场景复位与采集 / 2 数据校验 / 3 入库上传（“任务配置”在创建时完成） */ sop: number
   /** 场景复位已确认 */ reset: boolean
@@ -53,9 +54,16 @@ const KIT_DEVS: Record<string, string[]> = {
 const mk = (id: string, scen: ScenKey, kit: string, name: string, op: number, note: string, status: TaskStatus, done: number, sop: number, updated: string, ts: number): Task => ({
   id, scen, mode: SCEN[scen].defMode, name, op, note, status, devices: KIT_DEVS[kit].slice(), datasetId: scen === 'qmd' ? 'DS-014' : 'DS-015',
   params: { ...DEF_PARAMS }, lang: scen === 'qmd' ? '把轮毂放上气密工装，夹紧后充气保压并判定是否合格' : '把防护堵对准轮毂安装孔并压入到位',
-  objects: scen === 'qmd' ? ['铝合金轮毂', '气密专用夹具', '数字精密压力表'] : ['铝合金轮毂', '橡胶防护堵'],
   done, sop, reset: sop >= 1, retry: [], updated, ts, log: [],
 })
+
+/** 从所选设备带出主视频参数（优先相机，其次 UMI 腕部相机） */
+function paramsOf(ids: string[], autoRetry = true): Params {
+  const dv = useDevices()
+  const ds = ids.map((id) => dv.byId(id)).filter((d): d is Device => !!d)
+  const v = ds.find((d) => d.type === '相机') ?? ds.find((d) => cfgDef(d.type).video)
+  return { ...DEF_PARAMS, ...(v ? { fps: v.cfg.rate, res: v.cfg.res ?? DEF_PARAMS.res, codec: v.cfg.codec ?? DEF_PARAMS.codec } : {}), autoRetry }
+}
 
 export const useTasks = defineStore('cl-tasks', () => {
   const list = ref<Task[]>([
@@ -124,9 +132,9 @@ export const useTasks = defineStore('cl-tasks', () => {
     })
     return [...imports.value, ...out]
   }
-  function create(w: { scen: ScenKey; mode: ModeKey; name: string; note: string; op: number; devices: string[]; datasetId: string; params: Params; lang: string; objects: string[] }, status: TaskStatus): Task {
+  function create(w: { scen: ScenKey; mode: ModeKey; name: string; note: string; op: number; devices: string[]; datasetId: string; params: Params; lang: string }, status: TaskStatus): Task {
     const t = mk(nextId(), w.scen, 'vrA', w.name, w.op, w.note, status, 0, 0, '刚刚', 1000)
-    Object.assign(t, { mode: w.mode, devices: w.devices.slice(), datasetId: w.datasetId, params: { ...w.params }, lang: w.lang, objects: w.objects.slice(), reset: false })
+    Object.assign(t, { mode: w.mode, devices: w.devices.slice(), datasetId: w.datasetId, params: paramsOf(w.devices, w.params.autoRetry), lang: w.lang, reset: false })
     t.log = [{ t: '刚刚', m: '任务创建：' + MODES[w.mode].name + '，选用设备 ' + w.devices.length + ' 台，目标数据集 ' + w.datasetId }]
     list.value.unshift(t)
     return t
@@ -158,7 +166,12 @@ export const useTasks = defineStore('cl-tasks', () => {
         push(d, g, '关节报错', '无', '无报错', true)
         const lat = Math.round(6 + r() * 14); push(d, g, '通信延迟', lat + ' ms', '< 50 ms', lat < 50)
       }
-      if (d.type === '相机') { const f = r() < 0.08 ? 22 : 30; push(d, g, '帧率', f + ' fps', '≥ 25 fps', f >= 25) }
+      const df = cfgDef(d.type)
+      if (df.video) {
+        const need = d.cfg.rate, f = r() < 0.08 ? Math.round(need * 0.75) : need
+        push(d, g, '实际帧率', f + ' fps', '≥ ' + Math.round(need * 0.9) + ' fps（配置 ' + need + '）', f >= need * 0.9)
+        push(d, g, '分辨率 / 编码', d.cfg.res + ' · ' + d.cfg.codec, '与设备配置一致', true)
+      } else if (d.type !== '其他') push(d, g, '采样率', cfgText(d.type, d.cfg), '与设备配置一致', true)
       if (d.type === '力觉') push(d, g, '零点复位', '已复位', '每次采集前复位', true)
     })
     const disk = Math.round(600 + r() * 400), ptp = +(1.5 + r() * 4).toFixed(1)

@@ -10,6 +10,28 @@ export type DevStatus = 'online' | 'offline' | 'maint' | 'fault'
 export interface Device {
   id: string; name: string; type: string; st: DevStatus; loc: string; station: string; fw: string
   /** 一次性标定记录；null 表示尚未标定 */ calib: { at: string; by: string; items: string[] } | null
+  /** 采集参数：随设备配置一次，之后所有任务沿用 */ cfg: DevCfg
+}
+/** rate 为采样率（相机/UMI 为视频帧率）；res、codec 仅对含视频的设备有效 */
+export interface DevCfg { rate: number; res?: string; codec?: string }
+/** 各类设备可选的采集参数 */
+export const CFG_DEF: Record<string, { label: string; unit: string; rates: number[]; video: boolean; def: DevCfg }> = {
+  'VR 一体机': { label: '位姿频率', unit: 'Hz', rates: [72, 90], video: false, def: { rate: 90 } },
+  '动捕手套': { label: '采样率', unit: 'Hz', rates: [60, 120], video: false, def: { rate: 120 } },
+  UMI: { label: '腕部相机帧率', unit: 'fps', rates: [30, 60], video: true, def: { rate: 60, res: '720p', codec: 'H.265' } },
+  '相机': { label: '视频帧率', unit: 'fps', rates: [15, 30, 60], video: true, def: { rate: 30, res: '1080p', codec: 'H.265' } },
+  '力觉': { label: '采样率', unit: 'Hz', rates: [500, 1000], video: false, def: { rate: 1000 } },
+  '机械臂': { label: '状态频率', unit: 'Hz', rates: [500, 1000], video: false, def: { rate: 1000 } },
+  '其他': { label: '采样率', unit: 'Hz', rates: [10, 30, 100], video: false, def: { rate: 30 } },
+}
+export const RES_OPTS = ['720p', '1080p', '4K']
+export const CODEC_OPTS = ['H.264', 'H.265']
+export const cfgDef = (type: string) => CFG_DEF[type] ?? CFG_DEF['其他']
+/** 参数文字：如「30 fps · 1080p · H.265」「1 kHz」 */
+export function cfgText(type: string, c: DevCfg) {
+  const u = cfgDef(type).unit
+  const r = u === 'Hz' && c.rate >= 1000 ? c.rate / 1000 + ' kHz' : c.rate + ' ' + u
+  return [r, c.res, c.codec].filter(Boolean).join(' · ')
 }
 export interface Fault { dev: string; t: string; lv: string; d: string; by: string }
 export const DV_ST: Record<DevStatus, [BadgeKind, string]> = { online: ['good', '在线'], offline: ['crit', '离线'], maint: ['warn', '维护中'], fault: ['crit', '故障'] }
@@ -28,15 +50,22 @@ export const CALIB_ITEMS: Record<string, string[]> = {
   '其他': ['安装位姿'],
 }
 
-/** 各类设备的数据通道信息，用于新建任务“采集参数”展示 */
-export const DEV_PARAMS: Record<string, { ch: string; rate: string; gb: number }> = {
-  'VR 一体机': { ch: '头显 + 双手柄 6DoF 位姿', rate: '90 Hz', gb: 0.08 },
-  '动捕手套': { ch: '手部 21 关节角度', rate: '120 Hz', gb: 0.05 },
-  UMI: { ch: '末端位姿 + 夹爪开合 + 腕部相机', rate: '60 Hz', gb: 0.18 },
-  '相机': { ch: 'RGB-D 1280×720', rate: '30 fps', gb: 0.28 },
-  '力觉': { ch: '六维力 / 力矩', rate: '1 kHz', gb: 0.04 },
-  '机械臂': { ch: '7 关节位置 / 速度 / 力矩', rate: '1 kHz', gb: 0.12 },
-  '其他': { ch: '自定义数据通道', rate: '—', gb: 0.05 },
+/** 各类设备的数据通道信息（gb 为默认参数下 20 秒单条体量） */
+export const DEV_PARAMS: Record<string, { ch: string; gb: number }> = {
+  'VR 一体机': { ch: '头显 + 双手柄 6DoF 位姿', gb: 0.08 },
+  '动捕手套': { ch: '手部 21 关节角度', gb: 0.05 },
+  UMI: { ch: '末端位姿 + 夹爪开合 + 腕部相机', gb: 0.18 },
+  '相机': { ch: 'RGB-D 视频', gb: 0.28 },
+  '力觉': { ch: '六维力 / 力矩', gb: 0.04 },
+  '机械臂': { ch: '7 关节位置 / 速度 / 力矩', gb: 0.12 },
+  '其他': { ch: '自定义数据通道', gb: 0.05 },
+}
+const RES_K: Record<string, number> = { '720p': 0.55, '1080p': 1, '4K': 3.2 }
+/** 按设备参数估算单条体量（GB / 20 秒） */
+export function sizeOf(d: Device) {
+  const p = DEV_PARAMS[d.type] ?? DEV_PARAMS['其他'], df = cfgDef(d.type)
+  if (!df.video) return p.gb * (d.cfg.rate / df.def.rate)
+  return p.gb * (RES_K[d.cfg.res ?? '1080p'] / RES_K[df.def.res ?? '1080p']) * (d.cfg.rate / df.def.rate) * (d.cfg.codec === 'H.264' ? 1.4 : 1)
 }
 
 /** 工位套装：常用设备组合，新建任务时一键带出，可再按需增减 */
@@ -50,7 +79,7 @@ export const KITS: Kit[] = [
 
 const cal = (at: string, type: string) => ({ at, by: '赵工', items: CALIB_ITEMS[type] ?? CALIB_ITEMS['其他'] })
 const dv = (id: string, name: string, type: string, st: DevStatus, loc: string, station: string, fw: string, calAt: string | null): Device =>
-  ({ id, name, type, st, loc, station, fw, calib: calAt ? cal(calAt, type) : null })
+  ({ id, name, type, st, loc, station, fw, calib: calAt ? cal(calAt, type) : null, cfg: { ...cfgDef(type).def } })
 
 export const useDevices = defineStore('cl-devices', () => {
   const list = ref<Device[]>([
@@ -74,8 +103,8 @@ export const useDevices = defineStore('cl-devices', () => {
   const faults = ref<Fault[]>([{ dev: 'DV-009', t: '10-13 16:07', lv: '一般', d: '掉帧率 2.4%，疑似 USB 带宽不足', by: '赵工' }])
   const byId = (id: string) => list.value.find((d) => d.id === id)
   const nextId = () => 'DV-' + String(Math.max(...list.value.map((d) => parseInt(d.id.slice(3), 10))) + 1).padStart(3, '0')
-  function add(x: { name: string; type: string; loc: string; fw: string; station: string }): Device {
-    const d: Device = { id: nextId(), name: x.name, type: x.type, st: 'offline', loc: x.loc || x.station, station: x.station, fw: x.fw || '—', calib: null }
+  function add(x: { name: string; type: string; loc: string; fw: string; station: string; cfg?: DevCfg }): Device {
+    const d: Device = { id: nextId(), name: x.name, type: x.type, st: 'offline', loc: x.loc || x.station, station: x.station, fw: x.fw || '—', calib: null, cfg: x.cfg ? { ...x.cfg } : { ...cfgDef(x.type).def } }
     list.value.unshift(d)
     return d
   }

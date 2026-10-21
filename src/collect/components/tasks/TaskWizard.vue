@@ -6,9 +6,8 @@ import { MODE_SLOTS, MODES, OPS, SCEN, TODAY, type DevSlot, type ModeKey, type S
 import { DEF_PARAMS, useTasks } from '@/collect/stores/tasks'
 import { useSettings } from '@/collect/stores/settings'
 import { useDatasets } from '@/collect/stores/datasets'
-import { useDict } from '@/collect/stores/dict'
 import { useSession } from '@/collect/stores/session'
-import { DEV_PARAMS, DV_ST, KITS, useDevices, type Device } from '@/collect/stores/devices'
+import { DEV_PARAMS, DV_ST, KITS, cfgText, sizeOf, useDevices, type Device } from '@/collect/stores/devices'
 
 const props = defineProps<{ open: boolean }>()
 const emit = defineEmits<{ close: []; done: [id: string] }>()
@@ -16,16 +15,15 @@ const tasks = useTasks()
 const settings = useSettings()
 const dv = useDevices()
 const ds = useDatasets()
-const dict = useDict()
 const session = useSession()
 
 const step = ref(1)
-const labels = ['场景与模式', '选择设备', '数据集与参数', '确认创建']
+const labels = ['场景与模式', '选择设备', '数据集', '确认创建']
 const defName = (s: ScenKey) => SCEN[s].short + ' · 新批次'
 const defLang = (s: ScenKey) => (s === 'qmd' ? '把轮毂放上气密工装，夹紧后充气保压并判定是否合格' : '把防护堵对准轮毂安装孔并压入到位')
 const blank = () => ({
   scen: 'qmd' as ScenKey, mode: 'vr' as ModeKey, name: defName('qmd'), note: '', op: 0, devices: [] as string[],
-  dsMode: 'pick' as 'pick' | 'new', datasetId: '', dsName: '', params: { ...DEF_PARAMS }, lang: defLang('qmd'), objects: [] as string[],
+  dsMode: 'pick' as 'pick' | 'new', datasetId: '', dsName: '', params: { ...DEF_PARAMS }, lang: defLang('qmd'),
 })
 const w = reactive(blank())
 const err = reactive({ name: '', devices: '', dataset: '' })
@@ -48,7 +46,6 @@ function applyKit(id: string) {
 }
 function resetScene(s: ScenKey) {
   w.mode = SCEN[s].defMode
-  w.objects = dict.objectsFor(s).slice(0, 2).map((x) => x.name)
   w.lang = defLang(s)
   w.datasetId = (scenDs.value[0] ?? allScenDs.value[0])?.id ?? ''
 }
@@ -76,13 +73,13 @@ const slotErr = (s: DevSlot) => {
   return ''
 }
 const uncal = computed(() => picked.value.filter((d) => !d.calib))
-const rows = computed(() => picked.value.map((d) => ({ ...d, p: DEV_PARAMS[d.type] ?? DEV_PARAMS['其他'] })))
-const resK: Record<string, number> = { '720p': 0.55, '1080p': 1, '4K': 3.2 }
-const sizeGb = computed(() => rows.value.reduce((a, r) => a + r.p.gb * (r.type === '相机' || r.type === 'UMI' ? resK[w.params.res] * (w.params.fps / 30) * (w.params.codec === 'H.265' ? 0.7 : 1) : 1), 0))
+const rows = computed(() => picked.value.map((d) => ({ ...d, p: DEV_PARAMS[d.type] ?? DEV_PARAMS['其他'], cfgT: cfgText(d.type, d.cfg) })))
+const sizeGb = computed(() => picked.value.reduce((a, d) => a + sizeOf(d), 0))
+/** 同一任务内多路视频参数不一致时提醒（会影响多路对齐与训练） */
+const videoMismatch = computed(() => new Set(picked.value.filter((d) => d.type === '相机').map((d) => cfgText(d.type, d.cfg))).size > 1)
 const perHour = computed(() => (sizeGb.value * 3600) / 20)
 const dsLabel = computed(() => (w.dsMode === 'new' ? w.dsName.trim() + '（新建）' : (ds.byId(w.datasetId)?.name ?? '—') + ' · ' + w.datasetId))
 const preview = computed(() => settings.nameFile(SCEN[w.scen].code, TODAY, 1, OPS[w.op].c))
-const objOpts = computed(() => dict.objectsFor(w.scen).map((x) => ({ value: x.name })))
 
 function validate() {
   err.name = err.devices = err.dataset = ''
@@ -97,7 +94,7 @@ function create(status: 'ready' | 'draft') {
   else for (const s of [1, 2, 3]) { step.value = s; if (!validate()) return }
   let datasetId = w.datasetId
   if (w.dsMode === 'new' && w.dsName.trim()) datasetId = ds.create(w.dsName.trim(), w.scen, session.info.user).id
-  const t = tasks.create({ scen: w.scen, mode: w.mode, name: w.name, note: w.note.trim(), op: w.op, devices: w.devices, datasetId, params: w.params, lang: w.lang.trim(), objects: w.objects }, status)
+  const t = tasks.create({ scen: w.scen, mode: w.mode, name: w.name, note: w.note.trim(), op: w.op, devices: w.devices, datasetId, params: w.params, lang: w.lang.trim() }, status)
   emit('close'); emit('done', t.id)
 }
 </script>
@@ -165,18 +162,19 @@ function create(status: 'ready' | 'draft') {
         <a-input v-else v-model:value="w.dsName" :status="err.dataset ? 'error' : ''" :maxlength="40" :placeholder="SCEN[w.scen].name + ' · 新规格'" />
         <span v-if="err.dataset" class="ferr">{{ err.dataset }}</span>
       </div>
+      <div class="field"><span class="label">采集参数 <span class="muted" style="font-weight:400">来自设备配置，如需调整请到「设备管理」</span></span>
+        <div class="card"><a-table :data-source="rows" row-key="id" size="small" :pagination="false" :columns="[{ title: '设备', key: 'name' }, { title: '数据通道', key: 'ch' }, { title: '参数', key: 'cfg', width: 190 }]">
+          <template #bodyCell="{ column, record }">
+            <div v-if="column.key === 'name'" class="cell-main"><span>{{ record.name }}</span><small class="muted">{{ record.type }} · {{ record.station }}</small></div>
+            <span v-else-if="column.key === 'ch'" class="muted">{{ record.p.ch }}</span>
+            <span v-else-if="column.key === 'cfg'" class="num">{{ record.cfgT }}</span>
+          </template>
+        </a-table></div>
+        <div v-if="videoMismatch" class="callout warn" style="margin-top:8px"><AppIcon name="alert" /><span>所选相机的视频参数不一致，可能影响多路画面对齐，建议在设备管理中统一</span></div>
+      </div>
       <a-form layout="vertical">
-        <div class="three">
-          <a-form-item label="视频帧率"><a-select v-model:value="w.params.fps" :options="[15, 30, 60].map((v) => ({ value: v, label: v + ' fps' }))" /></a-form-item>
-          <a-form-item label="分辨率"><a-select v-model:value="w.params.res" :options="['720p', '1080p', '4K'].map((v) => ({ value: v }))" /></a-form-item>
-          <a-form-item label="视频编码"><a-select v-model:value="w.params.codec" :options="['H.264', 'H.265'].map((v) => ({ value: v }))" /></a-form-item>
-        </div>
-        <div class="row" style="gap:24px;margin:-6px 0 14px">
-          <a-checkbox v-model:checked="w.params.audio">录制环境音频</a-checkbox>
-          <a-checkbox v-model:checked="w.params.autoRetry">入库失败自动重试 3 次</a-checkbox>
-        </div>
-        <a-form-item label="语言指令" extra="描述本任务要完成的操作，标注时可直接复用为语义描述"><a-input v-model:value="w.lang" :maxlength="80" /></a-form-item>
-        <a-form-item label="关键物体" style="margin-bottom:0"><a-select v-model:value="w.objects" mode="multiple" :options="objOpts" placeholder="从标注字典选择" /></a-form-item>
+        <a-checkbox v-model:checked="w.params.autoRetry" style="margin-bottom:14px">入库失败自动重试 3 次</a-checkbox>
+        <a-form-item label="语言指令" extra="描述本任务要完成的操作" style="margin-bottom:0"><a-input v-model:value="w.lang" :maxlength="80" /></a-form-item>
       </a-form>
       <dl class="kv"><dt>单条体量</dt><dd>约 {{ sizeGb.toFixed(2) }} GB / 条（按 20 秒估算）</dd><dt>码率</dt><dd>约 {{ perHour.toFixed(0) }} GB / 小时</dd></dl>
     </div>
@@ -184,13 +182,13 @@ function create(status: 'ready' | 'draft') {
     <!-- 4 确认 -->
     <div v-else class="wz-body">
       <dl class="kv"><dt>任务名称</dt><dd>{{ w.name }}</dd><dt>场景 / 模式</dt><dd>{{ SCEN[w.scen].name }} · {{ MODES[w.mode].name }}</dd><dt>操作员</dt><dd>{{ OPS[w.op].n }}</dd>
-        <dt>目标数据集</dt><dd>{{ dsLabel }}</dd><dt>采集参数</dt><dd>{{ w.params.fps }} fps · {{ w.params.res }} · {{ w.params.codec }}{{ w.params.audio ? ' · 含音频' : '' }}</dd>
-        <dt>语言指令</dt><dd>{{ w.lang || '—' }}</dd><dt>关键物体</dt><dd>{{ w.objects.join('、') || '—' }}</dd><dt>备注</dt><dd>{{ w.note.trim() || '—' }}</dd></dl>
-      <div class="card"><a-table :data-source="rows" row-key="id" size="small" :pagination="false" :columns="[{ title: '设备', key: 'name' }, { title: '数据通道', key: 'ch' }, { title: '采样率', key: 'rate', width: 90 }, { title: '状态', key: 'st', width: 90 }]">
+        <dt>目标数据集</dt><dd>{{ dsLabel }}</dd><dt>单条体量</dt><dd>约 {{ sizeGb.toFixed(2) }} GB / 条</dd>
+        <dt>语言指令</dt><dd>{{ w.lang || '—' }}</dd><dt>备注</dt><dd>{{ w.note.trim() || '—' }}</dd></dl>
+      <div class="card"><a-table :data-source="rows" row-key="id" size="small" :pagination="false" :columns="[{ title: '设备', key: 'name' }, { title: '数据通道', key: 'ch' }, { title: '参数', key: 'rate', width: 170 }, { title: '状态', key: 'st', width: 90 }]">
         <template #bodyCell="{ column, record }">
           <div v-if="column.key === 'name'" class="cell-main"><span>{{ record.name }}</span><small class="muted">{{ record.type }} · {{ record.station }}</small></div>
           <span v-else-if="column.key === 'ch'">{{ record.p.ch }}</span>
-          <span v-else-if="column.key === 'rate'" class="num">{{ record.p.rate }}</span>
+          <span v-else-if="column.key === 'rate'" class="num">{{ record.cfgT }}</span>
           <StatusBadge v-else-if="column.key === 'st'" :kind="DV_ST[record.st as 'online'][0]" :text="DV_ST[record.st as 'online'][1]" />
         </template>
       </a-table></div>

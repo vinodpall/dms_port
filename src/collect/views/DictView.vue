@@ -9,20 +9,19 @@ import { useSession } from '@/collect/stores/session'
 import { toast } from '@/composables/toast'
 import { confirmDlg } from '@/collect/composables/confirm'
 
-/** 统一标注字典：标注员下拉选项与审核校验共用这一份；子任务分标准 / 异常，物体用于任务配置；每次修改递增版本 */
+/** 统一标注字典：标注员下拉选项与审核校验共用这一份；子任务分标准 / 异常；每次修改递增版本 */
 const dict = useDict()
 const ann = useAnnotate()
 const session = useSession()
 
-type Tab = 'all' | ActLevel | 'object'
+type Tab = 'all' | ActLevel
 const tab = ref<Tab>('all')
 const scen = ref<'all' | ScenKey | 'common'>('all')
 const q = ref('')
-const TABS: [Tab, string][] = [['all', '全部'], ['compound', '标准子任务'], ['abnormal', '异常子任务'], ['object', '物体']]
+const TABS: [Tab, string][] = [['all', '全部'], ['compound', '标准子任务'], ['abnormal', '异常子任务']]
 const count = (t: Tab) => dict.items.filter((x) => match(x, t)).length
 function match(x: DictItem, t: Tab) {
   if (t === 'all') return true
-  if (t === 'object') return x.category === 'object'
   return x.category === 'action' && (x.level ?? 'compound') === t
 }
 const rows = computed(() => dict.items.filter((x) => {
@@ -39,7 +38,7 @@ const scenLabel = (s: DictItem['scen']) => (s === 'common' ? '通用' : SCEN[s].
 
 const modal = reactive({ open: false, id: '', code: '', name: '', category: 'action' as DictCat, level: 'compound' as ActLevel, scen: 'common' as DictItem['scen'], aliases: '', desc: '', required: false })
 function openAdd() {
-  Object.assign(modal, { open: true, id: '', code: '', name: '', category: tab.value === 'object' ? 'object' : 'action', level: tab.value === 'all' || tab.value === 'object' ? 'compound' : tab.value, scen: 'common', aliases: '', desc: '', required: false })
+  Object.assign(modal, { open: true, id: '', code: '', name: '', category: 'action', level: tab.value === 'all' ? 'compound' : tab.value, scen: 'common', aliases: '', desc: '', required: false })
 }
 function openEdit(x: DictItem) {
   Object.assign(modal, { open: true, id: x.id, code: x.code, name: x.name, category: x.category, level: x.level ?? 'compound', scen: x.scen, aliases: x.aliases.join('、'), desc: x.desc, required: !!x.required })
@@ -123,7 +122,7 @@ const logs = computed(() => dict.changes.filter((c) => {
   </template>
 
   <template v-else>
-  <PageHead title="标注字典" :desc="'标注与审核共用一份字典 · 当前版本 ' + dict.version + '；子任务分标准 / 异常两类，物体用于任务配置'">
+  <PageHead title="标注字典" :desc="'标注与审核共用一份字典 · 当前版本 ' + dict.version + '；子任务分标准 / 异常两类'">
     <a-button @click="view = 'log'"><AppIcon name="clock" />操作记录</a-button>
     <a-button type="primary" @click="openAdd"><AppIcon name="plus" />新增词条</a-button>
   </PageHead>
@@ -164,7 +163,7 @@ const logs = computed(() => dict.changes.filter((c) => {
         <a-form-item label="名称" required style="flex:1"><a-input v-model:value="modal.name" placeholder="如 夹紧密封" /></a-form-item>
       </div>
       <div class="row" style="gap:12px">
-        <a-form-item label="类型" style="flex:1"><a-select v-model:value="modal.category" :options="[{ value: 'action', label: '子任务' }, { value: 'object', label: '物体' }]" /></a-form-item>
+        
         <a-form-item v-if="modal.category === 'action'" label="分级" style="flex:1"><a-select v-model:value="modal.level" :options="LEVEL_OPTS" /></a-form-item>
         <a-form-item label="适用场景" style="flex:1"><a-select v-model:value="modal.scen" :options="[{ value: 'common', label: '通用' }, ...SCEN_OPTS]" /></a-form-item>
       </div>
