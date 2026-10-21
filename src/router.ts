@@ -71,6 +71,11 @@ router.onError((err, to) => {
   routeLoading.value = false
   const msg = String((err as Error)?.message ?? err)
   if (/dynamically imported module|Importing a module script failed|Failed to fetch|error loading dynamically/i.test(msg)) {
+    // 同一地址 10 秒内只自动重试一次，避免依赖缺失等持续性错误导致反复刷新
+    const key = 'route-reload:' + to.fullPath
+    const last = Number(sessionStorage.getItem(key) || 0)
+    if (Date.now() - last < 10000) { console.error(err); return }
+    sessionStorage.setItem(key, String(Date.now()))
     window.location.hash = to.fullPath
     window.location.reload()
   } else console.error(err)
