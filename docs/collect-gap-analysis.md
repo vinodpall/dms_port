@@ -103,3 +103,14 @@
 12. 个人工作台和公共图表；多机协同、动捕采集。
 
 **数据结构改动要点（前端 mock）**：Task 加 mode / arms[] / datasetId / params / langInstr / objects / warmup / checks[] / calib[]；Episode 加 verdict（ok/warn/fail）/ events[] / upload（done/retry/queued）；Seg 加 action / objMain / objSub / desc / result / failReason；Review 加 priority / sla / decision（4 种）/ issues[].severity。
+
+## 7. 实施进度（2839a1d）
+| 项 | 状态 |
+| --- | --- |
+| 四阶段采集（自检 → 复位与采集 → 校验 → 入库），去掉预热，标定移至设备管理 | ✅ |
+| 设备按工位 + 槽位、工位套装、占用检测 | ✅ |
+| 采集历史、视频上传、LeRobot 导入 | ✅ |
+| 标注任务池领取、6 类标注内容、规则预切分、按等级抽检提交 | ✅ |
+| 审核待审池、10 分制、四种结论、驳回模板、质量统计与绩效 | ✅ |
+| 统一字典（分级、引用、启用、版本） | ✅ |
+| 知识图谱、积分、AI 预标注、动捕、对比/一致性报告、个人工作台 | ⏳ 未做 |
