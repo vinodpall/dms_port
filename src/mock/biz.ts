@@ -47,9 +47,9 @@ export const BAGS: BizBag[] = [
   { name: 'bag_20261012_1410', robot: 'DOG-002', size: '5.1 GB', dur: '26 分 10 秒', time: '2026-10-12 14:10' },
   { name: 'bag_20261019_1605', robot: 'DOG-003', size: '2.2 GB', dur: '11 分 37 秒', time: '2026-10-19 16:05' },
 ]
-const Z1 = [{ name: '禁行区-配电柜前', k: 'forbid' }, { name: '禁行区-机房 3 排', k: 'forbid' }, { name: '东侧楼梯', k: 'stair' }, { name: '电池室坡道', k: 'slope' }, { name: '消防通道窄道', k: 'narrow' }, { name: '变压器室草坪', k: 'grass' }]
+const Z1 = [{ name: '禁行区-庭院花坛', k: 'forbid' }, { name: '禁行区-东楼设备间', k: 'forbid' }, { name: '东侧台阶', k: 'stair' }, { name: '消防通道坡道', k: 'slope' }, { name: '院门窄道', k: 'narrow' }, { name: '庭院草坪', k: 'grass' }]
 export const MAPS: BizMapItem[] = [
-  { name: '综合楼一层', robot: 'DOG-001', kind: '点云地图', grid: true, bag: 'bag_20261016_0930', res: 0.05, size: '1280×860', area: 3200, created: '2026-10-16 10:12', seed: 11, zones: Z1 },
+  { name: '综合楼一层', robot: 'DOG-001', kind: '点云地图', grid: true, bag: 'bag_20261016_0930', res: 0.2, size: '514×501', area: 3200, created: '2026-10-16 10:12', seed: 11, zones: Z1 },
   { name: '综合楼二层', robot: 'DOG-001', kind: '点云地图', grid: true, bag: 'bag_20261009_1520', res: 0.05, size: '1260×840', area: 3000, created: '2026-10-09 16:02', seed: 41, zones: Z1.slice(0, 2) },
   { name: '地下管廊', robot: 'DOG-002', kind: '融合地图', grid: true, bag: 'bag_20261012_1410', res: 0.05, size: '2400×420', area: 1800, created: '2026-10-12 15:30', seed: 23, zones: Z1.slice(2, 5) },
 ]
@@ -86,7 +86,7 @@ const mkPts = (seed: number, shape: number, n: number): TaskPoint[] => {
   })
 }
 const mkFree = (seed: number, n: number): TaskPoint[] => {
-  const r = rng(seed); const spots = [[20, 22], [70, 18], [110, 26], [140, 20], [60, 80], [100, 78], [138, 82], [24, 72]]
+  const r = rng(seed); const spots = [[54, 18], [74, 14], [100, 16], [92, 30], [100, 50], [109, 80], [62, 84], [84, 38]]
   return Array.from({ length: n }, (_, i) => { const [mx, my] = spots[i % spots.length]; const real = toReal(mx, my)
     return { id: pid++, type: TASK_TYPES[Math.floor(r() * 4)].cn, multi: false, x: real.x, y: real.y, z: 0, angle: Math.round(r() * 360 - 180), mx, my, f: 0, preset: PRESETS[i % 8], extra: '', desc: ['消防栓 F-0' + (i + 1), '灭火器箱', '应急灯', '烟感探头'][i % 4], gait: 1, ground: 1, nostop: false, obs: '停障模式', always: true } })
 }

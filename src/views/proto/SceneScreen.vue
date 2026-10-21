@@ -193,7 +193,7 @@ const ST = { done: { t: '已结束', c: '#5B7486' }, run: { t: '进行中', c: '
 .ss-map-hd { position: absolute; right: 0; top: 0; display: flex; gap: 10px; align-items: center; padding: 8px 18px; font-size: 16px; letter-spacing: 2px; background: linear-gradient(270deg, rgba(6,20,34,.92), transparent); }
 .ss-map-hd em { font: 600 11px var(--mono); font-style: normal; color: #FF6B6B; padding: 1px 6px; border: 1px solid #FF6B6B; animation: ss-blink 1.6s steps(2) infinite; }
 .ss-map-lg { position: absolute; right: 16px; bottom: 12px; display: flex; gap: 16px; padding: 6px 12px; font-size: 13px; color: #B9D4E0; background: rgba(6,20,34,.82); border: 1px solid rgba(77,208,225,.2); }
-.ss-map-lg i { display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 2px; vertical-align: -1px; }
+.ss-map-lg i { display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 4px; vertical-align: -1px; }
 .ss-c { position: absolute; width: 26px; height: 26px; border: 3px solid var(--c1); pointer-events: none; }
 .ss-c.tl { left: 6px; top: 6px; border-right: 0; border-bottom: 0; } .ss-c.tr { right: 6px; top: 6px; border-left: 0; border-bottom: 0; }
 .ss-c.bl { left: 6px; bottom: 6px; border-right: 0; border-top: 0; } .ss-c.br { right: 6px; bottom: 6px; border-left: 0; border-top: 0; }
@@ -216,6 +216,6 @@ const ST = { done: { t: '已结束', c: '#5B7486' }, run: { t: '进行中', c: '
 .ss-cam .cn { position: absolute; z-index: 1; left: 0; right: 0; bottom: 0; padding: 3px 8px; font-size: 12px; background: linear-gradient(0deg, rgba(4,12,22,.95), transparent); }
 .ss-book { display: grid; grid-template-columns: 104px 1fr 70px 58px; align-items: center; gap: 8px; height: 33px; font-size: 13px; color: #8FB3C7; border-bottom: 1px dashed rgba(77,208,225,.12); }
 .ss-book b { color: #fff; font-weight: 500; } .ss-book.done { opacity: .55; }
-.ss-book em { font-style: normal; font-size: 12px; text-align: center; border: 1px solid; border-radius: 2px; line-height: 20px; }
+.ss-book em { font-style: normal; font-size: 12px; text-align: center; border: 1px solid; border-radius: 4px; line-height: 20px; }
 @keyframes ss-blink { 50% { opacity: .25; } }
 </style>

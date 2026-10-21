@@ -135,7 +135,7 @@ const fall = reactive({ on: true, roll: 45, pitch: 45 })
 .al-seg { margin-bottom: 16px; }
 .al-filter { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 14px 16px; border-bottom: 1px solid rgba(77,208,225,.1); font-size: 13px; color: var(--muted); }
 .al-filter .chips { display: flex; gap: 6px; margin-right: 12px; }
-.al-filter .chips button { padding: 3px 12px; font: inherit; font-size: 12.5px; color: var(--muted); cursor: pointer; background: rgba(77,208,225,.05); border: 1px solid var(--line); border-radius: 2px; }
+.al-filter .chips button { padding: 3px 12px; font: inherit; font-size: 12.5px; color: var(--muted); cursor: pointer; background: rgba(77,208,225,.05); border: 1px solid var(--line); border-radius: 4px; }
 .al-filter .chips button.on { color: #fff; border-color: var(--accent); background: var(--accent-soft); } .al-filter .chips em { margin-left: 6px; font-style: normal; font-family: var(--mono); color: var(--faint); }
 .al-type { display: inline-flex; align-items: center; gap: 6px; } .al-type i { width: 7px; height: 7px; border-radius: 50%; }
 :deep(.al-pend) td:first-child { box-shadow: inset 2px 0 0 #FF6B6B; }
@@ -143,11 +143,11 @@ const fall = reactive({ on: true, roll: 45, pitch: 45 })
 .al-rule .r { margin-left: auto; }
 .al-pl { display: grid; grid-template-columns: 240px 1fr; min-height: 420px; }
 .al-pl ul { list-style: none; margin: 0; padding: 8px; border-right: 1px solid rgba(77,208,225,.1); }
-.al-pl li { display: flex; align-items: center; gap: 8px; padding: 10px; cursor: pointer; border: 1px solid transparent; border-radius: 3px; font-size: 13px; } .al-pl li b { flex: 1; font-weight: 500; } .al-pl li :deep(.ant-tag) { margin: 0; }
+.al-pl li { display: flex; align-items: center; gap: 8px; padding: 10px; cursor: pointer; border: 1px solid transparent; border-radius: 4px; font-size: 13px; } .al-pl li b { flex: 1; font-weight: 500; } .al-pl li :deep(.ant-tag) { margin: 0; }
 .al-pl li:hover { background: rgba(77,208,225,.05); } .al-pl li.on { background: var(--accent-soft); border-color: rgba(38,198,218,.5); }
 .al-pf { padding: 16px 20px; }
 .al-side { display: flex; flex-direction: column; gap: 16px; }
 .al-fall { display: grid; grid-template-columns: 1fr auto; gap: 12px 16px; align-items: center; padding: 14px 16px 16px; font-size: 13px; color: var(--muted); }
-.al-big { aspect-ratio: 16 / 9; border: 1px solid rgba(77,208,225,.2); border-radius: 3px; overflow: hidden; }
-.al-loc { margin-top: 14px; aspect-ratio: 16 / 6; border: 1px solid rgba(77,208,225,.18); border-radius: 3px; overflow: hidden; }
+.al-big { aspect-ratio: 16 / 9; border: 1px solid rgba(77,208,225,.2); border-radius: 4px; overflow: hidden; }
+.al-loc { margin-top: 14px; aspect-ratio: 16 / 6; border: 1px solid rgba(77,208,225,.18); border-radius: 4px; overflow: hidden; }
 </style>

@@ -2,7 +2,7 @@
 import { computed, reactive, ref } from 'vue'
 import { message, Modal } from 'ant-design-vue'
 import { ROBOTS, BAGS, MAPS, ROUTES, GROUPS, MULTI, SCHEDULES, RECORDS, ROUNDS, ALARMS, INS_ORIGINS, GAITS, newPid, type TaskGroup, type BizRoute, type TaskPoint } from '@/mock/biz'
-import { routeAt, nearestF, toReal, dist } from './geo'
+import { routeAt, nearestF, toReal, toFrame, dist } from './geo'
 import { pad } from '@/utils'
 
 export interface Running { kind: '循迹任务' | '发布点任务' | '多任务组'; name: string; route?: string; group: string; progress: number; obs: string; gait: string; start: string; circle: number; laps: number }
@@ -169,7 +169,7 @@ export function newPointFromPose(g: TaskGroup): Partial<TaskPoint> {
 }
 export function savePoint(g: TaskGroup, f: Partial<TaskPoint>, editId?: number) {
   const r = routeById(g.route)
-  const mx = f.mx ?? 6 + (f.x ?? 0) / 0.25, my = f.my ?? 94 - (f.y ?? 0) / 0.25
+  const fp = toFrame(f.x ?? 0, f.y ?? 0); const mx = f.mx ?? fp.x, my = f.my ?? fp.y
   const full = { ...f, mx, my, f: r ? nearestF(r.shape, mx, my) : 0 } as TaskPoint
   if (editId) { const i = g.points.findIndex((p) => p.id === editId); g.points[i] = { ...g.points[i], ...full } }
   else { g.points.push({ ...full, id: newPid() }); if (r) g.points.sort((a, b) => a.f - b.f) }

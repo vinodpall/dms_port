@@ -16,10 +16,10 @@ import { TYPE_META, STATUS_META, CAP_META, type Device, type DeviceType, type De
 
 document.title = '机器人设备管理 · 具身智能训练场'
 const MENU = [
-  { key: 'dash', label: '设备概览', icon: DashboardOutlined },
-  { key: 'list', label: '设备台账', icon: DatabaseOutlined },
-  { key: 'models', label: '型号库', icon: AppstoreOutlined },
-  { key: 'maint', label: '维保记录', icon: ToolOutlined },
+  { key: 'dash', label: '设备概览', icon: DashboardOutlined, group: '概览' },
+  { key: 'list', label: '设备台账', icon: DatabaseOutlined, group: '设备资产' },
+  { key: 'models', label: '型号库', icon: AppstoreOutlined, group: '设备资产' },
+  { key: 'maint', label: '维保记录', icon: ToolOutlined, group: '运维保障' },
 ]
 const tab = ref('dash')
 
@@ -411,7 +411,7 @@ const MAINT_ROWS = DEVICES.slice(0, 14).map((d, i) => ({ key: i, dev: d, type: [
 .kdot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
 .dv-types { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 16px; }
 .dv-type { display: flex; align-items: center; gap: 12px; padding: 12px 14px; text-align: left; cursor: pointer; color: var(--text); font: inherit;
-  background: rgba(12,30,48,.7); border: 1px solid rgba(77,208,225,.12); border-radius: 4px; transition: all .2s; }
+  background: rgba(12,30,48,.7); border: 1px solid rgba(77,208,225,.12); border-radius: 6px; transition: all .2s; }
 .dv-type:hover { border-color: rgba(77,208,225,.4); }
 .dv-type.on { border-color: var(--c, #4DD0E1); background: linear-gradient(135deg, rgba(38,198,218,.16), rgba(12,30,48,.7)); box-shadow: inset 0 -2px 0 var(--c, #4DD0E1); }
 .dv-type .ic { width: 46px; height: 46px; display: grid; place-items: center; flex: none; background: rgba(77,208,225,.06); clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%); }
@@ -420,7 +420,7 @@ const MAINT_ROWS = DEVICES.slice(0, 14).map((d, i) => ({ key: i, dev: d, type: [
 .dv-type small { color: var(--muted); font-size: 12px; }
 .dv-batch { display: flex; align-items: center; gap: 10px; padding: 8px 16px; font-size: 13px; background: rgba(38,198,218,.08); border-bottom: 1px solid var(--line); }
 .dv-cell { display: flex; align-items: center; gap: 10px; }
-.dv-av { width: 36px; height: 36px; flex: none; display: grid; place-items: center; background: rgba(77,208,225,.07); border: 1px solid color-mix(in srgb, var(--c) 35%, transparent); border-radius: 3px; }
+.dv-av { width: 36px; height: 36px; flex: none; display: grid; place-items: center; background: rgba(77,208,225,.07); border: 1px solid color-mix(in srgb, var(--c) 35%, transparent); border-radius: 4px; }
 .dv-bat { display: flex; align-items: center; gap: 8px; } .dv-bat :deep(.ant-progress) { margin: 0; flex: 1; } .dv-bat span { font-size: 12px; width: 34px; text-align: right; }
 .dv-sig { display: inline-flex; align-items: flex-end; gap: 2px; height: 14px; vertical-align: middle; }
 .dv-sig i { width: 3px; background: #28465C; border-radius: 1px; } .dv-sig i:nth-child(1) { height: 25%; } .dv-sig i:nth-child(2) { height: 50%; } .dv-sig i:nth-child(3) { height: 75%; } .dv-sig i:nth-child(4) { height: 100%; }
@@ -429,7 +429,7 @@ const MAINT_ROWS = DEVICES.slice(0, 14).map((d, i) => ({ key: i, dev: d, type: [
 .ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px; display: inline-block; }
 .dv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; padding: 16px; }
 .dv-card { position: relative; padding: 14px; cursor: pointer; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px;
-  background: linear-gradient(180deg, rgba(20,48,74,.6), rgba(10,27,43,.8)); border: 1px solid rgba(77,208,225,.12); border-radius: 4px; transition: all .2s; }
+  background: linear-gradient(180deg, rgba(20,48,74,.6), rgba(10,27,43,.8)); border: 1px solid rgba(77,208,225,.12); border-radius: 6px; transition: all .2s; }
 .dv-card:hover { border-color: var(--c); transform: translateY(-2px); box-shadow: 0 10px 24px rgba(0,0,0,.35), 0 0 0 1px var(--c); }
 .dv-card-top { width: 100%; display: flex; justify-content: space-between; font-size: 12px; }
 .dv-card-art { margin: 8px 0 6px; width: 110px; height: 96px; display: grid; place-items: center; background: radial-gradient(closest-side, color-mix(in srgb, var(--c) 18%, transparent), transparent); }
@@ -445,7 +445,7 @@ const MAINT_ROWS = DEVICES.slice(0, 14).map((d, i) => ({ key: i, dev: d, type: [
 
 /* 概览 */
 .db-types { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 16px; }
-.db-type { position: relative; padding: 14px 16px; cursor: pointer; background: linear-gradient(160deg, color-mix(in srgb, var(--c) 13%, rgba(12,30,48,.9)), rgba(10,27,43,.85) 60%); border: 1px solid rgba(77,208,225,.14); border-radius: 4px; transition: all .2s; overflow: hidden; }
+.db-type { position: relative; padding: 14px 16px; cursor: pointer; background: linear-gradient(160deg, color-mix(in srgb, var(--c) 13%, rgba(12,30,48,.9)), rgba(10,27,43,.85) 60%); border: 1px solid rgba(77,208,225,.14); border-radius: 6px; transition: all .2s; overflow: hidden; }
 .db-type::before { content: ''; position: absolute; left: 0; top: 0; width: 100%; height: 2px; background: linear-gradient(90deg, var(--c), transparent); }
 .db-type:hover { border-color: var(--c); transform: translateY(-2px); box-shadow: 0 10px 24px rgba(0,0,0,.35); }
 .db-type-h { display: flex; align-items: center; gap: 12px; }
@@ -463,9 +463,9 @@ const MAINT_ROWS = DEVICES.slice(0, 14).map((d, i) => ({ key: i, dev: d, type: [
 .db-donut { display: flex; align-items: center; gap: 18px; padding: 14px 18px; }
 .db-donut ul { flex: 1; list-style: none; margin: 0; padding: 0; }
 .db-donut li { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 13px; border-bottom: 1px dashed var(--line); }
-.db-donut li i { width: 8px; height: 8px; border-radius: 2px; } .db-donut li b { margin-left: auto; font-weight: 600; } .db-donut li span { width: 36px; text-align: right; font-size: 12px; }
+.db-donut li i { width: 8px; height: 8px; border-radius: 4px; } .db-donut li b { margin-left: auto; font-weight: 600; } .db-donut li span { width: 36px; text-align: right; font-size: 12px; }
 .db-lg { margin-left: auto; display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
-.db-lg i { width: 12px; height: 3px; margin-left: 8px; } .db-lg i.sq { width: 8px; height: 8px; border-radius: 2px; }
+.db-lg i { width: 12px; height: 3px; margin-left: 8px; } .db-lg i.sq { width: 8px; height: 8px; border-radius: 4px; }
 .db-alerts { list-style: none; margin: 0; padding: 4px 0; overflow: auto; max-height: 238px; }
 .db-alerts li { display: grid; grid-template-columns: 8px 44px 74px 1fr; align-items: center; gap: 10px; padding: 9px 16px; font-size: 13px; cursor: pointer; border-bottom: 1px dashed var(--line); }
 .db-alerts li:hover { background: rgba(77,208,225,.05); }
@@ -495,11 +495,11 @@ const MAINT_ROWS = DEVICES.slice(0, 14).map((d, i) => ({ key: i, dev: d, type: [
 .dv-hero-task .dot { width: 6px; height: 6px; border-radius: 50%; background: #26C6DA; box-shadow: 0 0 8px #26C6DA; }
 .dv-tabs { margin-top: 6px; }
 .dv-gauges { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
-.dv-gauge { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px 0; background: rgba(16,38,59,.6); border: 1px solid rgba(77,208,225,.1); border-radius: 4px; font-size: 13px; color: #8FB3C7; }
+.dv-gauge { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px 0; background: rgba(16,38,59,.6); border: 1px solid rgba(77,208,225,.1); border-radius: 6px; font-size: 13px; color: #8FB3C7; }
 .dv-gauge .ant-progress-text { color: #fff !important; font-family: 'JetBrains Mono', Consolas, monospace; font-size: 18px !important; }
 .dv-list .ant-list-item { padding: 10px 4px; }
 .dv-pick { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
-.dv-pick button { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 0; cursor: pointer; font: inherit; font-size: 13px; color: #8FB3C7; background: rgba(16,38,59,.6); border: 1px solid #1B3A52; border-radius: 4px; transition: all .2s; }
+.dv-pick button { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 0; cursor: pointer; font: inherit; font-size: 13px; color: #8FB3C7; background: rgba(16,38,59,.6); border: 1px solid #1B3A52; border-radius: 6px; transition: all .2s; }
 .dv-pick button.on { color: #fff; border-color: #26C6DA; background: rgba(38,198,218,.12); }
 .cell-main .ellipsis { max-width: 150px; }
 </style>

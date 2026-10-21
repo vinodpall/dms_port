@@ -42,5 +42,5 @@ const cur = ref<(typeof OP_LOGS)[number] | null>(null)
 .lg-filter { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 14px 16px; border-bottom: 1px solid rgba(77,208,225,.1); font-size: 13px; color: var(--muted); }
 .lg-filter > span:not(:first-child) { margin-left: 8px; }
 .lg-h { margin: 14px 0 8px; font-size: 13px; }
-.lg-pre { margin: 0; padding: 12px 14px; font: 12px/1.6 var(--mono); color: #9FE6EF; background: #06121E; border: 1px solid rgba(77,208,225,.15); border-radius: 3px; }
+.lg-pre { margin: 0; padding: 12px 14px; font: 12px/1.6 var(--mono); color: #9FE6EF; background: #06121E; border: 1px solid rgba(77,208,225,.15); border-radius: 4px; }
 </style>

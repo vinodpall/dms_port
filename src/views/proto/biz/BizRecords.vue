@@ -95,5 +95,5 @@ const del = () => Modal.confirm({ title: '删除记录', content: `确定删除�
 .rc-filter { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 14px 16px; border-bottom: 1px solid rgba(77,208,225,.1); font-size: 13px; color: var(--muted); }
 .rc-filter > span:not(:first-child) { margin-left: 6px; }
 .ng { color: #FF6B6B; }
-.rc-img { aspect-ratio: 16 / 9; border: 1px solid var(--line); border-radius: 3px; overflow: hidden; } .rc-img :deep(svg) { width: 100%; height: 100%; display: block; }
+.rc-img { aspect-ratio: 16 / 9; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; } .rc-img :deep(svg) { width: 100%; height: 100%; display: block; }
 </style>

@@ -9,6 +9,7 @@ import {
 import ModuleShell from '@/components/proto/ModuleShell.vue'
 import DeviceGlyph from '@/components/proto/DeviceGlyph.vue'
 import LineChart from '@/components/proto/LineChart.vue'
+import PointCloudView from '@/components/viz/PointCloudView.vue'
 
 document.title = '机器人仿真 · 具身智能训练场'
 
@@ -244,7 +245,7 @@ const doImport = () => { urdfStep.value = 3; message.success('USD 生成完成�
           </a-tab-pane>
           <a-tab-pane key="sensor"><template #tab><VideoCameraOutlined />传感器</template>
             <div class="sm-cams">
-              <div v-for="c in [{ n: 'front_cam · RGB', k: 'rgb' }, { n: 'front_cam · Depth', k: 'depth' }, { n: 'Semantic Segmentation', k: 'seg' }, { n: 'LiDAR 点云', k: 'lidar' }]" :key="c.k" class="sm-cam" :class="c.k"><span>{{ c.n }}</span></div>
+              <div v-for="c in [{ n: 'front_cam · RGB', k: 'rgb' }, { n: 'front_cam · Depth', k: 'depth' }, { n: 'Semantic Segmentation', k: 'seg' }, { n: 'LiDAR 点云', k: 'lidar' }]" :key="c.k" class="sm-cam" :class="c.k"><PointCloudView v-if="c.k === 'lidar'" :toolbar="false" /><span>{{ c.n }}</span></div>
             </div>
           </a-tab-pane>
           <a-tab-pane key="console"><template #tab><CodeOutlined />控制台</template>
@@ -276,13 +277,13 @@ const doImport = () => { urdfStep.value = 3; message.success('USD 生成完成�
 .sm { height: 100%; display: grid; grid-template-rows: auto 1fr 268px; }
 .sm-pane { background: rgba(8,22,36,.88); border: 1px solid rgba(77,208,225,.12); }
 .sm-bar { display: flex; align-items: center; gap: 18px; height: 42px; padding: 0 14px; background: rgba(6,17,29,.9); border-bottom: 1px solid rgba(77,208,225,.12); }
-.sm-menu { display: flex; gap: 2px; } .sm-menu span { padding: 4px 9px; font-size: 13px; color: var(--muted); cursor: pointer; border-radius: 3px; } .sm-menu span:hover { background: rgba(77,208,225,.1); color: #fff; }
+.sm-menu { display: flex; gap: 2px; } .sm-menu span { padding: 4px 9px; font-size: 13px; color: var(--muted); cursor: pointer; border-radius: 4px; } .sm-menu span:hover { background: rgba(77,208,225,.1); color: #fff; }
 .sm-tools { padding-left: 14px; border-left: 1px solid var(--line); }
 .sm-play { display: flex; align-items: center; gap: 6px; margin: 0 auto; }
 .sm-time { font-size: 12px; color: #9FE6EF; margin-left: 8px; min-width: 100px; }
 .sm-tb-r { display: flex; gap: 8px; }
 .sm-body { min-height: 0; display: grid; grid-template-columns: 270px 1fr 310px; gap: 6px; padding: 6px 6px 0; }
-.sm-left, .sm-right { min-height: 0; overflow: auto; border-radius: 3px; }
+.sm-left, .sm-right { min-height: 0; overflow: auto; border-radius: 4px; }
 .sm-tabs :deep(.ant-tabs-nav) { margin: 0; padding: 0 12px; background: rgba(6,17,29,.6); }
 .sm-tabs :deep(.ant-tabs-tab) { font-size: 13px; padding: 9px 0; } .sm-tabs :deep(.ant-tabs-tab .anticon) { margin-right: 6px; }
 .sm-search { margin: 10px 10px 6px; width: calc(100% - 20px); }
@@ -292,17 +293,17 @@ const doImport = () => { urdfStep.value = 3; message.success('USD 生成完成�
 .sm-node .i.f { color: #FFB74D; } .sm-node .i.c { color: #B48CFF; } .sm-node .i.l { color: #FFE082; } .sm-node .i.r { color: #4DD0E1; } .sm-node .i.m { color: #6F92A8; }
 .sm-node .eye { color: #5B7486; opacity: 0; } .sm-node:hover .eye, .sm-node.dim .eye { opacity: 1; }
 .sm-assets { padding: 10px; display: flex; flex-direction: column; gap: 8px; }
-.sm-asset { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid rgba(77,208,225,.12); border-radius: 3px; background: rgba(16,38,59,.5); cursor: grab; }
+.sm-asset { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid rgba(77,208,225,.12); border-radius: 4px; background: rgba(16,38,59,.5); cursor: grab; }
 .sm-asset:hover { border-color: rgba(77,208,225,.45); }
 .sm-asset .dot { width: 7px; height: 7px; flex: none; border-radius: 50%; }
-.sm-asset .art { width: 40px; height: 40px; display: grid; place-items: center; background: rgba(77,208,225,.06); border-radius: 3px; }
+.sm-asset .art { width: 40px; height: 40px; display: grid; place-items: center; background: rgba(77,208,225,.06); border-radius: 4px; }
 .sm-asset div { flex: 1; display: flex; flex-direction: column; line-height: 1.3; } .sm-asset b { font-size: 13px; } .sm-asset small { color: var(--muted); font-size: 11.5px; }
-.sm-view { position: relative; min-height: 0; overflow: hidden; border: 1px solid rgba(77,208,225,.25); border-radius: 3px; background: #071523; }
+.sm-view { position: relative; min-height: 0; overflow: hidden; border: 1px solid rgba(77,208,225,.25); border-radius: 4px; background: #071523; }
 .sm-scene { position: absolute; inset: 0; width: 100%; height: 100%; }
 .bob { animation: sm-bob 3.2s ease-in-out infinite; } @keyframes sm-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
 .sm-vbar { position: absolute; z-index: 2; left: 10px; right: 10px; top: 10px; display: flex; gap: 6px; align-items: center; }
 .glass { background: rgba(6,17,29,.7) !important; border-color: rgba(77,208,225,.2) !important; backdrop-filter: blur(6px); }
-.sm-stat { margin-left: auto; font-size: 11.5px; color: #9FE6EF; padding: 4px 10px; background: rgba(6,17,29,.7); border: 1px solid rgba(77,208,225,.2); border-radius: 3px; }
+.sm-stat { margin-left: auto; font-size: 11.5px; color: #9FE6EF; padding: 4px 10px; background: rgba(6,17,29,.7); border: 1px solid rgba(77,208,225,.2); border-radius: 4px; }
 .sm-axis { position: absolute; left: 12px; bottom: 12px; width: 60px; height: 60px; }
 .sm-hud { position: absolute; right: 12px; bottom: 10px; display: flex; gap: 14px; font-size: 11px; color: var(--muted); }
 .sm-hud span { display: flex; align-items: center; gap: 6px; }
@@ -316,21 +317,20 @@ const doImport = () => { urdfStep.value = 3; message.success('USD 生成完成�
 .sm-joint :deep(.ant-slider) { margin: 6px 4px; } .sm-joint b { font-weight: 400; color: #fff; text-align: right; }
 .sm-fi { margin: 8px 0 0; }
 .sm-desc :deep(.ant-descriptions-item) { padding-bottom: 6px; }
-.sm-link { display: flex; align-items: center; gap: 10px; padding: 10px; background: rgba(91,155,255,.08); border: 1px solid rgba(91,155,255,.25); border-radius: 3px; }
+.sm-link { display: flex; align-items: center; gap: 10px; padding: 10px; background: rgba(91,155,255,.08); border: 1px solid rgba(91,155,255,.25); border-radius: 4px; }
 .sm-link div { flex: 1; display: flex; flex-direction: column; line-height: 1.3; } .sm-link small { color: var(--muted); font-size: 11.5px; }
-.sm-bottom { margin: 6px; border-radius: 3px; overflow: hidden; display: flex; flex-direction: column; }
+.sm-bottom { margin: 6px; border-radius: 4px; overflow: hidden; display: flex; flex-direction: column; }
 .sm-bottom :deep(.ant-tabs) { height: 100%; } .sm-bottom :deep(.ant-tabs-content-holder) { overflow: auto; }
 .sm-curves { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; padding: 14px 18px; font-size: 12px; }
 .sm-cams { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 12px; }
-.sm-cam { position: relative; height: 170px; border: 1px solid rgba(77,208,225,.2); border-radius: 3px; overflow: hidden; }
-.sm-cam span { position: absolute; left: 8px; top: 6px; font-size: 11px; padding: 1px 6px; background: rgba(0,0,0,.5); border-radius: 2px; }
+.sm-cam { position: relative; height: 170px; border: 1px solid rgba(77,208,225,.2); border-radius: 4px; overflow: hidden; }
+.sm-cam span { z-index: 2; position: absolute; left: 8px; top: 6px; font-size: 11px; padding: 1px 6px; background: rgba(0,0,0,.5); border-radius: 4px; }
 .sm-cam.rgb { background: linear-gradient(180deg, #23465E 0 45%, #2E3A2E 45%), #222; background-image: linear-gradient(180deg, #3A6A86 0, #1C3B50 44%, #3A3F36 45%, #23281F 100%); }
 .sm-cam.rgb::after { content: ''; position: absolute; left: 30%; top: 40%; width: 40%; height: 35%; background: linear-gradient(#4E5A63, #2B3238); clip-path: polygon(0 100%, 0 30%, 20% 30%, 20% 0, 80% 0, 80% 30%, 100% 30%, 100% 100%); }
 .sm-cam.depth { background: radial-gradient(ellipse at 50% 120%, #fff 0, #888 30%, #222 70%, #000); filter: grayscale(1); }
 .sm-cam.seg { background: linear-gradient(180deg, #1E3A8A 0 44%, #16A34A 44% 100%); }
 .sm-cam.seg::after { content: ''; position: absolute; left: 32%; top: 38%; width: 36%; height: 38%; background: #F97316; clip-path: polygon(0 100%, 0 30%, 20% 30%, 20% 0, 80% 0, 80% 30%, 100% 30%, 100% 100%); }
 .sm-cam.lidar { background: #050B12 radial-gradient(circle at 50% 70%, transparent 0 8px, rgba(77,208,225,.0) 8px); }
-.sm-cam.lidar::after { content: ''; position: absolute; inset: 0; background: repeating-radial-gradient(ellipse at 50% 85%, rgba(77,208,225,.7) 0 1px, transparent 1px 12px); mask: linear-gradient(transparent 20%, #000); }
 .sm-log { padding: 10px 16px; font-size: 12px; line-height: 1.9; } .sm-log b { font-weight: 600; color: #4DD0E1; margin: 0 6px; } .sm-log .warn b { color: #FFB74D; }
 .sm-urdf { padding: 14px 18px; } .sm-urdf-b { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 14px; }
 .sm-drag :deep(.ant-upload-drag) { background: rgba(16,38,59,.5); }

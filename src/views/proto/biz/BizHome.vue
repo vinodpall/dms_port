@@ -4,7 +4,10 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
 import { AimOutlined, ExpandOutlined, PauseOutlined, CaretRightOutlined, SendOutlined, AudioOutlined, AudioMutedOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons-vue'
 import BizMap from './BizMap.vue'
+import WebRtcVideo from '@/components/viz/WebRtcVideo.vue'
 import CamShot from './CamShot.vue'
+import { toReal } from './geo'
+import { streamsOf } from '@/config/media'
 import { KIND_META, GAITS, ZONES, SENSORS, alarmColor, type BizAlarm } from '@/mock/biz'
 import {
   robot, rt, isDog, isIns, hasNav, locText, db, curId, myMaps, myRoutes, myGroups, routeById, groupById,
@@ -17,7 +20,7 @@ const latency = ref(robot.value.latency)
 const tm = setInterval(() => { latency.value = on.value ? Math.round(robot.value.latency + (Math.random() - 0.5) * 8) : 0 }, 1000)
 onBeforeUnmount(() => clearInterval(tm))
 const speed = computed(() => (rt.value.run && !rt.value.pause ? rt.value.speed : 0))
-const pose = computed(() => ({ x: ((rt.value.pose.x - 6) * 0.25).toFixed(2), y: ((94 - rt.value.pose.y) * 0.25).toFixed(2) }))
+const pose = computed(() => ({ x: toReal(rt.value.pose.x, rt.value.pose.y).x.toFixed(2), y: toReal(rt.value.pose.x, rt.value.pose.y).y.toFixed(2) }))
 
 /* 任务统计 */
 const run = computed(() => rt.value.run)
@@ -77,6 +80,11 @@ watch(curId, () => {
   pSel.value = pubGroups.value[0]?.id ?? ''; mSel.value = myMulti.value[0]?.id ?? ''
 }, { immediate: true })
 const seed = computed(() => myMaps.value.find((m) => m.name === (rt.value.navMap || navSel.value))?.seed ?? 11)
+const streams = computed(() => streamsOf(robot.value.id))
+const camRgb = ref<{ full: () => void } | null>(null)
+const camIr = ref<{ full: () => void } | null>(null)
+const mapBox = ref<HTMLDivElement>()
+const fullMap = () => { const el = mapBox.value; if (!el) return; document.fullscreenElement ? document.exitFullscreen() : el.requestFullscreen?.() }
 const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt.value.nav || r.map === rt.value.navMap))
 </script>
 
@@ -85,12 +93,12 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
     <!-- ============ 左 ============ -->
     <div class="hm-col">
       <div class="pp-panel hm-cam">
-        <div class="pp-panel-h"><h3>可见光视频</h3><a-tooltip title="全屏"><a-button type="text" size="small" class="r"><ExpandOutlined /></a-button></a-tooltip></div>
-        <div class="hm-box"><CamShot v-if="on" :seed="robot.id.charCodeAt(4)" box="配电柜 · 正常" box-color="#4DE8B0" hud /><div v-else class="hm-empty">设备离线 · 暂无视频流</div></div>
+        <div class="pp-panel-h"><h3>可见光视频</h3><a-tooltip title="全屏"><a-button type="text" size="small" class="r" :disabled="!on" @click="camRgb?.full()"><ExpandOutlined /></a-button></a-tooltip></div>
+        <div class="hm-box"><WebRtcVideo v-if="on" ref="camRgb" :url="streams.rgb" label="可见光" /><div v-else class="hm-empty">设备离线 · 暂无视频流</div></div>
       </div>
       <div class="pp-panel hm-cam">
-        <div class="pp-panel-h"><h3>红外视频</h3><a-tooltip title="全屏"><a-button type="text" size="small" class="r"><ExpandOutlined /></a-button></a-tooltip></div>
-        <div class="hm-box"><CamShot v-if="on" :seed="robot.id.charCodeAt(4) + 50" ir box="最高温 46.2℃" box-color="#FFB74D" hud /><div v-else class="hm-empty">设备离线 · 暂无视频流</div></div>
+        <div class="pp-panel-h"><h3>红外视频</h3><a-tooltip title="全屏"><a-button type="text" size="small" class="r" :disabled="!on" @click="camIr?.full()"><ExpandOutlined /></a-button></a-tooltip></div>
+        <div class="hm-box"><WebRtcVideo v-if="on" ref="camIr" :url="streams.ir" label="红外" /><div v-else class="hm-empty">设备离线 · 暂无视频流</div></div>
       </div>
       <div class="pp-panel hm-grow">
         <div class="pp-panel-h"><h3>任务统计</h3><a-tag v-if="run" :color="rt.pause ? 'orange' : 'cyan'" class="r">{{ rt.pause ? '已暂停' : run.kind }}</a-tag></div>
@@ -116,10 +124,10 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
           <span class="r">
             <a-radio-group v-model:value="mapMode" size="small"><a-radio-button v-if="!isIns" value="cloud">点云</a-radio-button><a-radio-button v-if="!isIns" value="grid">栅格</a-radio-button><a-radio-button value="sat">卫星</a-radio-button></a-radio-group>
             <a-tooltip title="定位机器人"><a-button type="text" size="small"><AimOutlined /></a-button></a-tooltip>
-            <a-tooltip title="全屏"><a-button type="text" size="small"><ExpandOutlined /></a-button></a-tooltip>
+            <a-tooltip title="全屏"><a-button type="text" size="small" @click="fullMap"><ExpandOutlined /></a-button></a-tooltip>
           </span>
         </div>
-        <div class="hm-box">
+        <div ref="mapBox" class="hm-box">
           <BizMap v-if="on" :seed="seed" :mode="mapMode" :zones="mapMode === 'grid'" :shape="runRoute?.shape ?? null" :pts="mapPts" :progress="runRoute && run ? run.progress : 0" :robot="hasNav ? rt.pose : null" />
           <div v-else class="hm-empty">设备离线</div>
           <div v-if="on && !hasNav" class="bz-ov">未开启定位 · 可在右侧「任务下发」中开启</div>
@@ -232,13 +240,13 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
 .hm-col .sub { margin-left: 8px; font-size: 12px; }
 .hm-grow { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .hm-cam { flex: none; display: flex; flex-direction: column; } .hm-cam .hm-box { aspect-ratio: 16 / 9; flex: none; }
-.hm-box { position: relative; flex: 1; min-height: 0; margin: 10px; overflow: hidden; border: 1px solid rgba(77,208,225,.16); border-radius: 3px; background: #050E18; }
+.hm-box { position: relative; flex: 1; min-height: 0; margin: 10px; overflow: hidden; border: 1px solid rgba(77,208,225,.16); border-radius: 4px; background: #050E18; }
 .hm-empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--faint); font-size: 13px; } .hm-empty.sm { position: static; flex: 1; padding: 28px 0; }
 .hm-task { flex: 1; display: flex; flex-direction: column; gap: 12px; padding: 12px 14px; }
 .hm-task .nm { font-size: 13.5px; font-weight: 500; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .hm-task .ring { display: flex; align-items: center; gap: 14px; } .hm-task .ring :deep(.ant-progress-text) { color: #fff; font-size: 17px; }
 .hm-task .kv { flex: 1; min-width: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 8px; font-size: 12px; } .hm-task .kv span { color: var(--muted); } .hm-task .kv b { font-weight: 500; text-align: right; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.hm-task .st4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; text-align: center; } .hm-task .st4 > div { padding: 6px 0; background: rgba(77,208,225,.05); border-radius: 3px; }
+.hm-task .st4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; text-align: center; } .hm-task .st4 > div { padding: 6px 0; background: rgba(77,208,225,.05); border-radius: 4px; }
 .hm-task .st4 b { display: block; font-size: 16px; color: #fff; } .hm-task .st4 b.ok { color: #4DE8B0; } .hm-task .st4 b.bad { color: #FF6B6B; } .hm-task .st4 small { font-size: 11px; color: var(--muted); }
 .hm-task .ops { display: flex; gap: 8px; margin-top: auto; } .hm-task .ops > * { flex: 1; }
 .hm-map { flex: 1.7; min-height: 0; display: flex; flex-direction: column; }
@@ -249,17 +257,17 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
 .hm-type { display: inline-flex; align-items: center; gap: 6px; } .hm-type i { width: 6px; height: 6px; border-radius: 50%; }
 .hm-right { overflow: auto; }
 .hm-big { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px 14px 4px; }
-.hm-big > div { padding: 7px 10px; background: rgba(77,208,225,.05); border: 1px solid rgba(77,208,225,.12); border-radius: 3px; }
+.hm-big > div { padding: 7px 10px; background: rgba(77,208,225,.05); border: 1px solid rgba(77,208,225,.12); border-radius: 4px; }
 .hm-big small { display: block; font-size: 11.5px; color: var(--muted); } .hm-big b { font-size: 18px; font-weight: 600; color: #fff; } .hm-big b.low { color: #FF6B6B; } .hm-big em { font-style: normal; font-size: 11px; color: var(--muted); margin-left: 3px; }
 .hm-big { grid-template-columns: repeat(3, 1fr) !important; } .hm-big b { font-size: 16px !important; }
 .hm-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; padding: 10px 12px 14px; }
-.hm-grid > div { min-width: 0; padding: 5px 1px; text-align: center; background: rgba(77,208,225,.04); border-radius: 3px; }
+.hm-grid > div { min-width: 0; padding: 5px 1px; text-align: center; background: rgba(77,208,225,.04); border-radius: 4px; }
 .hm-grid small { display: block; font-size: 11px; color: var(--muted); } .hm-grid b { display: block; font-size: 12px; font-weight: 500; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .hm-grid b.ok { color: #4DE8B0; } .hm-grid b.warn { color: #FFB74D; } .hm-grid .lk { cursor: pointer; border: 1px dashed rgba(77,232,176,.35); }
 .hm-rtk { display: grid; grid-template-columns: auto auto; gap: 6px 16px; font-size: 12.5px; } .hm-rtk span { color: var(--muted); } .hm-rtk b { font-weight: 500; text-align: right; }
 .hm-mic { color: #4DE8B0 !important; }
 .hm-ctl { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 12px 14px 14px; }
-.hm-ctl button { padding: 5px 0; font: inherit; font-size: 12px; color: var(--muted); cursor: pointer; background: rgba(77,208,225,.05); border: 1px solid var(--line); border-radius: 3px; }
+.hm-ctl button { padding: 5px 0; font: inherit; font-size: 12px; color: var(--muted); cursor: pointer; background: rgba(77,208,225,.05); border: 1px solid var(--line); border-radius: 4px; }
 .hm-ctl button:hover:not(:disabled) { color: var(--text); border-color: var(--line-strong); } .hm-ctl button.on { color: #fff; border-color: var(--accent); background: var(--accent-soft); }
 .hm-ctl button.stop { color: #fff; background: rgba(255,107,107,.55); border-color: #FF6B6B; } .hm-ctl button:disabled { cursor: not-allowed; opacity: .5; }
 .hm-ctl button:nth-child(7), .hm-ctl button:nth-child(16) { margin-top: 4px; } .hm-ctl button:nth-child(8), .hm-ctl button:nth-child(9), .hm-ctl button:nth-child(17), .hm-ctl button:nth-child(18) { margin-top: 4px; }
@@ -270,8 +278,8 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
 .hm-send .ln { display: grid; grid-template-columns: 70px minmax(0, 1fr) auto; align-items: center; gap: 8px; font-size: 12.5px; }
 .hm-send .ln.loc { grid-template-columns: minmax(0, 1fr) auto; padding-bottom: 10px; border-bottom: 1px dashed var(--line); }
 .hm-send .tg { display: flex; } .hm-send .tg button { height: 24px; padding: 0 10px; font: inherit; font-size: 12px; color: var(--muted); cursor: pointer; background: rgba(77,208,225,.05); border: 1px solid var(--line-strong); margin-left: -1px; }
-.hm-send .tg button:first-child { border-radius: 3px 0 0 3px; } .hm-send .tg button:last-child { border-radius: 0 3px 3px 0; }
+.hm-send .tg button:first-child { border-radius: 4px 0 0 3px; } .hm-send .tg button:last-child { border-radius: 0 3px 3px 0; }
 .hm-send .tg button.on { color: #04121D; font-weight: 600; background: var(--cyan); border-color: var(--cyan); } .hm-send .tg button:disabled { cursor: not-allowed; opacity: .4; }
 .hm-send label { color: var(--muted); } .hm-send .ins { font-size: 12px; }
-.hm-pic { aspect-ratio: 16 / 9; position: relative; overflow: hidden; border-radius: 3px; }
+.hm-pic { aspect-ratio: 16 / 9; position: relative; overflow: hidden; border-radius: 4px; }
 </style>

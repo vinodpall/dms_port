@@ -6,9 +6,10 @@ import {
   ScissorOutlined, HighlightOutlined, RedoOutlined, NodeIndexOutlined, CameraOutlined, EnvironmentOutlined,
 } from '@ant-design/icons-vue'
 import BizMap from './BizMap.vue'
-import CamShot from './CamShot.vue'
+import WebRtcVideo from '@/components/viz/WebRtcVideo.vue'
+import { streamsOf } from '@/config/media'
 import { TASK_TYPES, PRESETS, GAITS, GROUNDS, OBS_MODES, PROMPTS, type TaskPoint, type TaskGroup } from '@/mock/biz'
-import { routeLen } from './geo'
+import { routeLen, toReal, UNIT } from './geo'
 import {
   rt, isDog, isIns, hasNav, myMaps, myRoutes, myGroups, db, curId, routeById, shortName, lastRoute,
   startTrackRec, stopTrackRec, openLaunch, newPointFromPose, savePoint, gotoPoint, gotoStart, startDist, gaitName,
@@ -34,7 +35,7 @@ const route = computed(() => routeById(sel.value))
 const pubSel = computed(() => (sel.value.startsWith('G:') ? pubGroups.value.find((g) => 'G:' + g.id === sel.value) : undefined))
 const groupsOf = (id: string) => myGroups.value.filter((g) => g.route === id)
 const ptsOf = (id: string) => groupsOf(id).reduce((a, g) => a + g.points.length, 0)
-const lenM = (shape: number) => (routeLen(shape) * 0.25).toFixed(1)
+const lenM = (shape: number) => (routeLen(shape) * UNIT).toFixed(1)
 const mapSeed = (name?: string) => myMaps.value.find((m) => m.name === name)?.seed ?? 11
 const pickRoute = (id: string) => { sel.value = id; if (sub.value === 'route' && id.startsWith('G:')) sub.value = 'points' }
 
@@ -90,7 +91,7 @@ const okPoint = () => { if (!pf.desc.trim()) return message.error('请输入任�
 const delPoint = (p: TaskPoint) => Modal.confirm({ title: '删除任务点', content: `确定删除「${p.desc}」吗？`, okButtonProps: { danger: true }, onOk: () => { const g = group.value!; g.points.splice(g.points.findIndex((x) => x.id === p.id), 1) } })
 const presetOpen = ref(false); const presetSel = ref('预置点1')
 const PTZ = ['↖', '↑', '↗', '←', '⟳', '→', '↙', '↓', '↘']
-const pose = computed(() => ({ x: ((rt.value.pose.x - 6) * 0.25).toFixed(2), y: ((94 - rt.value.pose.y) * 0.25).toFixed(2), yaw: rt.value.pose.yaw }))
+const pose = computed(() => ({ x: toReal(rt.value.pose.x, rt.value.pose.y).x.toFixed(2), y: toReal(rt.value.pose.x, rt.value.pose.y).y.toFixed(2), yaw: rt.value.pose.yaw }))
 
 const cols = computed(() => [
   { title: '序号', key: 'i', width: 56 }, { title: '任务类型', dataIndex: 'type', width: 120 },
@@ -257,7 +258,7 @@ const cols = computed(() => [
   <!-- 弹窗：预置点设置 -->
   <a-modal v-model:open="presetOpen" title="预置点设置" :width="620" ok-text="保存预置点" @ok="pf.preset = presetSel; presetOpen = false; message.success(`${presetSel} 已保存`)">
     <div class="rp-preset">
-      <div class="rp-cam"><CamShot :seed="presetSel.charCodeAt(3)" hud /></div>
+      <div class="rp-cam"><WebRtcVideo v-if="presetOpen" :url="streamsOf(curId).rgb" label="可见光" /></div>
       <div class="rp-ptz">
         <a-select v-model:value="presetSel" size="small" style="width:100%" :options="PRESETS.map((p) => ({ value: p, label: p }))" />
         <div class="rp-pad"><button v-for="d in PTZ" :key="d" type="button">{{ d }}</button></div>
@@ -270,8 +271,8 @@ const cols = computed(() => [
 
 <style scoped>
 .rp-preset { display: grid; grid-template-columns: 1fr 170px; gap: 14px; margin-top: 12px; }
-.rp-cam { aspect-ratio: 16 / 9; border: 1px solid var(--line); border-radius: 3px; overflow: hidden; } .rp-cam :deep(svg) { width: 100%; height: 100%; display: block; }
+.rp-cam { aspect-ratio: 16 / 9; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; } .rp-cam :deep(svg) { width: 100%; height: 100%; display: block; }
 .rp-ptz { display: flex; flex-direction: column; gap: 10px; }
-.rp-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; } .rp-pad button { height: 34px; color: var(--text); cursor: pointer; background: rgba(77,208,225,.06); border: 1px solid var(--line); border-radius: 3px; } .rp-pad button:hover { border-color: var(--cyan); }
+.rp-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; } .rp-pad button { height: 34px; color: var(--text); cursor: pointer; background: rgba(77,208,225,.06); border: 1px solid var(--line); border-radius: 4px; } .rp-pad button:hover { border-color: var(--cyan); }
 .rp-zoom { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 </style>

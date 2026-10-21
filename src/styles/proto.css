@@ -56,7 +56,7 @@
   button { cursor: pointer; }
   svg { display: block; }
   h1, h2, h3, h4, p { margin: 0; }
-  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
   .num { font-variant-numeric: tabular-nums; }
   .mono { font-family: var(--font-mono); font-size: 12.5px; }
   .muted { color: var(--muted); }
@@ -195,8 +195,8 @@
   .tabs button:hover { color: var(--text); }
   .tabs button[aria-selected="true"] { color: var(--accent-text); border-bottom-color: var(--accent); }
 
-  .progress { height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
-  .progress > i { display: block; height: 100%; border-radius: 3px; background: var(--accent); transition: width .5s; }
+  .progress { height: 6px; border-radius: 4px; background: var(--surface-3); overflow: hidden; }
+  .progress > i { display: block; height: 100%; border-radius: 4px; background: var(--accent); transition: width .5s; }
   .progress.good > i { background: var(--good-solid); }
   .progress.warn > i { background: var(--warn-solid); }
   .progress.crit > i { background: var(--crit-solid); }
@@ -320,7 +320,7 @@
   .legend { display: flex; gap: 14px; flex-wrap: wrap; }
   .legend button { display: inline-flex; align-items: center; gap: 7px; border: 0; background: none; padding: 2px 0; color: var(--muted); font-size: 12.5px; }
   .legend button[aria-pressed="false"] { opacity: .45; text-decoration: line-through; }
-  .legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+  .legend i { width: 10px; height: 10px; border-radius: 4px; display: inline-block; }
 
   .kpi { padding: 18px 20px 14px; display: flex; flex-direction: column; gap: 6px; cursor: pointer; text-align: left; width: 100%; transition: border-color .12s, transform .12s; }
   .kpi:hover { border-color: var(--accent); }
@@ -366,7 +366,7 @@
   .cam { position: relative; aspect-ratio: 16 / 9; border-radius: 10px; overflow: hidden; background: #0A121C; color: #AFC2D9; }
   .cam svg.scene { position: absolute; inset: 0; width: 100%; height: 100%; }
   .cam .ov { position: absolute; left: 10px; top: 10px; display: flex; gap: 8px; align-items: center; font-size: 12px; font-family: var(--font-mono); color: #DCE8F6; }
-  .cam .rec { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 4px; background: rgba(217,45,32,.9); color: #fff; font-weight: 500; }
+  .cam .rec { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 6px; background: rgba(217,45,32,.9); color: #fff; font-weight: 500; }
   .cam .rec.off { background: rgba(255,255,255,.18); }
   .cam .note { position: absolute; right: 10px; bottom: 8px; font-size: 11.5px; color: #8FA6C2; }
   .scan { position: absolute; left: 0; right: 0; height: 36%; background: linear-gradient(180deg, transparent, rgba(110,178,255,.10), transparent); animation: scan 3.4s linear infinite; }
@@ -383,7 +383,7 @@
   .bcard .id { font-family: var(--font-mono); font-size: 12px; }
   .bcard.fail { border-color: var(--crit-solid); background: var(--crit-soft); }
   .trk { display: flex; gap: 3px; }
-  .trk i { flex: 1; height: 6px; border-radius: 3px; background: var(--surface-3); position: relative; overflow: hidden; min-width: 12px; }
+  .trk i { flex: 1; height: 6px; border-radius: 4px; background: var(--surface-3); position: relative; overflow: hidden; min-width: 12px; }
   .trk i.done { background: var(--accent); }
   .trk i.cur::after { content: ""; position: absolute; inset: 0; background: var(--accent); width: var(--p, 40%); }
   .trk i.fail { background: var(--crit-solid); }

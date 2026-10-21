@@ -6,6 +6,7 @@ import {
   PlusOutlined, DeleteOutlined, DragOutlined, EditOutlined, ClearOutlined, UndoOutlined, SaveOutlined, InfoCircleOutlined, MinusOutlined,
 } from '@ant-design/icons-vue'
 import BizMap from './BizMap.vue'
+import { toReal } from './geo'
 import { ZONES, OBS_MODES } from '@/mock/biz'
 import {
   robot, rt, isIns, hasNav, myBags, myMaps, myRoutes, myGroups, db, curId, toggleNav, toggleIns, initIns, toggleMsf,
@@ -105,7 +106,7 @@ const delRoute = (id: string) => del('路线及其任务组', () => { db.routes.
       <div class="pp-panel">
         <div class="pp-panel-h"><h3>建图预览</h3><span class="muted" style="font-size:12px;margin-left:6px">{{ rt.bagRec || rt.slam ? '实时点云' : previewMap ? previewMap.name + (previewMap.grid ? ' · 栅格地图' : ' · 点云地图') : '' }}</span></div>
         <div class="bz-canvas">
-          <BizMap v-if="rt.bagRec || rt.slam || previewMap" :seed="previewMap?.seed ?? 41" :mode="rt.bagRec || rt.slam || !previewMap?.grid ? 'cloud' : 'grid'" :zones="false" :robot="rt.bagRec || rt.slam ? rt.pose : null" />
+          <BizMap v-if="rt.bagRec || rt.slam || previewMap" :seed="previewMap?.seed ?? 41" :mode="rt.bagRec || rt.slam || !previewMap?.grid ? 'cloud' : 'grid'" :zones="false" :live="!!(rt.bagRec || rt.slam)" :robot="rt.bagRec || rt.slam ? rt.pose : null" />
           <BizMap v-else mode="blank" :zones="false" />
           <div v-if="rt.bagRec" class="bz-ov red"><i class="dot" />录包中 {{ mmss(rt.bagRec.t0) }} · 请遥控机器人遍历巡检区域</div>
           <div v-else-if="rt.job" class="bz-ov">{{ rt.job.kind }}中 · {{ rt.job.progress }}%</div>
@@ -201,7 +202,7 @@ const delRoute = (id: string) => del('路线及其任务组', () => { db.routes.
         <h4>状态信息</h4>
         <div class="bz-cards" style="margin-bottom:12px">
           <div><small>速度</small><b class="mono">{{ rt.run && !rt.pause ? rt.speed.toFixed(2) : '0.00' }}<em>m/s</em></b></div>
-          <div><small>位姿 (x, y, θ)</small><b class="mono" style="font-size:13px">{{ ((rt.pose.x - 6) * 0.25).toFixed(2) }}, {{ ((94 - rt.pose.y) * 0.25).toFixed(2) }}, {{ rt.pose.yaw }}°</b></div>
+          <div><small>位姿 (x, y, θ)</small><b class="mono" style="font-size:13px">{{ toReal(rt.pose.x, rt.pose.y).x.toFixed(2) }}, {{ toReal(rt.pose.x, rt.pose.y).y.toFixed(2) }}, {{ rt.pose.yaw }}°</b></div>
         </div>
         <div class="bz-kv">
           <template v-if="!isIns"><span>激光雷达数据</span><b><a-badge status="success" text="正常" /></b></template>
@@ -270,8 +271,8 @@ const delRoute = (id: string) => del('路线及其任务组', () => { db.routes.
   </a-modal>
   <a-modal v-model:open="dlg.fusion" title="新建融合地图" ok-text="确定" @ok="okFusion"><a-form layout="vertical" style="margin-top:12px"><a-form-item label="融合地图名称"><a-input v-model:value="form.fusion" placeholder="请输入融合地图名称" /></a-form-item></a-form></a-modal>
   <a-modal v-model:open="dlg.slam" title="实时建图 - 栅格地图" :footer="null" :width="760">
-    <div class="bz-canvas" style="margin:12px 0"><BizMap :seed="41" mode="cloud" :zones="false" :robot="rt.pose" /></div>
-    <div class="muted" style="font-size:12px">分辨率: 0.05 · 地图尺寸: 1260×840 · 车辆位姿: x: {{ ((rt.pose.x - 6) * 0.25).toFixed(3) }}, y: {{ ((94 - rt.pose.y) * 0.25).toFixed(3) }}, θ: {{ rt.pose.yaw }}°</div>
+    <div class="bz-canvas" style="margin:12px 0"><BizMap :seed="41" mode="cloud" live :zones="false" :robot="rt.pose" /></div>
+    <div class="muted" style="font-size:12px">分辨率: 0.2 · 地图尺寸: 514×501 · 车辆位姿: x: {{ toReal(rt.pose.x, rt.pose.y).x.toFixed(3) }}, y: {{ toReal(rt.pose.x, rt.pose.y).y.toFixed(3) }}, θ: {{ rt.pose.yaw }}°</div>
   </a-modal>
   <a-modal v-model:open="zoneOpen" title="添加功能区" ok-text="确定" @ok="addZone">
     <a-form layout="vertical" style="margin-top:12px">
@@ -292,8 +293,8 @@ const delRoute = (id: string) => del('路线及其任务组', () => { db.routes.
 <style scoped>
 .nv-field { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; font-size: 13px; color: var(--muted); }
 .nv-speed { display: flex; align-items: center; gap: 14px; } .nv-speed b { width: 80px; text-align: center; font-size: 15px; }
-.nv-tools { position: absolute; z-index: 1; left: 10px; top: 10px; display: flex; flex-direction: column; gap: 4px; padding: 4px; background: rgba(6,18,30,.82); border: 1px solid var(--line); border-radius: 4px; }
-.nv-tools button { width: 30px; height: 30px; display: grid; place-items: center; font-size: 15px; color: var(--muted); cursor: pointer; background: none; border: 1px solid transparent; border-radius: 3px; }
+.nv-tools { position: absolute; z-index: 1; left: 10px; top: 10px; display: flex; flex-direction: column; gap: 4px; padding: 4px; background: rgba(6,18,30,.82); border: 1px solid var(--line); border-radius: 6px; }
+.nv-tools button { width: 30px; height: 30px; display: grid; place-items: center; font-size: 15px; color: var(--muted); cursor: pointer; background: none; border: 1px solid transparent; border-radius: 4px; }
 .nv-tools button:hover { color: #fff; } .nv-tools button.on { color: #fff; background: var(--accent-soft); border-color: var(--accent); }
 .nv-zones { list-style: none; margin: 0; padding: 6px 12px 10px; } .nv-zones li { display: flex; align-items: center; gap: 10px; padding: 8px 4px; border-bottom: 1px dashed var(--line); }
 .nv-zones li > i { width: 12px; height: 12px; flex: none; border: 1px solid; } .nv-zones li div { flex: 1; min-width: 0; } .nv-zones li b { display: block; font-size: 13px; font-weight: 500; } .nv-zones li small { font-size: 11.5px; color: var(--muted); }
