@@ -48,6 +48,7 @@ export const router = createRouter({
     { path: '/login', name: 'login', component: () => import('@/views/LoginView.vue'), meta: { public: true } },
     { path: '/portal', name: 'portal', component: () => import('@/views/PortalView.vue') },
     { path: '/m/device', name: 'device', component: DeviceView },
+    { path: '/palette/:p?', name: 'palette', component: () => import('@/views/palette/PaletteView.vue') },
     { path: '/m/biz', name: 'biz', component: BizView },
     {
       path: '/m/collect', component: CollectView, redirect: '/m/collect/dashboard',

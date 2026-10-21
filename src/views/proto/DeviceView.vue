@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, inject, reactive, ref, type Ref } from 'vue'
 import { message } from 'ant-design-vue'
 import {
   DashboardOutlined, DatabaseOutlined, AppstoreOutlined, ToolOutlined, RightOutlined, PlusOutlined, ImportOutlined, ExportOutlined,
@@ -22,6 +22,8 @@ const MENU = [
   { key: 'maint', label: '维保记录', icon: ToolOutlined, group: '运维保障' },
 ]
 const tab = ref('dash')
+/** 趋势图配色：允许外层（配色预览）通过 provide 覆盖 */
+const chartC = inject<Ref<[string, string]>>('pal-chart', ref<[string, string]>(['#4DD0E1', '#4DE8B0']))
 
 /* ---------- 统计 ---------- */
 const count = (s: DeviceStatus) => DEVICES.filter((d) => d.status === s).length
@@ -148,8 +150,8 @@ const MAINT_ROWS = DEVICES.slice(0, 14).map((d, i) => ({ key: i, dev: d, type: [
           </div>
         </div>
         <div class="pp-panel db-p">
-          <div class="pp-panel-h"><h3>24 小时在线趋势</h3><span class="db-lg"><i style="background:#4DD0E1" />在线<i style="background:#4DE8B0" />运行中</span></div>
-          <div style="padding: 10px 14px 6px"><LineChart :series="[{ name: '在线', color: '#4DD0E1', data: trendOn }, { name: '运行中', color: '#4DE8B0', data: trendRun }]" :labels="trendLabels" :height="206" :min="0" :max="36" /></div>
+          <div class="pp-panel-h"><h3>24 小时在线趋势</h3><span class="db-lg"><i :style="{ background: chartC[0] }" />在线<i :style="{ background: chartC[1] }" />运行中</span></div>
+          <div style="padding: 10px 14px 6px"><LineChart :series="[{ name: '在线', color: chartC[0], data: trendOn }, { name: '运行中', color: chartC[1], data: trendRun }]" :labels="trendLabels" :height="206" :min="0" :max="36" /></div>
         </div>
         <div class="pp-panel db-p">
           <div class="pp-panel-h"><h3>实时告警</h3><a-tag color="error" style="margin-left:6px">{{ ALERTS.length }}</a-tag><a class="r" style="font-size:12px">全部</a></div>
@@ -169,7 +171,7 @@ const MAINT_ROWS = DEVICES.slice(0, 14).map((d, i) => ({ key: i, dev: d, type: [
           </ul>
         </div>
         <div class="pp-panel db-p">
-          <div class="pp-panel-h"><h3>近 7 天告警统计</h3><span class="db-lg r"><i class="sq" style="background:#FF6B6B" />故障<i class="sq" style="background:#FFB74D" />预警</span></div>
+          <div class="pp-panel-h"><h3>近 7 天告警统计</h3><span class="db-lg r"><i class="sq" style="background: var(--bad)" />故障<i class="sq" style="background: var(--warn)" />预警</span></div>
           <div class="db-wk">
             <div v-for="w in WEEK_ALERTS" :key="w.d" class="db-wk-c">
               <span class="mono n">{{ w.e + w.w }}</span>
@@ -445,15 +447,15 @@ const MAINT_ROWS = DEVICES.slice(0, 14).map((d, i) => ({ key: i, dev: d, type: [
 
 /* 概览 */
 .db-types { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 16px; }
-.db-type { position: relative; padding: 14px 16px; cursor: pointer; background: linear-gradient(160deg, color-mix(in srgb, var(--c) 13%, rgba(12,30,48,.9)), rgba(10,27,43,.85) 60%); border: 1px solid rgba(77,208,225,.14); border-radius: 6px; transition: all .2s; overflow: hidden; }
+.db-type { position: relative; padding: 14px 16px; cursor: pointer; background: linear-gradient(160deg, color-mix(in srgb, var(--c) 13%, var(--tile-1)), var(--tile-2) 60%); border: 1px solid rgba(var(--glow),.14); box-shadow: var(--card-shadow); border-radius: 6px; transition: all .2s; overflow: hidden; }
 .db-type::before { content: ''; position: absolute; left: 0; top: 0; width: 100%; height: 2px; background: linear-gradient(90deg, var(--c), transparent); }
 .db-type:hover { border-color: var(--c); transform: translateY(-2px); box-shadow: 0 10px 24px rgba(0,0,0,.35); }
 .db-type-h { display: flex; align-items: center; gap: 12px; }
-.db-type-h .ic { width: 56px; height: 56px; flex: none; display: grid; place-items: center; background: rgba(6,18,30,.6); border: 1px solid color-mix(in srgb, var(--c) 40%, transparent); clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%); }
+.db-type-h .ic { width: 56px; height: 56px; flex: none; display: grid; place-items: center; background: var(--well); border: 1px solid color-mix(in srgb, var(--c) 40%, transparent); clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%); }
 .db-type-h b { display: block; font-size: 15px; } .db-type-h small { color: var(--muted); font-size: 12px; }
 .db-type-h .go { margin-left: auto; color: var(--faint); } .db-type:hover .go { color: var(--c); }
 .db-type-rate { display: flex; align-items: baseline; justify-content: space-between; margin: 12px 0 6px; font-size: 12px; color: var(--muted); }
-.db-type-rate b { font-size: 24px; color: #fff; } .db-type-rate em { font-style: normal; font-size: 12px; color: var(--muted); margin-left: 2px; }
+.db-type-rate b { font-size: 24px; color: var(--title); } .db-type-rate em { font-style: normal; font-size: 12px; color: var(--muted); margin-left: 2px; }
 .db-seg { display: flex; gap: 2px; height: 6px; } .db-seg i { display: block; border-radius: 1px; } .db-seg i span { display: block; height: 6px; }
 .db-type-f { display: flex; justify-content: space-between; margin-top: 10px; font-size: 12px; color: var(--muted); } .db-type-f b { color: var(--text); font-weight: 500; }
 .db-row { display: grid; grid-template-columns: 1fr 1.35fr 1fr; gap: 16px; margin-bottom: 16px; }
@@ -468,19 +470,19 @@ const MAINT_ROWS = DEVICES.slice(0, 14).map((d, i) => ({ key: i, dev: d, type: [
 .db-lg i { width: 12px; height: 3px; margin-left: 8px; } .db-lg i.sq { width: 8px; height: 8px; border-radius: 4px; }
 .db-alerts { list-style: none; margin: 0; padding: 4px 0; overflow: auto; max-height: 238px; }
 .db-alerts li { display: grid; grid-template-columns: 8px 44px 74px 1fr; align-items: center; gap: 10px; padding: 9px 16px; font-size: 13px; cursor: pointer; border-bottom: 1px dashed var(--line); }
-.db-alerts li:hover { background: rgba(77,208,225,.05); }
-.db-alerts .lv { width: 8px; height: 8px; border-radius: 50%; } .db-alerts li.error .lv { background: #FF6B6B; box-shadow: 0 0 8px #FF6B6B; } .db-alerts li.warning .lv { background: #FFB74D; }
-.db-alerts li .m { color: var(--muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; } .db-alerts li.error .m { color: #FF9C9C; }
+.db-alerts li:hover { background: rgba(var(--glow),.05); }
+.db-alerts .lv { width: 8px; height: 8px; border-radius: 50%; } .db-alerts li.error .lv { background: var(--bad); box-shadow: 0 0 8px var(--bad); } .db-alerts li.warning .lv { background: var(--warn); }
+.db-alerts li .m { color: var(--muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; } .db-alerts li.error .m { color: var(--bad-text, #FF9C9C); }
 .db-list { list-style: none; margin: 0; padding: 6px 16px 10px; }
 .db-list li { display: flex; align-items: center; gap: 10px; padding: 7px 0; font-size: 13px; border-bottom: 1px dashed var(--line); }
 .db-list li:last-child { border-bottom: 0; } .db-list li b { font-weight: 500; white-space: nowrap; } .db-list .r { margin-left: auto; margin-inline-end: 0; }
 .db-list em { width: 18px; font-style: normal; color: var(--cyan); }
-.db-bar { flex: 1; height: 6px; background: rgba(77,208,225,.08); } .db-bar i { display: block; height: 100%; }
+.db-bar { flex: 1; height: 6px; background: rgba(var(--glow),.08); } .db-bar i { display: block; height: 100%; }
 .db-wk { flex: 1; display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; padding: 14px 20px 12px; min-height: 190px; }
 .db-wk-c { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .db-wk-c .n { font-size: 12px; color: var(--text); }
-.db-wk-c .bars { flex: 1; width: 22px; display: flex; flex-direction: column-reverse; gap: 2px; background: rgba(77,208,225,.05); }
-.db-wk-c .bars i { display: block; } .db-wk-c .bars .e { background: #FF6B6B; } .db-wk-c .bars .w { background: #FFB74D; }
+.db-wk-c .bars { flex: 1; width: 22px; display: flex; flex-direction: column-reverse; gap: 2px; background: rgba(var(--glow),.05); }
+.db-wk-c .bars i { display: block; } .db-wk-c .bars .e { background: var(--bad); } .db-wk-c .bars .w { background: var(--warn); }
 .db-wk-c small { font-size: 11px; color: var(--faint); }
 </style>
 <style>
@@ -488,7 +490,7 @@ const MAINT_ROWS = DEVICES.slice(0, 14).map((d, i) => ({ key: i, dev: d, type: [
 .dv-drawer .ant-drawer-content { background: linear-gradient(180deg, #0E2438, #0A1B2B) !important; border-left: 1px solid rgba(77,208,225,.25); }
 .dv-drawer .ant-drawer-body { padding: 0 24px 24px; }
 .dv-hero { --c: #4DD0E1; display: flex; gap: 18px; align-items: flex-start; margin: 0 -24px; padding: 24px; background: linear-gradient(135deg, color-mix(in srgb, var(--c) 14%, transparent), transparent 60%); border-bottom: 1px solid rgba(77,208,225,.14); }
-.dv-hero-art { width: 120px; height: 120px; flex: none; display: grid; place-items: center; background: rgba(6,18,30,.6); border: 1px solid color-mix(in srgb, var(--c) 40%, transparent); clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%); }
+.dv-hero-art { width: 120px; height: 120px; flex: none; display: grid; place-items: center; background: var(--well); border: 1px solid color-mix(in srgb, var(--c) 40%, transparent); clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%); }
 .dv-hero-b { flex: 1; min-width: 0; }
 .dv-hero-t { display: flex; align-items: center; gap: 12px; } .dv-hero-t b { font-size: 22px; color: #fff; }
 .dv-hero-task { margin-top: 10px; font-size: 13px; color: #9FE6EF; display: flex; align-items: center; gap: 8px; }
