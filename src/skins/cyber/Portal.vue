@@ -5,6 +5,7 @@ import BrandMark from '@/components/BrandMark.vue'
 import { MODULES, PLATFORM, type ModuleDef } from '@/constants'
 import { useClock, usePop, usePortal } from '@/composables/entry'
 import { ICONS } from './art'
+import { prefetchModules, routeLoading } from '@/router'
 import './cyber.css'
 
 const { session, ok, enter, logout } = usePortal()
@@ -57,14 +58,25 @@ const fit = () => {
   if (w < 40 || h < 40) return
   scale.value = Math.min(w / STAGE_W, h / STAGE_H) * 0.96
 }
+/** 正在进入的模块（首次加载时在卡片上显示“加载中”，并防止重复点击） */
+const pending = ref<string | null>(null)
+function go(m: ModuleDef) {
+  if (routeLoading.value) return
+  pending.value = m.key
+  enter(m)
+  setTimeout(() => { if (!routeLoading.value) pending.value = null }, 0)
+}
+const loadingOf = (m: ModuleDef) => routeLoading.value && pending.value === m.key
+
 onMounted(() => {
   fit()
+  prefetchModules()
   if (wrapEl.value) { ro = new ResizeObserver(fit); ro.observe(wrapEl.value) }
 })
 onBeforeUnmount(() => ro?.disconnect())
 
 const iconOf = (m: ModuleDef) => ICONS[m.key] ?? ICONS.device
-const statusText = (m: ModuleDef) => (!ok(m) ? '无权限' : m.url || m.proto ? '在线' : '待接入')
+const statusText = (m: ModuleDef) => (loadingOf(m) ? '加载中…' : !ok(m) ? '无权限' : m.url || m.proto ? '在线' : '待接入')
 const statusClass = (m: ModuleDef) => (!ok(m) ? 'off' : m.url || m.proto ? 'on' : 'wait')
 
 const stageStyle = computed(() => ({
@@ -140,10 +152,11 @@ const stageStyle = computed(() => ({
           :key="m.key"
           type="button"
           class="mod-node"
-          :class="{ disabled: !ok(m) }"
+          :class="{ disabled: !ok(m), loading: loadingOf(m) }"
+          :aria-busy="loadingOf(m)"
           :style="{ ...slots[i], '--ph': `${PLATE_H}px`, '--pw': `${Math.round(PLATE_H * 0.866)}px`, '--d': `${i * 90}ms` }"
           :aria-disabled="!ok(m)"
-          @click="enter(m)"
+          @click="go(m)"
         >
           <span class="node-plate">
             <span class="node-ring" />
@@ -154,7 +167,7 @@ const stageStyle = computed(() => ({
             <span class="node-title" :class="{ long: m.title.length > 7 }">{{ m.title }}</span>
             <span class="node-en">{{ m.en }}</span>
             <span class="node-status" :class="statusClass(m)">
-              <AppIcon v-if="!ok(m)" name="lock" size="sm" /><i v-else />{{ statusText(m) }}
+              <AppIcon v-if="!ok(m)" name="lock" size="sm" /><i v-else :class="{ spin: loadingOf(m) }" />{{ statusText(m) }}
             </span>
           </span>
         </button>
@@ -167,6 +180,9 @@ const stageStyle = computed(() => ({
 .cy-portal { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 .cy-portal { --bg: #06111D; }
 /* 背景：中心提亮的深海军蓝 + 双层网格（细格 + 主格），边缘渐隐 */
+.mod-node.loading { cursor: progress; }
+.node-status i.spin { width: 9px !important; height: 9px !important; border-radius: 50%; background: none !important; border: 1.5px solid currentColor; border-right-color: transparent; animation: cy-spin .7s linear infinite; box-shadow: none !important; }
+@keyframes cy-spin { to { transform: rotate(360deg); } }
 .cy-bgfx { position: absolute; inset: 0; pointer-events: none; z-index: 0;
   background:
     linear-gradient(rgba(77,208,225,.11) 1px, transparent 1px) -1px -1px / 200px 200px,
