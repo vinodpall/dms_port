@@ -23,11 +23,34 @@ interface CockpitEmits {
   (e: 'flag'): void
   (e: 'note'): void
   (e: 'fail'): void
+  (e: 'rollback'): void
 }
 
 const emit = defineEmits<CockpitEmits>()
 
 const session = useSession()
+
+/** 实时质量反馈：超过阈值时变色提醒，并计入时间轴事件 */
+const quality = computed(() => {
+  const x = props.liveT
+  const wob = (k: number) => 0.5 + 0.5 * Math.sin(x * k)
+  const fps = x > 14 && x < 15.5 ? 23 : props.task.params.fps - (wob(1.3) > 0.85 ? 1 : 0)
+  const sync = +(3 + wob(0.7) * 4 + (x > 6 && x < 7.8 ? 9 : 0)).toFixed(1)
+  const base = [
+    { k: '帧率', v: fps + ' fps', bad: fps < 25, rule: '≥ 25' },
+    { k: '时间同步', v: sync + ' ms', bad: sync > 10, rule: '≤ 10' },
+  ]
+  if (props.task.mode === 'vr') {
+    const drift = +(1.2 + wob(0.9) * 2.4).toFixed(1)
+    const lost = x > 10.5 && x < 11.4 ? 0.6 : 0
+    return [...base, { k: 'VR 漂移', v: drift + ' cm/s', bad: drift > 5, rule: '≤ 5' }, { k: '追踪丢失', v: lost + ' s', bad: lost > 0.5, rule: '≤ 0.5' }, { k: '力觉', v: (18 + wob(1.1) * 22).toFixed(0) + ' N', bad: false, rule: '≤ 80' }]
+  }
+  const acc = +(2.5 + wob(1.7) * 5 + (x > 16 && x < 17 ? 6 : 0)).toFixed(1)
+  const occl = Math.round(8 + wob(0.5) * 30)
+  return [...base, { k: '加速度', v: acc + ' m/s²', bad: acc > 10, rule: '≤ 10' }, { k: '相机遮挡', v: occl + '%', bad: occl > 50, rule: '≤ 50%' }]
+})
+const qualityBad = computed(() => quality.value.filter((q) => q.bad))
+const marks = computed(() => props.task.session?.marks ?? [])
 const isDark = computed(() => session.dark)
 
 const isFullscreen = ref(false)
@@ -188,7 +211,7 @@ const armY = computed(() => +(45 - pos.value[2] * 40).toFixed(1))
                 <span class="rec-txt">REC</span>
                 <span>{{ timeStr }}</span>
               </div>
-              <span class="stream-stat muted mono">30 FPS · 1080P · 0 丢包</span>
+              <span class="stream-stat muted mono">{{ task.params.fps }} FPS · {{ task.params.res.toUpperCase() }} · {{ task.params.codec }} · 第 {{ (task.session?.eps ?? 0) + 1 }} 条</span>
             </div>
 
             <!-- 右侧：控制按钮与窗口操作 -->
@@ -227,6 +250,17 @@ const armY = computed(() => +(45 - pos.value[2] * 40).toFixed(1))
                 >
                   <svg viewBox="0 0 24 24" class="btn-ic"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" /></svg>
                   <span>标记</span>
+                </button>
+
+                <button
+                  type="button"
+                  class="op-btn"
+                  :disabled="!mayEdit || !marks.length"
+                  :title="marks.length ? '回退到标记「' + marks[marks.length - 1].label + '」，丢弃之后采集的数据' : '先打一个事件标记，才能回退'"
+                  @click="emit('rollback')"
+                >
+                  <svg viewBox="0 0 24 24" class="btn-ic"><path d="M9 14L4 9l5-5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" /><path d="M4 9h10a6 6 0 010 12h-3" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" /></svg>
+                  <span>回退</span>
                 </button>
 
                 <button
@@ -276,6 +310,15 @@ const armY = computed(() => +(45 - pos.value[2] * 40).toFixed(1))
               </button>
             </div>
           </header>
+
+          <!-- 实时质量反馈 -->
+          <div class="q-strip" :class="{ bad: qualityBad.length }">
+            <span class="q-title">{{ qualityBad.length ? '质量预警' : '实时质量' }}</span>
+            <span v-for="q in quality" :key="q.k" class="q-i" :class="{ bad: q.bad }" :title="'阈值 ' + q.rule">{{ q.k }} <b class="mono">{{ q.v }}</b></span>
+            <span class="q-grow" />
+            <span v-if="qualityBad.length" class="q-msg">{{ qualityBad.map((q) => q.k).join('、') }}超出阈值，可点“标记”记录或“标记失败”重录</span>
+            <span v-else-if="marks.length" class="q-msg muted">最近标记：{{ marks[marks.length - 1].label }}（第 {{ marks[marks.length - 1].ep + 1 }} 条）</span>
+          </div>
 
           <!-- 2. 主体视口区域 -->
           <div class="deck-scroll-area">
@@ -1308,4 +1351,14 @@ const armY = computed(() => +(45 - pos.value[2] * 40).toFixed(1))
   transform: translateX(-14px) scale(0.99);
   opacity: 0;
 }
+.q-strip { display: flex; align-items: center; gap: 14px; padding: 6px 16px; font-size: 12px; border-bottom: 1px solid rgba(148,163,184,.16); background: rgba(16,185,129,.06); flex-wrap: wrap; }
+.q-strip.bad { background: rgba(245,158,11,.1); }
+.q-title { font-weight: 600; color: #10b981; }
+.q-strip.bad .q-title { color: #f59e0b; }
+.q-i { color: #94a3b8; }
+.q-i b { color: #e2e8f0; font-weight: 500; margin-left: 2px; }
+.q-i.bad b, .q-i.bad { color: #f59e0b; }
+.q-grow { flex: 1; }
+.q-msg { color: #f59e0b; }
+.q-msg.muted { color: #94a3b8; }
 </style>

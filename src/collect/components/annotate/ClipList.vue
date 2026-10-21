@@ -10,8 +10,9 @@ const emit = defineEmits<{ pick: [id: string]; 'update:filter': [v: string] }>()
 </script>
 <template>
   <div class="clist">
-    <div class="toolbar" style="padding:10px 10px">
-      <div class="filter-seg" role="group" aria-label="筛选">
+    <div class="toolbar" style="padding:10px 10px;flex-direction:column;align-items:stretch;gap:0">
+      <slot name="head" />
+      <div v-if="filters.length" class="filter-seg" role="group" aria-label="筛选">
         <button
           v-for="f in filters"
           :key="f[0]"
@@ -33,6 +34,7 @@ const emit = defineEmits<{ pick: [id: string]; 'update:filter': [v: string] }>()
             <span class="muted" style="font-size:12px">{{ SCEN[c.scen].short }} · {{ c.dur }} s · {{ c.batch }}</span>
             <StatusBadge :kind="CLIP_ST[c.status][0] as BadgeKind" :text="CLIP_ST[c.status][1]" />
           </span>
+          <slot name="meta" :clip="c" />
           <span v-if="c.status === 'rejected' && c.reject" class="rj">打回：{{ c.reject.reason }}</span>
         </button>
       </template>

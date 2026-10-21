@@ -11,6 +11,7 @@ const COLLECT_VIEWS: Record<PageKey, () => Promise<unknown>> = {
   pipeline: () => import('@/collect/views/PipelineView.vue'),
   annotate: () => import('@/collect/views/AnnotateView.vue'),
   review: () => import('@/collect/views/ReviewView.vue'),
+  dict: () => import('@/collect/views/DictView.vue'),
   datasets: () => import('@/collect/views/DatasetsView.vue'),
   storage: () => import('@/collect/views/StorageView.vue'),
   devices: () => import('@/collect/views/DevicesView.vue'),
