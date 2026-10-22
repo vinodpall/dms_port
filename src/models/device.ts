@@ -1,60 +1,71 @@
 /**
  * 机器人设备数据模型（设备管理模块）
- * 字段按通用设备库设计，便于后续统一数据库；页面层各模块保持独立，不展示跨模块信息。
+ * 三层结构：设备类型（决定展示哪些实时指标、能否遥操作）→ 型号（规格、摄像头）→ 设备（具体某一台）
  */
-export type DeviceType = 'humanoid' | 'quadruped' | 'ugv' | 'uav' | 'usv'
-export type DeviceStatus = 'working' | 'online' | 'charging' | 'offline' | 'fault'
-export type Capability = 'collect' | 'patrol' | 'twin' | 'rescue' | 'teleop' | 'mapping'
+export type DeviceType = 'quadruped' | 'ugv' | 'uav' | 'humanoid'
+export type DeviceStatus = 'working' | 'idle' | 'charging' | 'fault' | 'offline'
 
-export interface DeviceSpec {
-  dof?: number          // 自由度
-  payload: string       // 负载
-  speed: string         // 最高速度
-  endurance: string     // 续航
-  ip: string            // 防护等级
-  size: string          // 尺寸
-  weight: string        // 重量
+/** 实时指标（详情页按类型取用） */
+export type MetricKey = 'battery' | 'speed' | 'alt' | 'gait' | 'joint' | 'latency'
+
+export interface DeviceModel {
+  id: string
+  type: DeviceType
+  name: string
+  vendor: string
+  protocol: 'ROS2' | 'SDK' | 'MAVLink'
+  cameras: string[]
+  spec: { speed: string; endurance: string; payload: string; weight: string }
 }
+
+export interface Telemetry {
+  speed: number            // m/s
+  latency: number          // ms
+  x: number; y: number; yaw: number
+  alt?: number             // 无人机相对高度 m
+  gait?: string            // 机器狗步态
+  joint?: '正常' | '异常'   // 人形关节状态
+}
+
 export interface Device {
   id: string
   sn: string
   name: string
   type: DeviceType
-  model: string
-  vendor: string
+  modelId: string
   status: DeviceStatus
-  battery: number       // 0-100
-  signal: number        // 0-4
-  cpu: number
-  temp: number
-  location: string      // 存放库位
-  group: string
-  protocol: 'ROS2' | 'MAVLink' | 'SDK' | 'NMEA2000'
-  ipAddr: string
-  firmware: string
-  lastSeen: string
-  hours: number         // 累计运行小时
-  caps: Capability[]
-  sensors: string[]
-  spec: DeviceSpec
+  battery: number          // 0-100
+  ip: string
+  area: string
   owner: string
+  firmware: string
   commissioned: string
+  lastSeen: string
+  remark?: string
+  tm: Telemetry
 }
 
-export const TYPE_META: Record<DeviceType, { label: string; short: string; color: string }> = {
-  humanoid: { label: '人形机器人', short: '人形', color: '#2ED3E6' },
-  quadruped: { label: '机器狗', short: '四足', color: '#5B9BFF' },
-  ugv: { label: '无人车', short: '无人车', color: '#45E3A8' },
-  uav: { label: '无人机', short: '无人机', color: '#B48CFF' },
-  usv: { label: '无人救生船', short: '救生船', color: '#FFC15C' },
+export const TYPE_META: Record<DeviceType, { label: string; color: string; teleop: boolean; metrics: MetricKey[] }> = {
+  quadruped: { label: '机器狗', color: '#5B9BFF', teleop: true, metrics: ['battery', 'speed', 'gait', 'latency'] },
+  ugv: { label: '无人车', color: '#45E3A8', teleop: true, metrics: ['battery', 'speed', 'latency'] },
+  uav: { label: '无人机', color: '#B48CFF', teleop: true, metrics: ['battery', 'speed', 'alt', 'latency'] },
+  humanoid: { label: '人形机器人', color: '#2ED3E6', teleop: false, metrics: ['battery', 'joint', 'latency'] },
 }
-export const STATUS_META: Record<DeviceStatus, { label: string; badge: 'processing' | 'success' | 'warning' | 'default' | 'error'; color: string }> = {
-  working: { label: '运行中', badge: 'processing', color: '#26C6DA' },
-  online: { label: '在线空闲', badge: 'success', color: '#45E3A8' },
-  charging: { label: '充电中', badge: 'warning', color: '#FFC15C' },
-  offline: { label: '离线', badge: 'default', color: '#8EA6BE' },
-  fault: { label: '故障', badge: 'error', color: '#FF7A7A' },
+export const TYPES = Object.keys(TYPE_META) as DeviceType[]
+
+export const STATUS_META: Record<DeviceStatus, { label: string; badge: 'processing' | 'success' | 'warning' | 'default' | 'error' }> = {
+  working: { label: '运行中', badge: 'processing' },
+  idle: { label: '空闲', badge: 'success' },
+  charging: { label: '充电中', badge: 'warning' },
+  fault: { label: '故障', badge: 'error' },
+  offline: { label: '离线', badge: 'default' },
 }
-export const CAP_META: Record<Capability, string> = {
-  collect: '多模态感知', patrol: '巡检', twin: '自主导航', rescue: '应急救援', teleop: '遥操作', mapping: '建图定位',
-}
+export const STATUSES = Object.keys(STATUS_META) as DeviceStatus[]
+
+/** 在线 = 非离线（故障设备仍能上报状态） */
+export const isOnline = (d: Device) => d.status !== 'offline'
+/** 可遥操作：类型支持且设备在线、无故障 */
+export const canTeleop = (d: Device) => TYPE_META[d.type].teleop && d.status !== 'offline' && d.status !== 'fault'
+
+export const AREAS = ['A 区 · 室内训练场', 'B 区 · 越野场地', 'C 区 · 室外道路', 'D 区 · 停机坪']
+export const OWNERS = ['周工', '赵工', '张杰', '李敏']

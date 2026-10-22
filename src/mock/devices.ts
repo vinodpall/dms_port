@@ -1,57 +1,68 @@
-import type { Device, DeviceType, DeviceStatus, Capability } from '@/models/device'
+import type { Device, DeviceModel, DeviceStatus, DeviceType } from '@/models/device'
+import { AREAS, OWNERS } from '@/models/device'
 
-const MODELS: Record<DeviceType, { model: string; vendor: string; protocol: Device['protocol']; caps: Capability[]; sensors: string[]; spec: Device['spec'] }[]> = {
-  humanoid: [
-    { model: 'Walker S1', vendor: '优必选', protocol: 'ROS2', caps: ['collect', 'teleop', 'twin'], sensors: ['双目深度相机 ×2', '3D 激光雷达', 'IMU', '六维力传感器 ×2', '灵巧手触觉阵列'], spec: { dof: 41, payload: '15 kg', speed: '2.0 m/s', endurance: '2 h', ip: 'IP54', size: '1720×560×300 mm', weight: '76 kg' } },
-    { model: 'H1', vendor: '宇树科技', protocol: 'SDK', caps: ['collect', 'teleop', 'twin'], sensors: ['深度相机', '3D 激光雷达 MID-360', 'IMU', '关节编码器'], spec: { dof: 27, payload: '10 kg', speed: '3.3 m/s', endurance: '1.5 h', ip: 'IP43', size: '1800×570×220 mm', weight: '47 kg' } },
-  ],
-  quadruped: [
-    { model: 'B2', vendor: '宇树科技', protocol: 'ROS2', caps: ['patrol', 'mapping', 'collect', 'twin'], sensors: ['3D 激光雷达', '前后深度相机', '红外热像仪', '气体传感器', 'IMU'], spec: { dof: 12, payload: '40 kg', speed: '6 m/s', endurance: '4 h', ip: 'IP67', size: '1098×450×645 mm', weight: '60 kg' } },
-    { model: 'X30', vendor: '云深处', protocol: 'ROS2', caps: ['patrol', 'mapping', 'rescue'], sensors: ['激光雷达 ×2', '广角相机 ×4', '云台相机', '拾音器'], spec: { dof: 12, payload: '85 kg', speed: '4 m/s', endurance: '4 h', ip: 'IP67', size: '1000×470×685 mm', weight: '56 kg' } },
-  ],
-  ugv: [
-    { model: 'Scout 2.0', vendor: '松灵机器人', protocol: 'ROS2', caps: ['patrol', 'mapping', 'collect'], sensors: ['16 线激光雷达', 'RTK-GNSS', '全景相机', '超声波 ×8'], spec: { payload: '50 kg', speed: '1.5 m/s', endurance: '8 h', ip: 'IP64', size: '930×699×349 mm', weight: '62 kg' } },
-  ],
-  uav: [
-    { model: 'M350 RTK', vendor: '大疆', protocol: 'MAVLink', caps: ['patrol', 'mapping', 'rescue'], sensors: ['H20T 云台相机', 'RTK 模块', '毫米波雷达', '视觉避障 ×6'], spec: { payload: '2.7 kg', speed: '23 m/s', endurance: '55 min', ip: 'IP55', size: '810×670×430 mm', weight: '6.47 kg' } },
-  ],
-  usv: [
-    { model: 'HL-950', vendor: '华测导航', protocol: 'NMEA2000', caps: ['rescue', 'patrol', 'mapping'], sensors: ['船载雷达', '声呐', '光电吊舱', '北斗定位', '救生圈投放器'], spec: { payload: '200 kg', speed: '12 kn', endurance: '6 h', ip: 'IP68', size: '1550×780×560 mm', weight: '35 kg' } },
-  ],
-}
-const LOC: Record<DeviceType, string> = { humanoid: 'A 区机库', quadruped: 'B 区机库', ugv: 'C 区车库', uav: '停机坪', usv: '1 号码头' }
-const GROUPS = ['一组', '二组', '三组', '应急组']
-const PLAN: [DeviceType, number, string][] = [['humanoid', 8, 'HM'], ['quadruped', 10, 'QD'], ['ugv', 6, 'UG'], ['uav', 6, 'UA'], ['usv', 4, 'US']]
-const STATUS_CYCLE: DeviceStatus[] = ['working', 'online', 'working', 'charging', 'online', 'working', 'offline', 'working', 'fault', 'online']
-const NAMES: Record<DeviceType, string> = { humanoid: '人形', quadruped: '机器狗', ugv: '无人车', uav: '无人机', usv: '救生船' }
+const M = (id: string, type: DeviceType, name: string, vendor: string, protocol: DeviceModel['protocol'], cameras: string[], spec: DeviceModel['spec']): DeviceModel => ({ id, type, name, vendor, protocol, cameras, spec })
 
-let seed = 7
+export const MODELS: DeviceModel[] = [
+  M('qd-b2', 'quadruped', 'B2', '宇树科技', 'ROS2', ['前视', '后视', '云台'], { speed: '6 m/s', endurance: '4 h', payload: '40 kg', weight: '60 kg' }),
+  M('qd-go2', 'quadruped', 'Go2 EDU', '宇树科技', 'SDK', ['前视'], { speed: '3.7 m/s', endurance: '2 h', payload: '8 kg', weight: '15 kg' }),
+  M('qd-x30', 'quadruped', 'X30', '云深处', 'ROS2', ['前视', '后视', '云台'], { speed: '4 m/s', endurance: '4 h', payload: '85 kg', weight: '56 kg' }),
+  M('qd-lite3', 'quadruped', 'Lite3', '云深处', 'ROS2', ['前视'], { speed: '2.5 m/s', endurance: '1.5 h', payload: '7.5 kg', weight: '12 kg' }),
+  M('qd-spot', 'quadruped', 'Spot', 'Boston Dynamics', 'SDK', ['前视', '左侧', '右侧', '后视'], { speed: '1.6 m/s', endurance: '1.5 h', payload: '14 kg', weight: '32 kg' }),
+  M('ug-scout', 'ugv', 'Scout 2.0', '松灵机器人', 'ROS2', ['前视', '全景'], { speed: '1.5 m/s', endurance: '8 h', payload: '50 kg', weight: '62 kg' }),
+  M('ug-hunter', 'ugv', 'Hunter SE', '松灵机器人', 'ROS2', ['前视', '后视'], { speed: '4.8 m/s', endurance: '6 h', payload: '50 kg', weight: '42 kg' }),
+  M('ug-bunker', 'ugv', 'Bunker Mini', '松灵机器人', 'ROS2', ['前视'], { speed: '1.5 m/s', endurance: '4 h', payload: '35 kg', weight: '55 kg' }),
+  M('ua-m350', 'uav', 'M350 RTK', '大疆', 'MAVLink', ['云台', '下视'], { speed: '23 m/s', endurance: '55 min', payload: '2.7 kg', weight: '6.5 kg' }),
+  M('ua-m30t', 'uav', 'M30T', '大疆', 'MAVLink', ['广角', '变焦', '红外'], { speed: '23 m/s', endurance: '41 min', payload: '—', weight: '3.8 kg' }),
+  M('ua-m3e', 'uav', 'Mavic 3E', '大疆', 'MAVLink', ['广角', '长焦'], { speed: '21 m/s', endurance: '45 min', payload: '—', weight: '0.9 kg' }),
+  M('ua-m4t', 'uav', 'Matrice 4T', '大疆', 'MAVLink', ['广角', '变焦', '红外'], { speed: '21 m/s', endurance: '49 min', payload: '—', weight: '1.2 kg' }),
+  M('ua-x500', 'uav', 'X500 V2', 'Holybro', 'MAVLink', ['前视'], { speed: '15 m/s', endurance: '18 min', payload: '1 kg', weight: '1.3 kg' }),
+  M('hm-walker', 'humanoid', 'Walker S1', '优必选', 'ROS2', ['头部', '左腕', '右腕'], { speed: '2 m/s', endurance: '2 h', payload: '15 kg', weight: '76 kg' }),
+  M('hm-h1', 'humanoid', 'H1', '宇树科技', 'SDK', ['头部'], { speed: '3.3 m/s', endurance: '1.5 h', payload: '10 kg', weight: '47 kg' }),
+]
+
+const COUNT = [3, 4, 2, 2, 1, 3, 2, 2, 2, 3, 2, 1, 2, 3, 2]
+const CODE: Record<DeviceType, string> = { quadruped: 'QD', ugv: 'UG', uav: 'UA', humanoid: 'HM' }
+const NAME: Record<DeviceType, string> = { quadruped: '机器狗', ugv: '无人车', uav: '无人机', humanoid: '人形' }
+const AREA: Record<DeviceType, number[]> = { quadruped: [0, 1], ugv: [2, 1], uav: [3], humanoid: [0] }
+const CYCLE: DeviceStatus[] = ['working', 'idle', 'working', 'charging', 'idle', 'offline', 'working', 'idle', 'fault', 'working', 'idle']
+const GAITS = ['行走', '小跑', '爬楼']
+
+let seed = 11
 const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280 }
-const pick = <T,>(a: T[]) => a[Math.floor(rnd() * a.length)]
+const r1 = (n: number) => Math.round(n * 10) / 10
 
-export const DEVICES: Device[] = PLAN.flatMap(([type, n, code]) =>
-  Array.from({ length: n }, (_, i) => {
-    const m = MODELS[type][i % MODELS[type].length]
-    const status = STATUS_CYCLE[(i * 3 + code.charCodeAt(0)) % STATUS_CYCLE.length]
+const seq: Record<DeviceType, number> = { quadruped: 0, ugv: 0, uav: 0, humanoid: 0 }
+let k = 0
+export const DEVICES: Device[] = MODELS.flatMap((m, mi) =>
+  Array.from({ length: COUNT[mi] }, () => {
+    const t = m.type
+    const n = ++seq[t]
+    const status = CYCLE[k++ % CYCLE.length]
     const off = status === 'offline'
-    const no = String(i + 1).padStart(3, '0')
+    const run = status === 'working'
+    const no = String(n).padStart(2, '0')
+    const ai = AREA[t][n % AREA[t].length]
     return {
-      id: `${code}-${no}`,
-      sn: `${code}${2024}${String(1000 + i * 37 + code.charCodeAt(1)).padStart(5, '0')}`,
-      name: `${NAMES[type]}-${no}`,
-      type, model: m.model, vendor: m.vendor, status,
-      battery: status === 'charging' ? 20 + Math.round(rnd() * 50) : off ? 0 : 35 + Math.round(rnd() * 64),
-      signal: off ? 0 : 1 + Math.floor(rnd() * 4),
-      cpu: off ? 0 : 12 + Math.round(rnd() * 70),
-      temp: off ? 0 : 34 + Math.round(rnd() * 30),
-      location: `${LOC[type]} · ${String.fromCharCode(65 + (i % 3))}-${String(i + 1).padStart(2, '0')}`, group: pick(GROUPS), protocol: m.protocol,
-      ipAddr: `10.20.${PLAN.findIndex((p) => p[0] === type) + 1}.${11 + i}`,
-      firmware: `v${2 + (i % 2)}.${(i * 3) % 10}.${(i * 7) % 12}`,
-      lastSeen: off ? `${2 + i} 小时前` : status === 'fault' ? '3 分钟前' : '刚刚',
-      hours: 120 + Math.round(rnd() * 2600),
-      caps: m.caps, sensors: m.sensors, spec: m.spec,
-      owner: pick(['周工', '赵工', '张杰']),
-      commissioned: `2024-${String(1 + (i % 12)).padStart(2, '0')}-${String(3 + i).padStart(2, '0')}`,
+      id: `${CODE[t]}-${no}`,
+      sn: `${CODE[t]}24${String(10350 + n * 37 + mi * 11).padStart(6, '0')}`,
+      name: `${NAME[t]}-${no}`,
+      type: t, modelId: m.id, status,
+      battery: off ? 0 : status === 'charging' ? 30 + Math.round(rnd() * 40) : 25 + Math.round(rnd() * 74),
+      ip: `10.20.${['quadruped', 'ugv', 'uav', 'humanoid'].indexOf(t) + 1}.${10 + n}`,
+      area: AREAS[ai],
+      owner: OWNERS[(n + mi) % OWNERS.length],
+      firmware: `v${2 + (n % 2)}.${(n * 3) % 10}.${(n * 7) % 12}`,
+      commissioned: `2025-${String(1 + ((n * 5 + mi) % 12)).padStart(2, '0')}-${String(3 + ((n * 7) % 25)).padStart(2, '0')}`,
+      lastSeen: off ? `${2 + n} 小时前` : '刚刚',
+      tm: {
+        speed: run ? r1(0.4 + rnd() * (t === 'uav' ? 8 : 1.4)) : 0,
+        latency: off ? 0 : 24 + Math.round(rnd() * 50),
+        x: r1(4 + rnd() * 52), y: r1(4 + rnd() * 32), yaw: Math.round(rnd() * 360),
+        ...(t === 'uav' ? { alt: run ? r1(20 + rnd() * 60) : 0 } : {}),
+        ...(t === 'quadruped' ? { gait: run ? GAITS[n % 3] : '站立' } : {}),
+        ...(t === 'humanoid' ? { joint: status === 'fault' ? '异常' as const : '正常' as const } : {}),
+      },
     } satisfies Device
   }),
 )
