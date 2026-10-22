@@ -1,149 +1,220 @@
 <script setup lang="ts">
-/** 设备概览：只回答三个问题——设备总体情况、哪些设备需要处理、设备分布 */
-import { computed } from 'vue'
+/** 设备概览：只展示设备自身的通用信息——状态构成、需处理设备、电量、分布 */
+import { computed, ref } from 'vue'
 import { RightOutlined } from '@ant-design/icons-vue'
-import { AREAS, TYPE_META, isOnline, type Device, type DeviceStatus, type DeviceType } from '@/models/device'
+import { AREAS, OWNERS, STATUSES, STATUS_META, TYPE_META, isOnline, type Device, type DeviceStatus, type DeviceType } from '@/models/device'
 import { fleet, modelOf } from './store'
 
-const emit = defineEmits<{ open: [Device]; list: [{ type?: DeviceType; status?: DeviceStatus }] }>()
+type Go = { type?: DeviceType; status?: DeviceStatus; model?: string; area?: string }
+const emit = defineEmits<{ open: [Device]; list: [Go] }>()
 
 const all = computed(() => fleet.devices)
-const n = (s: DeviceStatus) => all.value.filter((d) => d.status === s).length
+const total = computed(() => all.value.length)
 const onlineN = computed(() => all.value.filter(isOnline).length)
-const KPIS = computed(() => [
-  { l: '设备总数', v: all.value.length, sub: `${fleet.models.length} 个型号`, go: {} },
-  { l: '在线', v: onlineN.value, sub: `在线率 ${Math.round((onlineN.value / (all.value.length || 1)) * 100)}%`, go: {} },
-  { l: '运行中', v: n('working'), sub: `空闲 ${n('idle')} · 充电 ${n('charging')}`, go: { status: 'working' as const } },
-  { l: '故障', v: n('fault'), sub: `离线 ${n('offline')}`, go: { status: 'fault' as const }, bad: true },
-])
+const rate = computed(() => Math.round((onlineN.value / (total.value || 1)) * 100))
 
-/* 类型分布：类型从设备数据中动态汇总，新增类型无需改页面 */
-const types = computed(() => {
-  const m = new Map<DeviceType, { t: DeviceType; total: number; on: number }>()
-  for (const d of all.value) {
-    const x = m.get(d.type) ?? { t: d.type, total: 0, on: 0 }
-    x.total++; if (isOnline(d)) x.on++; m.set(d.type, x)
-  }
-  return [...m.values()].sort((p, q) => q.total - p.total)
-})
-const typeMax = computed(() => Math.max(1, ...types.value.map((x) => x.total)))
-const typeLabel = (t: DeviceType) => TYPE_META[t]?.label ?? t
+/* 状态构成 */
+const SC: Record<DeviceStatus, string> = { working: '#2ED3E6', idle: '#45E3A8', charging: '#FFC15C', fault: '#FF7A7A', offline: '#4A6380' }
+const status = computed(() => STATUSES.map((s) => ({ s, n: all.value.filter((d) => d.status === s).length })))
 
-/* 需关注：故障 > 低电量 > 离线 */
+/* 需处理：故障 > 低电量 > 离线 */
 const todo = computed(() => [
   ...all.value.filter((d) => d.status === 'fault').map((d) => ({ d, lv: 'bad', why: '设备故障' })),
   ...all.value.filter((d) => isOnline(d) && d.status !== 'charging' && d.status !== 'fault' && d.battery < 30).map((d) => ({ d, lv: 'warn', why: `电量 ${d.battery}%` })),
   ...all.value.filter((d) => d.status === 'offline').map((d) => ({ d, lv: 'off', why: `离线 · ${d.lastSeen}` })),
 ])
 
-/* 最近动态（演示数据：由设备当前状态推导，接入后端后替换为事件流） */
-const events = computed(() => {
-  const out: { k: string; t: string; d: Device; c: string; lv: string }[] = []
-  let m = 10 * 60 + 18
-  const push = (d: Device, c: string, lv: string) => { const t = `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`; out.push({ k: d.id + c, t, d, c, lv }); m -= 7 + (out.length * 5) % 13 }
-  const L = all.value.length
-  all.value.map((_, i) => all.value[(i * 7) % L]).forEach((d, i) => {
-    if (d.status === 'fault') push(d, '上报故障，已停止作业', 'bad')
-    else if (d.status === 'offline') push(d, '失去连接', 'off')
-    else if (d.status === 'charging') push(d, '返回充电桩，开始充电', 'warn')
-    else if (d.status === 'working' && i % 3 === 0) push(d, `${d.owner} 开始作业`, 'ok')
-  })
-  return out.sort((a, b) => (a.t < b.t ? 1 : -1))
+/* 电量分布（在线设备） */
+const BUCKETS = [
+  { l: '< 20%', min: 0, max: 20, c: '#FF7A7A' }, { l: '20–40%', min: 20, max: 40, c: '#FFC15C' },
+  { l: '40–60%', min: 40, max: 60, c: '#9BD96A' }, { l: '60–80%', min: 60, max: 80, c: '#45E3A8' }, { l: '≥ 80%', min: 80, max: 101, c: '#2ED3E6' },
+]
+const battery = computed(() => {
+  const on = all.value.filter(isOnline)
+  return BUCKETS.map((b) => ({ ...b, n: on.filter((d) => d.battery >= b.min && d.battery < b.max).length }))
 })
+const batMax = computed(() => Math.max(1, ...battery.value.map((b) => b.n)))
+const avgBat = computed(() => { const on = all.value.filter(isOnline); return on.length ? Math.round(on.reduce((a, d) => a + d.battery, 0) / on.length) : 0 })
 
-const areas = computed(() => AREAS.map((a) => { const ds = all.value.filter((d) => d.area === a); return { a, total: ds.length, on: ds.filter(isOnline).length } }))
-const areaMax = computed(() => Math.max(1, ...areas.value.map((x) => x.total)))
+/* 设备分布：维度切换，分组从数据动态汇总 */
+const DIMS = [{ k: 'type', l: '类型' }, { k: 'model', l: '型号' }, { k: 'area', l: '区域' }, { k: 'owner', l: '负责人' }] as const
+type Dim = (typeof DIMS)[number]['k']
+const dim = ref<Dim>('type')
+const groups = computed(() => {
+  const key = (d: Device) => (dim.value === 'type' ? d.type : dim.value === 'model' ? d.modelId : dim.value === 'area' ? d.area : d.owner)
+  const label = (k: string) => (dim.value === 'type' ? TYPE_META[k as DeviceType]?.label ?? k : dim.value === 'model' ? fleet.models.find((m) => m.id === k)?.name ?? k : k)
+  const m = new Map<string, { k: string; l: string; total: number; on: number }>()
+  for (const d of all.value) { const k = key(d); const x = m.get(k) ?? { k, l: label(k), total: 0, on: 0 }; x.total++; if (isOnline(d)) x.on++; m.set(k, x) }
+  const order = dim.value === 'area' ? AREAS : dim.value === 'owner' ? OWNERS : null
+  const out = [...m.values()]
+  return order ? out.sort((a, b) => order.indexOf(a.k) - order.indexOf(b.k)) : out.sort((a, b) => b.total - a.total)
+})
+const gMax = computed(() => Math.max(1, ...groups.value.map((g) => g.total)))
+const goGroup = (k: string) => {
+  if (dim.value === 'type') emit('list', { type: k as DeviceType })
+  else if (dim.value === 'model') emit('list', { model: k })
+  else if (dim.value === 'area') emit('list', { area: k })
+}
+
+/* 固件版本：同型号以最高版本为最新，低于最新的视为待升级 */
+const ver = (v: string) => v.replace(/^v/, '').split('.').map(Number)
+const cmp = (a: string, b: string) => { const x = ver(a), y = ver(b); for (let i = 0; i < 3; i++) if ((x[i] ?? 0) !== (y[i] ?? 0)) return (x[i] ?? 0) - (y[i] ?? 0); return 0 }
+const fw = computed(() => {
+  const rows = fleet.models.map((m) => {
+    const ds = all.value.filter((d) => d.modelId === m.id)
+    const latest = ds.reduce((a, d) => (cmp(d.firmware, a) > 0 ? d.firmware : a), 'v0.0.0')
+    return { m, latest, total: ds.length, old: ds.filter((d) => cmp(d.firmware, latest) < 0).length }
+  }).filter((r) => r.total)
+  const old = rows.reduce((a, r) => a + r.old, 0)
+  return { old, ok: total.value - old, rows: rows.filter((r) => r.old).sort((a, b) => b.old - a.old) }
+})
 </script>
 
 <template>
   <div class="pp-head"><div><h2>设备概览</h2><p>设备在线情况与待处理事项</p></div></div>
 
-  <div class="ds-kpis">
-    <button v-for="k in KPIS" :key="k.l" type="button" class="pp-panel ds-kpi" :class="{ bad: k.bad && k.v }" @click="emit('list', k.go)">
-      <small>{{ k.l }}</small><b class="mono">{{ k.v }}</b><span class="muted">{{ k.sub }}</span>
-    </button>
-  </div>
-
-  <div class="ds-grid">
-    <section class="pp-panel">
-      <div class="pp-panel-h"><h3>需关注</h3><span class="ds-cnt">{{ todo.length }}</span></div>
-      <ul v-if="todo.length" class="ds-todo ds-body">
-        <li v-for="x in todo" :key="x.d.id" :class="x.lv" @click="emit('open', x.d)">
-          <i class="dot" /><b>{{ x.d.name }}</b><span class="muted">{{ modelOf(x.d)?.name }} · {{ x.d.area }}</span><em>{{ x.why }}</em><RightOutlined class="go" />
-        </li>
-      </ul>
-      <a-empty v-else description="暂无需要处理的设备" style="padding: 32px 0" />
-    </section>
-    <section class="pp-panel">
-      <div class="pp-panel-h"><h3>类型分布</h3><span class="r ds-lg"><i class="o" />在线<i class="t" />离线</span></div>
-      <div class="ds-cols ds-body">
-        <button v-for="x in types" :key="x.t" type="button" class="col" :title="`${typeLabel(x.t)}：在线 ${x.on} / 共 ${x.total} 台`" @click="emit('list', { type: x.t })">
-          <div class="plot"><b class="mono">{{ x.on }}<em>/{{ x.total }}</em></b><div class="bar" :style="{ height: `calc((100% - 22px) * ${x.total / typeMax})` }"><i :style="{ height: (x.on / (x.total || 1)) * 100 + '%' }" /></div></div>
-          <span>{{ typeLabel(x.t) }}</span>
+  <!-- 总览条：一块面板讲清规模、在线率与状态构成 -->
+  <section class="pp-panel ds-hero">
+    <div class="ring" :style="{ '--p': rate }"><div><b class="mono">{{ rate }}<small>%</small></b><span>在线率</span></div></div>
+    <div class="nums">
+      <div><b class="mono">{{ total }}</b><span>设备总数</span></div>
+      <div><b class="mono">{{ onlineN }}</b><span>在线</span></div>
+      <div><b class="mono">{{ fleet.models.length }}</b><span>型号</span></div>
+    </div>
+    <div class="mix">
+      <div class="bar"><i v-for="x in status" v-show="x.n" :key="x.s" :style="{ flexGrow: x.n, background: SC[x.s] }" /></div>
+      <div class="legend">
+        <button v-for="x in status" :key="x.s" type="button" :class="{ bad: x.s === 'fault' && x.n }" @click="emit('list', { status: x.s })">
+          <i :style="{ background: SC[x.s] }" />{{ STATUS_META[x.s].label }}<b class="mono">{{ x.n }}</b>
         </button>
       </div>
-    </section>
-    <section class="pp-panel">
-      <div class="pp-panel-h"><h3>最近动态</h3><span class="r muted" style="font-size:12px">今日</span></div>
-      <ul class="ds-evt ds-body">
-        <li v-for="e in events" :key="e.k" @click="emit('open', e.d)">
-          <span class="mono muted">{{ e.t }}</span><i class="dot" :class="e.lv" /><b>{{ e.d.name }}</b><span class="txt">{{ e.c }}</span>
-        </li>
-      </ul>
-    </section>
-    <section class="pp-panel">
-      <div class="pp-panel-h"><h3>区域分布</h3><span class="r muted" style="font-size:12px">在线 / 总数</span></div>
-      <ul class="ds-area ds-body">
-        <li v-for="x in areas" :key="x.a"><span>{{ x.a }}</span><div class="bar"><i class="t" :style="{ width: (x.total / areaMax) * 100 + '%' }" /><i class="o" :style="{ width: (x.on / areaMax) * 100 + '%' }" /></div><b class="mono">{{ x.on }}<em>/{{ x.total }}</em></b></li>
-      </ul>
-    </section>
+    </div>
+  </section>
+
+  <div class="ds-main">
+    <div class="ds-col">
+      <section class="pp-panel ds-todo-p">
+        <div class="pp-panel-h"><h3>需处理</h3><span class="ds-cnt">{{ todo.length }}</span><span class="r muted" style="font-size:12px">故障 · 低电量 · 离线</span></div>
+        <ul v-if="todo.length" class="ds-todo">
+          <li v-for="x in todo" :key="x.d.id" :class="x.lv" @click="emit('open', x.d)">
+            <i class="dot" /><b>{{ x.d.name }}</b><span class="muted">{{ modelOf(x.d)?.name }} · {{ x.d.area }}</span><em>{{ x.why }}</em><RightOutlined class="go" />
+          </li>
+        </ul>
+        <a-empty v-else description="暂无需要处理的设备" style="margin: auto" />
+      </section>
+      <section class="pp-panel">
+        <div class="pp-panel-h"><h3>电量分布</h3><span class="r muted" style="font-size:12px">在线设备平均 <b class="mono" style="color: var(--title)">{{ avgBat }}%</b></span></div>
+        <div class="ds-bat">
+          <div v-for="b in battery" :key="b.l" class="c">
+            <b class="mono">{{ b.n }}</b>
+            <div class="track"><i :style="{ height: (b.n / batMax) * 100 + '%', background: b.c }" /></div>
+            <span>{{ b.l }}</span>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="ds-col">
+      <section class="pp-panel ds-dist">
+        <div class="pp-panel-h"><h3>设备分布</h3>
+          <div class="r ds-seg"><button v-for="x in DIMS" :key="x.k" type="button" :class="{ on: dim === x.k }" @click="dim = x.k">{{ x.l }}</button></div>
+        </div>
+        <ul class="ds-g">
+          <li v-for="g in groups" :key="g.k" :class="{ link: dim !== 'owner' }" @click="goGroup(g.k)">
+            <div class="h"><span>{{ g.l }}</span><b class="mono">{{ g.on }}<em> / {{ g.total }}</em></b></div>
+            <div class="bar"><i class="t" :style="{ width: (g.total / gMax) * 100 + '%' }" /><i class="o" :style="{ width: (g.on / gMax) * 100 + '%' }" /></div>
+          </li>
+        </ul>
+        <div class="ds-lg"><i class="o" />在线<i class="t" />离线</div>
+      </section>
+      <section class="pp-panel ds-fw">
+        <div class="pp-panel-h"><h3>固件版本</h3><span class="r muted" style="font-size:12px">以同型号最高版本为最新</span></div>
+        <div class="sum">
+          <div><b class="mono">{{ fw.ok }}</b><span>已是最新</span></div>
+          <div class="warn"><b class="mono">{{ fw.old }}</b><span>待升级</span></div>
+          <div class="bar"><i :style="{ flexGrow: fw.ok }" class="o" /><i :style="{ flexGrow: fw.old }" class="w" /></div>
+        </div>
+        <ul class="ds-fwl">
+          <li v-for="r in fw.rows" :key="r.m.id" @click="emit('list', { model: r.m.id })">
+            <span>{{ r.m.name }}</span><em class="mono muted">最新 {{ r.latest }}</em><b>{{ r.old }} 台待升级</b><RightOutlined class="go" />
+          </li>
+        </ul>
+      </section>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.ds-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px; }
-.ds-kpi { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 16px 20px; text-align: left; font: inherit; color: var(--text); cursor: pointer; }
-.ds-kpi small { font-size: 13px; color: var(--muted); }
-.ds-kpi b { font-size: 30px; font-weight: 600; line-height: 1.2; color: var(--title); }
-.ds-kpi span { font-size: 12px; }
-.ds-kpi.bad b { color: var(--bad); }
-.ds-kpi:hover { border-color: rgba(46,211,230,.4); }
-.ds-grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); grid-template-rows: 1fr 1fr; gap: 16px; height: max(600px, calc(100vh - 306px)); }
-.ds-grid > .pp-panel { display: flex; flex-direction: column; min-height: 0; }
-.ds-body { flex: 1; min-height: 0; overflow-y: auto; }
-.ds-cnt { min-width: 22px; height: 20px; padding: 0 6px; border-radius: 10px; background: rgba(255,122,122,.15); color: var(--bad); font-size: 12px; display: grid; place-items: center; }
-.ds-todo { list-style: none; margin: 0; padding: 4px 0; }
-.ds-todo li { display: flex; align-items: center; gap: 12px; height: 46px; padding: 0 16px; cursor: pointer; font-size: 13px; border-bottom: 1px dashed var(--line); }
-.ds-todo li:last-child { border-bottom: 0; }
+/* 总览条 */
+.ds-hero { display: flex; align-items: center; gap: 36px; padding: 20px 28px; margin-bottom: 16px; background: linear-gradient(100deg, rgba(46,211,230,.08), rgba(46,211,230,0) 55%), var(--panel, rgba(22,40,64,.7)); }
+.ds-hero .ring { --p: 0; width: 92px; height: 92px; flex: none; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(#2ED3E6 calc(var(--p) * 1%), rgba(46,211,230,.12) 0); }
+.ds-hero .ring > div { width: 76px; height: 76px; border-radius: 50%; background: #13253d; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.ds-hero .ring b { font-size: 22px; font-weight: 600; color: var(--title); line-height: 1.1; } .ds-hero .ring small { font-size: 12px; margin-left: 1px; }
+.ds-hero .ring span { font-size: 11.5px; color: var(--muted); }
+.ds-hero .nums { display: flex; gap: 36px; padding-right: 36px; border-right: 1px solid var(--line); }
+.ds-hero .nums div { display: flex; flex-direction: column; gap: 2px; }
+.ds-hero .nums b { font-size: 28px; font-weight: 600; color: var(--title); line-height: 1.15; } .ds-hero .nums span { font-size: 12.5px; color: var(--muted); }
+.ds-hero .mix { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+.ds-hero .mix .bar { display: flex; gap: 3px; height: 10px; border-radius: 5px; overflow: hidden; }
+.ds-hero .mix .bar i { display: block; height: 10px; flex-basis: 0; }
+.ds-hero .legend { display: flex; flex-wrap: wrap; gap: 6px 22px; }
+.ds-hero .legend button { display: inline-flex; align-items: center; gap: 7px; padding: 2px 0; border: 0; background: none; font: inherit; font-size: 13px; color: var(--muted); cursor: pointer; }
+.ds-hero .legend button:hover { color: var(--text); }
+.ds-hero .legend i { width: 8px; height: 8px; border-radius: 2px; }
+.ds-hero .legend b { font-size: 15px; font-weight: 600; color: var(--title); } .ds-hero .legend .bad b { color: var(--bad); }
+
+/* 主区：左列两块、右列一块，高度各自填满 */
+.ds-main { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 16px; height: max(560px, calc(100vh - 318px)); }
+.ds-col { display: flex; flex-direction: column; gap: 16px; min-height: 0; }
+.ds-col > .pp-panel { display: flex; flex-direction: column; min-height: 0; }
+.ds-todo-p, .ds-fw { flex: 1; }
+.ds-dist { flex: 0 0 auto; height: 50%; }
+.ds-cnt { min-width: 22px; height: 20px; padding: 0 6px; margin-left: 8px; border-radius: 10px; background: rgba(255,122,122,.15); color: var(--bad); font-size: 12px; display: grid; place-items: center; }
+.ds-todo { list-style: none; margin: 0; padding: 4px 0; flex: 1; min-height: 0; overflow-y: auto; }
+.ds-todo li { display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 18px; cursor: pointer; font-size: 13px; }
+.ds-todo li + li { border-top: 1px dashed var(--line); }
 .ds-todo li:hover { background: rgba(46,211,230,.05); }
 .ds-todo .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
-.ds-todo .bad .dot { background: var(--bad); } .ds-todo .warn .dot { background: var(--warn); } .ds-todo .off .dot { background: #6A84A0; }
+.ds-todo .bad .dot { background: var(--bad); box-shadow: 0 0 0 3px rgba(255,122,122,.15); } .ds-todo .warn .dot { background: var(--warn); } .ds-todo .off .dot { background: #6A84A0; }
 .ds-todo b { font-weight: 500; width: 90px; flex: none; }
 .ds-todo span { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; }
 .ds-todo em { margin-left: auto; font-style: normal; font-size: 12.5px; }
 .ds-todo .bad em { color: var(--bad); } .ds-todo .warn em { color: var(--warn); } .ds-todo .off em { color: var(--muted); }
 .ds-todo .go { font-size: 10px; color: var(--faint, #5d7690); }
-.ds-lg { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
-.ds-lg i { width: 8px; height: 8px; border-radius: 2px; margin-left: 6px; } .ds-lg .o { background: #2ED3E6; } .ds-lg .t { background: rgba(46,211,230,.18); }
-.ds-cols { display: flex; align-items: stretch; gap: 10px; overflow-y: hidden; padding: 14px 16px 12px; overflow-x: auto; }
-.ds-cols .col { flex: 1 0 56px; max-width: 96px; min-height: 0; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px; padding: 0; border: 0; background: none; font: inherit; color: var(--text); cursor: pointer; }
-.ds-cols .plot { flex: 1 1 0; min-height: 0; border-bottom: 1px solid var(--line); width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px; }
-.ds-cols .col b { font-size: 12.5px; font-weight: 600; color: var(--title); } .ds-cols .col em { font-style: normal; font-weight: 400; color: var(--muted); }
-.ds-cols .bar { position: relative; width: 28px; min-height: 4px; border-radius: 4px 4px 0 0; background: rgba(46,211,230,.18); display: flex; align-items: flex-end; overflow: hidden; transition: filter .15s; }
-.ds-cols .bar i { display: block; width: 100%; background: linear-gradient(180deg, #2ED3E6, #1a9fb8); }
-.ds-cols .col:hover .bar { filter: brightness(1.25); }
-.ds-cols .col span { flex: none; line-height: 18px; font-size: 12.5px; color: var(--muted); white-space: nowrap; }
-.ds-area { list-style: none; margin: 0; padding: 8px 16px 12px; display: flex; flex-direction: column; justify-content: space-around; }
-.ds-area li { display: grid; grid-template-columns: 120px 1fr 52px; align-items: center; gap: 12px; height: 42px; font-size: 13px; }
-.ds-evt { list-style: none; margin: 0; padding: 4px 0; }
-.ds-evt li { display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 16px; font-size: 13px; cursor: pointer; }
-.ds-evt li:hover { background: rgba(46,211,230,.05); }
-.ds-evt .mono { width: 40px; flex: none; font-size: 12px; }
-.ds-evt .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: #6A84A0; }
-.ds-evt .dot.bad { background: var(--bad); } .ds-evt .dot.warn { background: var(--warn); } .ds-evt .dot.ok { background: #2ED3E6; }
-.ds-evt b { font-weight: 500; width: 90px; flex: none; } .ds-evt .txt { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ds-area .bar { position: relative; height: 8px; border-radius: 4px; background: rgba(46,211,230,.06); }
-.ds-area .bar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; }
-.ds-area .bar .t { background: rgba(46,211,230,.18); } .ds-area .bar .o { background: #2ED3E6; }
-.ds-area b { text-align: right; font-weight: 600; } .ds-area em { font-style: normal; color: var(--muted); font-weight: 400; }
+
+/* 电量分布 */
+.ds-bat { display: flex; gap: 18px; height: 150px; padding: 12px 24px 14px; }
+.ds-bat .c { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.ds-bat .c b { font-size: 13px; font-weight: 600; color: var(--title); }
+.ds-bat .track { flex: 1; width: 100%; max-width: 64px; display: flex; align-items: flex-end; border-radius: 4px; background: rgba(46,211,230,.05); overflow: hidden; }
+.ds-bat .track i { display: block; width: 100%; min-height: 2px; border-radius: 4px 4px 0 0; opacity: .85; }
+.ds-bat .c span { font-size: 12px; color: var(--muted); white-space: nowrap; }
+
+/* 固件版本 */
+.ds-fw .sum { display: flex; align-items: center; gap: 28px; padding: 14px 20px 10px; }
+.ds-fw .sum > div:not(.bar) { display: flex; align-items: baseline; gap: 6px; }
+.ds-fw .sum b { font-size: 22px; font-weight: 600; color: var(--title); } .ds-fw .sum .warn b { color: var(--warn); }
+.ds-fw .sum span { font-size: 12.5px; color: var(--muted); }
+.ds-fw .sum .bar { flex: 1; display: flex; gap: 3px; height: 6px; border-radius: 3px; overflow: hidden; }
+.ds-fw .sum .bar i { display: block; height: 6px; flex-basis: 0; } .ds-fw .sum .bar .o { background: #45E3A8; } .ds-fw .sum .bar .w { background: var(--warn); }
+.ds-fwl { list-style: none; margin: 0; padding: 0 0 6px; flex: 1; min-height: 0; overflow-y: auto; }
+.ds-fwl li { display: flex; align-items: center; gap: 12px; height: 38px; padding: 0 20px; font-size: 13px; cursor: pointer; }
+.ds-fwl li:hover { background: rgba(46,211,230,.05); }
+.ds-fwl span { flex: 0 1 auto; min-width: 0; } .ds-fwl em { margin-left: auto; font-style: normal; font-size: 12px; } .ds-fwl b { flex: none; font-weight: 500; font-size: 12.5px; color: var(--warn); width: 84px; text-align: right; }
+.ds-fwl .go { font-size: 10px; color: var(--faint, #5d7690); }
+
+/* 设备分布 */
+.ds-seg { display: flex; padding: 2px; border-radius: 6px; background: rgba(46,211,230,.06); border: 1px solid var(--line); }
+.ds-seg button { padding: 2px 12px; border: 0; border-radius: 4px; background: none; font: inherit; font-size: 12.5px; color: var(--muted); cursor: pointer; }
+.ds-seg button.on { background: rgba(46,211,230,.18); color: #2ED3E6; }
+.ds-g { list-style: none; margin: 0; padding: 8px 20px; flex: 1; min-height: 0; overflow-y: auto; }
+.ds-g li { padding: 8px 0; }
+.ds-g li.link { cursor: pointer; } .ds-g li.link:hover .h span { color: #2ED3E6; }
+.ds-g .h { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 7px; font-size: 13px; }
+.ds-g .h b { font-weight: 600; font-size: 13px; color: var(--title); } .ds-g .h em { font-style: normal; font-weight: 400; color: var(--muted); }
+.ds-g .bar { position: relative; height: 6px; border-radius: 3px; }
+.ds-g .bar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; transition: width .3s; }
+.ds-g .bar .t { background: rgba(46,211,230,.16); } .ds-g .bar .o { background: linear-gradient(90deg, #1a9fb8, #2ED3E6); }
+.ds-lg { display: flex; align-items: center; justify-content: flex-end; gap: 6px; padding: 8px 20px 12px; font-size: 12px; color: var(--muted); border-top: 1px dashed var(--line); }
+.ds-lg i { width: 8px; height: 8px; border-radius: 2px; margin-left: 10px; } .ds-lg .o { background: #2ED3E6; } .ds-lg .t { background: rgba(46,211,230,.22); }
 </style>

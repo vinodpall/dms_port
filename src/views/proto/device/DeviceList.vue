@@ -7,12 +7,12 @@ import DeviceGlyph from '@/components/proto/DeviceGlyph.vue'
 import { AREAS, STATUSES, STATUS_META, TYPES, TYPE_META, canTeleop, isOnline, type Device, type DeviceStatus, type DeviceType } from '@/models/device'
 import { fleet, modelOf, removeDevice } from './store'
 
-const props = defineProps<{ preset?: { type?: DeviceType; status?: DeviceStatus; n: number } | null }>()
+const props = defineProps<{ preset?: { type?: DeviceType; status?: DeviceStatus; model?: string; area?: string; n: number } | null }>()
 const emit = defineEmits<{ open: [Device]; teleop: [Device]; edit: [Device]; add: [] }>()
 
 const f = reactive({ type: undefined as DeviceType | undefined, model: undefined as string | undefined, status: undefined as DeviceStatus | undefined, area: undefined as string | undefined, kw: '' })
 /* 从概览跳转过来时带入筛选 */
-watch(() => props.preset?.n, () => { if (props.preset) Object.assign(f, { type: props.preset.type, status: props.preset.status, model: undefined, area: undefined, kw: '' }) }, { immediate: true })
+watch(() => props.preset?.n, () => { if (props.preset) Object.assign(f, { type: props.preset.type, status: props.preset.status, model: props.preset.model, area: props.preset.area, kw: '' }) }, { immediate: true })
 
 const typeTabs = computed(() => [{ k: 'all', l: '全部', n: fleet.devices.length }, ...TYPES.map((t) => ({ k: t, l: TYPE_META[t].label, n: fleet.devices.filter((d) => d.type === t).length }))])
 const tabKey = computed({ get: () => f.type ?? 'all', set: (v: string) => { f.type = v === 'all' ? undefined : (v as DeviceType); f.model = undefined } })

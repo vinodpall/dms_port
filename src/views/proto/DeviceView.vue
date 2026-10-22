@@ -22,8 +22,8 @@ const detailId = ref<string | null>(null)
 watch(tab, () => { detailId.value = null })
 
 /* 概览 → 列表（带筛选）/ 详情 */
-const preset = ref<{ type?: DeviceType; status?: DeviceStatus; n: number } | null>(null)
-const toList = (p: { type?: DeviceType; status?: DeviceStatus }) => { preset.value = { ...p, n: (preset.value?.n ?? 0) + 1 }; tab.value = 'list' }
+const preset = ref<{ type?: DeviceType; status?: DeviceStatus; model?: string; area?: string; n: number } | null>(null)
+const toList = (p: { type?: DeviceType; status?: DeviceStatus; model?: string; area?: string }) => { preset.value = { ...p, n: (preset.value?.n ?? 0) + 1 }; tab.value = 'list' }
 const openFromDash = (d: Device) => { tab.value = 'list'; setTimeout(() => { detailId.value = d.id }) }
 
 const teleop = ref<Device | null>(null)

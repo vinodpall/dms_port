@@ -52,7 +52,7 @@ export const DEVICES: Device[] = MODELS.flatMap((m, mi) =>
       ip: `10.20.${['quadruped', 'ugv', 'uav', 'humanoid'].indexOf(t) + 1}.${10 + n}`,
       area: AREAS[ai],
       owner: OWNERS[(n + mi) % OWNERS.length],
-      firmware: `v${2 + (n % 2)}.${(n * 3) % 10}.${(n * 7) % 12}`,
+      firmware: n % 4 === 1 && mi % 3 !== 2 ? `v${2 + (mi % 2)}.${(mi * 3) % 9}.${mi % 4}` : `v${2 + (mi % 2)}.${(mi * 3) % 9 + 1}.${(mi * 2) % 5}`,
       commissioned: `2025-${String(1 + ((n * 5 + mi) % 12)).padStart(2, '0')}-${String(3 + ((n * 7) % 25)).padStart(2, '0')}`,
       lastSeen: off ? `${2 + n} 小时前` : '刚刚',
       tm: {
