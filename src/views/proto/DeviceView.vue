@@ -35,7 +35,7 @@ const edit = (d: Device) => { editing.value = d; formOpen.value = true }
 
 <template>
   <ModuleShell v-model:active="tab" title="机器人设备管理" en="Robot Device" :menu="MENU">
-    <DeviceDash v-if="tab === 'dash'" @list="toList" @open="openFromDash" />
+    <DeviceDash v-if="tab === 'dash'" @list="toList" @open="openFromDash" @models="tab = 'models'" />
     <template v-else-if="tab === 'list'">
       <DeviceDetail v-if="detailId" :id="detailId" @back="detailId = null" @teleop="teleop = $event" @edit="edit" />
       <DeviceList v-show="!detailId" :preset="preset" @open="detailId = $event.id" @teleop="teleop = $event" @edit="edit" @add="add" />
