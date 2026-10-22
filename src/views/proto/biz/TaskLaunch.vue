@@ -103,6 +103,6 @@ const ok = () => {
 <style scoped>
 .tl { margin-top: 14px; }
 .tl-h { display: flex; justify-content: space-between; margin: 4px 0 6px; font-size: 13px; font-weight: 600; color: var(--text); } .tl-h span { font-weight: 400; font-size: 12px; color: var(--muted); }
-.tl-check { margin-bottom: 14px; padding: 4px 12px; background: rgba(77,208,225,.04); border: 1px solid var(--line); border-radius: 4px; }
+.tl-check { margin-bottom: 14px; padding: 4px 12px; background: rgba(46,211,230,.04); border: 1px solid var(--line); border-radius: 4px; }
 .tl-note { margin: 0 0 4px; font-size: 12.5px; }
 </style>

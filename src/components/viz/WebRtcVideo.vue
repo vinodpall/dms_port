@@ -32,13 +32,13 @@ defineExpose({ full, reconnect: start })
 </template>
 
 <style scoped>
-.rtv { position: relative; width: 100%; height: 100%; min-height: 90px; overflow: hidden; background: #050C14; }
-.rtv video { display: block; width: 100%; height: 100%; background: #050C14; }
+.rtv { position: relative; width: 100%; height: 100%; min-height: 90px; overflow: hidden; background: #0C1523; }
+.rtv video { display: block; width: 100%; height: 100%; background: #0C1523; }
 .rtv-hud { position: absolute; left: 0; right: 0; top: 0; display: flex; justify-content: space-between; padding: 6px 10px; font: 11px var(--mono, monospace); color: rgba(230,247,251,.85); background: linear-gradient(rgba(0,0,0,.45), transparent); pointer-events: none; }
-.rtv-hud b { display: flex; align-items: center; gap: 5px; color: #FF6B6B; font-weight: 600; }
-.rtv-hud b i { width: 6px; height: 6px; border-radius: 50%; background: #FF6B6B; animation: rtv-b 1.6s infinite; }
-.rtv-st { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: var(--muted, #8FB3C7); font-size: 12.5px; text-align: center; padding: 10px; }
-.rtv-st small { color: var(--faint, #5B7486); font-size: 11px; }
+.rtv-hud b { display: flex; align-items: center; gap: 5px; color: #FF7A7A; font-weight: 600; }
+.rtv-hud b i { width: 6px; height: 6px; border-radius: 50%; background: #FF7A7A; animation: rtv-b 1.6s infinite; }
+.rtv-st { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: var(--muted, #B6CADC); font-size: 12.5px; text-align: center; padding: 10px; }
+.rtv-st small { color: var(--faint, #8EA6BE); font-size: 11px; }
 .rtv-st .url { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rtv:fullscreen video { object-fit: contain !important; }
 @keyframes rtv-b { 50% { opacity: .3; } }

@@ -1,16 +1,16 @@
 /* 模块原型页通用样式：与登录页 / 五大模块页一致的深海军蓝 + 青色赛博风 */
 .pp {
-  --bg: #071523; --surface: #0C1E30; --surface-2: #10263B; --surface-3: #163149; --line: #1B3A52; --line-strong: #285370;
-  --text: #E6F7FB; --muted: #8FB3C7; --faint: #5B7486; --accent: #26C6DA; --accent-soft: rgba(38,198,218,.12); --accent-text: #7FF3FF;
-  --cyan: #4DD0E1; --ok: #4DE8B0; --warn: #FFB74D; --bad: #FF6B6B;
+  --bg: #0F1F35; --surface: #162A43; --surface-2: #1B3252; --surface-3: #223D61; --line: #2B4A6D; --line-strong: #3C6189;
+  --text: #F3F8FC; --muted: #B6CADC; --faint: #8EA6BE; --accent: #2ED3E6; --accent-soft: rgba(46,211,230,.14); --accent-text: #8BEFFF;
+  --cyan: #2ED3E6; --ok: #45E3A8; --warn: #FFC15C; --bad: #FF7A7A;
   --mono: 'JetBrains Mono', 'SF Mono', Consolas, Menlo, monospace;
   /* 配色令牌（方案切换只改这里） */
-  --glow: 77,208,225; --accent2: #2F6BFF; --title: #fff; --bg-hi: #0D2840;
-  --panel-1: rgba(16,38,59,.82); --panel-2: rgba(12,30,48,.82); --kpi-1: rgba(20,48,74,.8); --kpi-2: rgba(10,27,43,.85);
-  --tile-1: rgba(12,30,48,.9); --tile-2: rgba(10,27,43,.85); --well: rgba(6,18,30,.6);
-  --top-1: rgba(6,17,29,.95); --top-2: rgba(8,22,36,.85); --side-bg: rgba(6,17,29,.7);
-  --th-bg: rgba(22,49,73,.7); --row-line: rgba(27,58,82,.7); --btn-1: #13B4CC; --btn-2: #2C82F0; --btn-shadow: rgba(30,136,229,.25);
-  --scroll: #1F4560; --menu-on: #fff; --card-shadow: none; --grid-a: .035;
+  --glow: 46,211,230; --accent2: #4C8DFF; --title: #FFFFFF; --bg-hi: #1A3A63;
+  --panel-1: rgba(30,56,88,.88); --panel-2: rgba(22,42,67,.9); --kpi-1: rgba(36,66,102,.88); --kpi-2: rgba(22,42,66,.92);
+  --tile-1: rgba(24,46,72,.94); --tile-2: rgba(20,38,60,.92); --well: rgba(12,27,45,.55);
+  --top-1: rgba(14,29,48,.97); --top-2: rgba(18,36,58,.92); --side-bg: rgba(14,29,48,.78);
+  --th-bg: rgba(35,62,98,.78); --row-line: rgba(43,74,109,.75); --btn-1: #17BFD4; --btn-2: #3B8BFF; --btn-shadow: rgba(59,139,255,.28);
+  --scroll: #33597F; --menu-on: #FFFFFF; --card-shadow: 0 4px 18px rgba(4,12,24,.28); --grid-a: .045; --bad-text: #FFB0B0; --axis: #9DB5CB;
   position: relative; height: 100vh; display: flex; flex-direction: column; overflow: hidden; color: var(--text);
   background:
     linear-gradient(rgba(var(--glow),var(--grid-a)) 1px, transparent 1px) -1px -1px / 40px 40px,
@@ -67,11 +67,11 @@
 .pp-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin-bottom: 16px; }
 .pp-kpi { position: relative; padding: 14px 16px; overflow: hidden; background: linear-gradient(135deg, var(--kpi-1), var(--kpi-2)); border: 1px solid var(--line); border-radius: 6px; box-shadow: var(--card-shadow); }
 .pp-kpi:hover { border-color: rgba(var(--glow),.4); }
-.pp-kpi::after { content: ''; position: absolute; right: -18px; top: -18px; width: 70px; height: 70px; border-radius: 50%; background: radial-gradient(var(--k, #4DD0E1), transparent 70%); opacity: .18; }
+.pp-kpi::after { content: ''; position: absolute; right: -18px; top: -18px; width: 70px; height: 70px; border-radius: 50%; background: radial-gradient(var(--k, #2ED3E6), transparent 70%); opacity: .18; }
 .pp-kpi small { color: var(--muted); font-size: 12.5px; display: flex; align-items: center; gap: 6px; }
 .pp-kpi b { display: block; margin-top: 6px; font: 600 28px/1.1 var(--mono); color: var(--title); }
 .pp-kpi b em { font-size: 13px; font-weight: 400; font-style: normal; color: var(--muted); margin-left: 4px; }
-.pp-kpi .bar { position: absolute; left: 0; bottom: 0; height: 2px; width: 100%; background: linear-gradient(90deg, var(--k, #4DD0E1), transparent); }
+.pp-kpi .bar { position: absolute; left: 0; bottom: 0; height: 2px; width: 100%; background: linear-gradient(90deg, var(--k, #2ED3E6), transparent); }
 
 .pp .mono { font-family: var(--mono); }
 .pp .muted { color: var(--muted); }

@@ -27,11 +27,11 @@ const route = computed(() => (props.shape === null || props.shape === undefined 
 const donePath = computed(() => (props.shape !== null && props.progress > 0 ? partial(props.shape, props.progress) : ''))
 const drawPath = computed(() => (props.shape !== null && props.draw !== null ? partial(props.shape, Math.max(0.001, props.draw)) : ''))
 const ZONE_SHAPES = [
-  { k: 'forbid', x: 44, y: 30, w: 10, h: 8, c: '#FF6B6B' }, { k: 'forbid', x: 89, y: 51, w: 9, h: 6, c: '#FF6B6B' },
-  { k: 'stair', x: 119, y: 44, w: 8, h: 7, c: '#FFB74D' }, { k: 'slope', x: 103, y: 66, w: 8, h: 9, c: '#B48CFF' },
-  { k: 'narrow', x: 109, y: 31, w: 6, h: 7, c: '#4DD0E1' }, { k: 'grass', x: 76, y: 14, w: 11, h: 7, c: '#4DE8B0' },
+  { k: 'forbid', x: 44, y: 30, w: 10, h: 8, c: '#FF7A7A' }, { k: 'forbid', x: 89, y: 51, w: 9, h: 6, c: '#FF7A7A' },
+  { k: 'stair', x: 119, y: 44, w: 8, h: 7, c: '#FFC15C' }, { k: 'slope', x: 103, y: 66, w: 8, h: 9, c: '#B48CFF' },
+  { k: 'narrow', x: 109, y: 31, w: 6, h: 7, c: '#2ED3E6' }, { k: 'grass', x: 76, y: 14, w: 11, h: 7, c: '#45E3A8' },
 ]
-const ptColor = (st?: string) => (st === 'done' ? '#26C6DA' : st === 'bad' ? '#FF6B6B' : '#0B1A28')
+const ptColor = (st?: string) => (st === 'done' ? '#26C6DA' : st === 'bad' ? '#FF7A7A' : '#14253B')
 
 /* ---------- 栅格底图 ---------- */
 const gridUrl = ref('')
@@ -95,17 +95,17 @@ const onSatPick = (lng: number, lat: number) => { const p = fromLngLat(lng, lat,
   <template v-else>
   <svg ref="svgEl" class="bm" :class="{ pick, pan: controls && zoomed }" :viewBox="viewBox" preserveAspectRatio="xMidYMid meet" @click="onClick" @wheel="onWheel" @pointerdown="onDown" @pointermove="onMove" @pointerup="onUp" @pointercancel="onUp">
     <defs>
-      <pattern :id="`g-${uid}`" width="4" height="4" patternUnits="userSpaceOnUse"><path d="M4 0H0V4" fill="none" stroke="rgba(77,208,225,.07)" stroke-width=".2" /></pattern>
-      <pattern :id="`z-forbid-${uid}`" width="2" height="2" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="2" height="2" fill="rgba(255,107,107,.12)" /><line x1="0" y1="0" x2="0" y2="2" stroke="#FF6B6B" stroke-width=".5" /></pattern>
-      <pattern :id="`z-stair-${uid}`" width="2" height="2" patternUnits="userSpaceOnUse"><rect width="2" height="2" fill="rgba(255,183,77,.12)" /><line x1="0" y1="1" x2="2" y2="1" stroke="#FFB74D" stroke-width=".4" /></pattern>
+      <pattern :id="`g-${uid}`" width="4" height="4" patternUnits="userSpaceOnUse"><path d="M4 0H0V4" fill="none" stroke="rgba(46,211,230,.07)" stroke-width=".2" /></pattern>
+      <pattern :id="`z-forbid-${uid}`" width="2" height="2" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="2" height="2" fill="rgba(255,107,107,.12)" /><line x1="0" y1="0" x2="0" y2="2" stroke="#FF7A7A" stroke-width=".5" /></pattern>
+      <pattern :id="`z-stair-${uid}`" width="2" height="2" patternUnits="userSpaceOnUse"><rect width="2" height="2" fill="rgba(255,183,77,.12)" /><line x1="0" y1="1" x2="2" y2="1" stroke="#FFC15C" stroke-width=".4" /></pattern>
       <pattern :id="`z-slope-${uid}`" width="2" height="2" patternUnits="userSpaceOnUse"><rect width="2" height="2" fill="rgba(180,140,255,.12)" /><line x1="1" y1="0" x2="1" y2="2" stroke="#B48CFF" stroke-width=".4" /></pattern>
-      <pattern :id="`z-narrow-${uid}`" width="2" height="2" patternUnits="userSpaceOnUse"><rect width="2" height="2" fill="rgba(77,208,225,.1)" /><path d="M2 0H0V2" fill="none" stroke="#4DD0E1" stroke-width=".3" /></pattern>
-      <pattern :id="`z-grass-${uid}`" width="2" height="2" patternUnits="userSpaceOnUse"><rect width="2" height="2" fill="rgba(77,232,176,.1)" /><path d="M0 0L2 2M2 0L0 2" stroke="#4DE8B0" stroke-width=".25" /></pattern>
+      <pattern :id="`z-narrow-${uid}`" width="2" height="2" patternUnits="userSpaceOnUse"><rect width="2" height="2" fill="rgba(46,211,230,.1)" /><path d="M2 0H0V2" fill="none" stroke="#2ED3E6" stroke-width=".3" /></pattern>
+      <pattern :id="`z-grass-${uid}`" width="2" height="2" patternUnits="userSpaceOnUse"><rect width="2" height="2" fill="rgba(77,232,176,.1)" /><path d="M0 0L2 2M2 0L0 2" stroke="#45E3A8" stroke-width=".25" /></pattern>
       <radialGradient :id="`rb-${uid}`"><stop offset="0" stop-color="#7FF3FF" stop-opacity=".55" /><stop offset="1" stop-color="#7FF3FF" stop-opacity="0" /></radialGradient>
     </defs>
 
     <!-- 底图 -->
-    <rect x="-200" y="-200" width="560" height="500" fill="#081521" />
+    <rect x="-200" y="-200" width="560" height="500" fill="#101f33" />
     <rect x="-200" y="-200" width="560" height="500" :fill="`url(#g-${uid})`" />
     <template v-if="mode === 'grid'">
       <image v-if="gridUrl" :href="gridUrl" :x="GRID_RECT.x" :y="GRID_RECT.y" :width="GRID_RECT.w" :height="GRID_RECT.h" preserveAspectRatio="none" class="bm-img" />
@@ -123,25 +123,25 @@ const onSatPick = (lng: number, lat: number) => { const p = fromLngLat(lng, lat,
     <!-- 路线 -->
     <g v-if="route && draw === null">
       <path :d="path(route)" fill="none" stroke="rgba(77,232,176,.25)" stroke-width="2.4" stroke-linejoin="round" />
-      <path :d="path(route)" fill="none" stroke="#4DE8B0" stroke-width=".6" stroke-dasharray="1.6 1.2" stroke-linejoin="round" />
+      <path :d="path(route)" fill="none" stroke="#45E3A8" stroke-width=".6" stroke-dasharray="1.6 1.2" stroke-linejoin="round" />
       <path v-if="donePath" :d="donePath" fill="none" stroke="#26C6DA" stroke-width="1.1" stroke-linejoin="round" />
-      <template v-if="edit"><circle v-for="(p, i) in route" :key="`e${i}`" :cx="p[0]" :cy="p[1]" r=".9" fill="#0B1A28" stroke="#4DE8B0" stroke-width=".35" /></template>
-      <g :transform="`translate(${route[0][0]} ${route[0][1]})`"><circle r="1.8" fill="rgba(255,183,77,.2)" stroke="#FFB74D" stroke-width=".5" /><text y="-2.8" class="bm-tag">起点</text></g>
+      <template v-if="edit"><circle v-for="(p, i) in route" :key="`e${i}`" :cx="p[0]" :cy="p[1]" r=".9" fill="#14253B" stroke="#45E3A8" stroke-width=".35" /></template>
+      <g :transform="`translate(${route[0][0]} ${route[0][1]})`"><circle r="1.8" fill="rgba(255,183,77,.2)" stroke="#FFC15C" stroke-width=".5" /><text y="-2.8" class="bm-tag">起点</text></g>
     </g>
     <!-- 录制中 -->
-    <g v-if="drawPath"><path :d="drawPath" fill="none" stroke="#FF6B6B" stroke-width="1" stroke-linejoin="round" /><circle :cx="route![0][0]" :cy="route![0][1]" r="1.4" fill="#FF6B6B" /></g>
+    <g v-if="drawPath"><path :d="drawPath" fill="none" stroke="#FF7A7A" stroke-width="1" stroke-linejoin="round" /><circle :cx="route![0][0]" :cy="route![0][1]" r="1.4" fill="#FF7A7A" /></g>
     <!-- 任务点 -->
     <g v-for="(p, i) in pts" :key="`p${i}`" :transform="`translate(${p.mx} ${p.my})`">
-      <circle v-if="i === sel" r="3.6" fill="none" stroke="#FFB74D" stroke-width=".45" />
-      <circle r="2" :fill="ptColor(p.st)" :stroke="p.st === 'done' ? '#7FF3FF' : p.st === 'bad' ? '#FF9C9C' : p.st === 'cur' ? '#FFFFFF' : '#FFB74D'" stroke-width=".4" />
-      <text y=".9" class="bm-pt" :fill="p.st === 'done' ? '#04121D' : p.st === 'bad' ? '#fff' : '#FFD08A'">{{ i + 1 }}</text>
+      <circle v-if="i === sel" r="3.6" fill="none" stroke="#FFC15C" stroke-width=".45" />
+      <circle r="2" :fill="ptColor(p.st)" :stroke="p.st === 'done' ? '#7FF3FF' : p.st === 'bad' ? '#FFB0B0' : p.st === 'cur' ? '#FFFFFF' : '#FFC15C'" stroke-width=".4" />
+      <text y=".9" class="bm-pt" :fill="p.st === 'done' ? '#0B1C2E' : p.st === 'bad' ? '#fff' : '#FFD08A'">{{ i + 1 }}</text>
     </g>
     <!-- 重定位箭头 -->
-    <g v-if="arrow" :transform="`translate(${arrow.x} ${arrow.y}) rotate(${arrow.yaw})`"><line x1="0" y1="0" x2="9" y2="0" stroke="#FF6B6B" stroke-width=".8" /><path d="M9 -2 L12 0 L9 2 Z" fill="#FF6B6B" /><circle r="1.2" fill="#FF6B6B" /></g>
+    <g v-if="arrow" :transform="`translate(${arrow.x} ${arrow.y}) rotate(${arrow.yaw})`"><line x1="0" y1="0" x2="9" y2="0" stroke="#FF7A7A" stroke-width=".8" /><path d="M9 -2 L12 0 L9 2 Z" fill="#FF7A7A" /><circle r="1.2" fill="#FF7A7A" /></g>
     <!-- 机器人 -->
     <g v-if="robot" :transform="`translate(${robot.x} ${robot.y})`">
       <circle r="7" :fill="`url(#rb-${uid})`" class="bm-pulse" />
-      <g :transform="`rotate(${robot.yaw})`"><path d="M3.2 0 L-1.8 2.2 L-0.8 0 L-1.8 -2.2 Z" fill="#7FF3FF" stroke="#04121D" stroke-width=".25" /></g>
+      <g :transform="`rotate(${robot.yaw})`"><path d="M3.2 0 L-1.8 2.2 L-0.8 0 L-1.8 -2.2 Z" fill="#7FF3FF" stroke="#0B1C2E" stroke-width=".25" /></g>
     </g>
   </svg>
   <div v-if="controls" class="bm-ctl" @click.stop>
@@ -157,10 +157,10 @@ const onSatPick = (lng: number, lat: number) => { const p = fromLngLat(lng, lat,
 .bm-wrap { position: relative; width: 100%; height: 100%; }
 .bm { display: block; width: 100%; height: 100%; touch-action: none; } .bm.pan { cursor: grab; } .bm.pick { cursor: crosshair; }
 .bm-img { image-rendering: pixelated; }
-.bm-ctl { position: absolute; right: 8px; bottom: 8px; display: flex; flex-direction: column; gap: 2px; padding: 3px; background: rgba(6,18,32,.78); border: 1px solid rgba(77,208,225,.2); border-radius: 6px; }
+.bm-ctl { position: absolute; right: 8px; bottom: 8px; display: flex; flex-direction: column; gap: 2px; padding: 3px; background: rgba(13,28,49,.78); border: 1px solid rgba(46,211,230,.2); border-radius: 6px; }
 .bm-ctl button { width: 24px; height: 24px; display: grid; place-items: center; font-size: 12px; color: var(--muted); background: none; border: 0; border-radius: 4px; cursor: pointer; }
-.bm-ctl button:hover:not(:disabled) { color: #fff; background: rgba(77,208,225,.12); } .bm-ctl button:disabled { opacity: .35; cursor: default; }
-.bm-tag { font-size: 2.4px; fill: #FFB74D; text-anchor: middle; }
+.bm-ctl button:hover:not(:disabled) { color: #fff; background: rgba(46,211,230,.12); } .bm-ctl button:disabled { opacity: .35; cursor: default; }
+.bm-tag { font-size: 2.4px; fill: #FFC15C; text-anchor: middle; }
 .bm-room { font-size: 2.8px; fill: rgba(158,195,214,.5); text-anchor: middle; dominant-baseline: middle; letter-spacing: .2px; }
 .bm-pt { font: 600 2.2px var(--mono); text-anchor: middle; }
 .bm-pulse { transform-box: fill-box; transform-origin: center; animation: bm-pulse 2.8s ease-in-out infinite; }

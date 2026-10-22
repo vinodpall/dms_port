@@ -484,7 +484,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKey))
 .wall-wrapper {
   border-radius: 8px;
   overflow: hidden;
-  background: #0a121c;
+  background: #131c2d;
 }
 
 .control-bar {

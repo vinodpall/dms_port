@@ -22,12 +22,7 @@ const font = "'IBM Plex Sans','PingFang SC','Hiragino Sans GB','Microsoft YaHei'
 
 export const PALETTES: Palette[] = [
   {
-    key: 'cur', name: '当前配色', en: 'Current', dark: true, chart: ['#4DD0E1', '#4DE8B0'],
-    desc: '深海军蓝 + 青色。文字对比度本身达标，但底色接近纯黑（亮度仅约 1%），卡片与背景层次差小，整体显得压抑、发暗。',
-    vars: {},
-  },
-  {
-    key: 'a', name: '方案一 · 深空蓝', en: 'Deep Space', dark: true, chart: ['#2ED3E6', '#45E3A8'],
+    key: 'a', name: '方案一 · 深空蓝（已采用）', en: 'Deep Space', dark: true, chart: ['#2ED3E6', '#45E3A8'],
     desc: '保留品牌蓝青基调，整体提亮约 1.5 级：底色从近黑提到深蓝，卡片与背景分层更明显，文字全部达到 AA。',
     vars: {
       '--bg': '#0F1F35', '--bg-hi': '#1A3A63', '--surface': '#162A43', '--surface-2': '#1B3252', '--surface-3': '#223D61',

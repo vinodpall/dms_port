@@ -14,13 +14,13 @@ export interface Scene {
   site: [number, number, number, number]
 }
 export const SCENE_STATUS: Record<SceneStatus, { t: string; b: 'success' | 'warning' | 'default'; c: string }> = {
-  active: { t: '启用中', b: 'success', c: '#4DE8B0' }, maint: { t: '维护中', b: 'warning', c: '#FFB74D' }, draft: { t: '规划中', b: 'default', c: '#5B7486' },
+  active: { t: '启用中', b: 'success', c: '#45E3A8' }, maint: { t: '维护中', b: 'warning', c: '#FFC15C' }, draft: { t: '规划中', b: 'default', c: '#8EA6BE' },
 }
 export const SCENE_TYPES = ['综合', '楼梯攀爬', '复杂地形', '巡检模拟', '室内操作', '水域救援']
-export const TYPE_COLOR: Record<string, string> = { 综合: '#4DD0E1', 楼梯攀爬: '#FFB74D', 复杂地形: '#4DE8B0', 巡检模拟: '#5B9BFF', 室内操作: '#B48CFF', 水域救援: '#3FA9F5' }
+export const TYPE_COLOR: Record<string, string> = { 综合: '#2ED3E6', 楼梯攀爬: '#FFC15C', 复杂地形: '#45E3A8', 巡检模拟: '#5B9BFF', 室内操作: '#B48CFF', 水域救援: '#3FA9F5' }
 export const PLAN_LEGEND: { k: PlanKind; t: string; c: string }[] = [
-  { k: 'facility', t: '设施', c: '#4DD0E1' }, { k: 'equip', t: '设备', c: '#B48CFF' }, { k: 'stairs', t: '台阶 / 坡道', c: '#FFB74D' },
-  { k: 'terrain', t: '地形', c: '#4DE8B0' }, { k: 'water', t: '水域', c: '#3FA9F5' }, { k: 'path', t: '路线', c: '#7FF3FF' },
+  { k: 'facility', t: '设施', c: '#2ED3E6' }, { k: 'equip', t: '设备', c: '#B48CFF' }, { k: 'stairs', t: '台阶 / 坡道', c: '#FFC15C' },
+  { k: 'terrain', t: '地形', c: '#45E3A8' }, { k: 'water', t: '水域', c: '#3FA9F5' }, { k: 'path', t: '路线', c: '#7FF3FF' },
 ]
 
 export const SCENES: Scene[] = [

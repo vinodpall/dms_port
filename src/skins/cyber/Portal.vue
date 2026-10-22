@@ -113,22 +113,22 @@ const stageStyle = computed(() => ({
         <!-- 连线与中心仪表 -->
         <svg class="cy-link" :viewBox="`0 0 ${STAGE_W} ${STAGE_H}`" aria-hidden="true">
           <defs>
-            <radialGradient id="pt-halo"><stop offset="0" stop-color="#4DD0E1" stop-opacity=".22" /><stop offset="1" stop-color="#4DD0E1" stop-opacity="0" /></radialGradient>
+            <radialGradient id="pt-halo"><stop offset="0" stop-color="#2ED3E6" stop-opacity=".22" /><stop offset="1" stop-color="#2ED3E6" stop-opacity="0" /></radialGradient>
             <linearGradient id="pt-spoke" gradientUnits="userSpaceOnUse" :x1="CX" :y1="CY" :x2="CX" :y2="CY - R">
-              <stop offset="0" stop-color="#4DD0E1" stop-opacity=".7" /><stop offset="1" stop-color="#4DD0E1" stop-opacity=".08" />
+              <stop offset="0" stop-color="#2ED3E6" stop-opacity=".7" /><stop offset="1" stop-color="#2ED3E6" stop-opacity=".08" />
             </linearGradient>
           </defs>
           <circle :cx="CX" :cy="CY" r="420" fill="url(#pt-halo)" />
-          <circle :cx="CX" :cy="CY" :r="R" fill="none" stroke="#4DD0E1" stroke-width="1" opacity=".07" />
-          <circle :cx="CX" :cy="CY" :r="R + 60" fill="none" stroke="#4DD0E1" stroke-width="1" stroke-dasharray="2 10" opacity=".14" />
+          <circle :cx="CX" :cy="CY" :r="R" fill="none" stroke="#2ED3E6" stroke-width="1" opacity=".07" />
+          <circle :cx="CX" :cy="CY" :r="R + 60" fill="none" stroke="#2ED3E6" stroke-width="1" stroke-dasharray="2 10" opacity=".14" />
 
           <!-- 五边形外框 -->
-          <path :d="linkPath" fill="rgba(77,208,225,.025)" stroke="#4DD0E1" stroke-width="1" opacity=".22" />
-          <path class="flow" :d="linkPath" fill="none" stroke="#4DD0E1" stroke-width="1.6" stroke-dasharray="40 260" opacity=".7" />
+          <path :d="linkPath" fill="rgba(46,211,230,.025)" stroke="#2ED3E6" stroke-width="1" opacity=".22" />
+          <path class="flow" :d="linkPath" fill="none" stroke="#2ED3E6" stroke-width="1.6" stroke-dasharray="40 260" opacity=".7" />
 
           <!-- 中心辐射线 + 数据脉冲 -->
           <g v-for="(d, i) in SPOKES" :key="`s-${i}`">
-            <path :d="d" stroke="#4DD0E1" stroke-width="1" stroke-dasharray="3 6" opacity=".35" />
+            <path :d="d" stroke="#2ED3E6" stroke-width="1" stroke-dasharray="3 6" opacity=".35" />
             <circle r="3" fill="#7FF3FF" opacity="0">
               <animateMotion :path="d" dur="3.2s" :begin="`${i * 0.64}s`" repeatCount="indefinite" />
               <animate attributeName="opacity" values="0;1;1;0" dur="3.2s" :begin="`${i * 0.64}s`" repeatCount="indefinite" />
@@ -137,13 +137,13 @@ const stageStyle = computed(() => ({
 
           <!-- 中心仪表盘 -->
           <g class="gauge">
-            <line v-for="(t, i) in TICKS" :key="`t-${i}`" :x1="t.x1" :y1="t.y1" :x2="t.x2" :y2="t.y2" stroke="#4DD0E1" :stroke-width="t.major ? 1.6 : .8" :opacity="t.major ? .7 : .3" />
+            <line v-for="(t, i) in TICKS" :key="`t-${i}`" :x1="t.x1" :y1="t.y1" :x2="t.x2" :y2="t.y2" stroke="#2ED3E6" :stroke-width="t.major ? 1.6 : .8" :opacity="t.major ? .7 : .3" />
           </g>
-          <circle class="spin-r" :cx="CX" :cy="CY" r="112" fill="none" stroke="#4DD0E1" stroke-width="2" stroke-dasharray="120 232" opacity=".55" />
-          <circle :cx="CX" :cy="CY" r="96" fill="rgba(6,18,30,.85)" stroke="#4DD0E1" stroke-width="1" opacity=".9" />
-          <polygon :points="hexPts(70)" fill="none" stroke="#4DD0E1" stroke-width="1.2" opacity=".5" />
-          <polygon :points="hexPts(54)" fill="rgba(77,208,225,.08)" stroke="#4DD0E1" stroke-width="1" opacity=".35" />
-          <circle class="beat" :cx="CX" :cy="CY" r="8" fill="#4DD0E1" />
+          <circle class="spin-r" :cx="CX" :cy="CY" r="112" fill="none" stroke="#2ED3E6" stroke-width="2" stroke-dasharray="120 232" opacity=".55" />
+          <circle :cx="CX" :cy="CY" r="96" fill="rgba(13,28,47,.85)" stroke="#2ED3E6" stroke-width="1" opacity=".9" />
+          <polygon :points="hexPts(70)" fill="none" stroke="#2ED3E6" stroke-width="1.2" opacity=".5" />
+          <polygon :points="hexPts(54)" fill="rgba(46,211,230,.08)" stroke="#2ED3E6" stroke-width="1" opacity=".35" />
+          <circle class="beat" :cx="CX" :cy="CY" r="8" fill="#2ED3E6" />
         </svg>
 
         <!-- 五大模块 -->
@@ -178,18 +178,18 @@ const stageStyle = computed(() => ({
 
 <style scoped>
 .cy-portal { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-.cy-portal { --bg: #06111D; }
+.cy-portal { --bg: #0D1B2E; }
 /* 背景：中心提亮的深海军蓝 + 双层网格（细格 + 主格），边缘渐隐 */
 .mod-node.loading { cursor: progress; }
 .node-status i.spin { width: 9px !important; height: 9px !important; border-radius: 50%; background: none !important; border: 1.5px solid currentColor; border-right-color: transparent; animation: cy-spin .7s linear infinite; box-shadow: none !important; }
 @keyframes cy-spin { to { transform: rotate(360deg); } }
 .cy-bgfx { position: absolute; inset: 0; pointer-events: none; z-index: 0;
   background:
-    linear-gradient(rgba(77,208,225,.11) 1px, transparent 1px) -1px -1px / 200px 200px,
-    linear-gradient(90deg, rgba(77,208,225,.11) 1px, transparent 1px) -1px -1px / 200px 200px,
-    linear-gradient(rgba(77,208,225,.05) 1px, transparent 1px) -1px -1px / 40px 40px,
-    linear-gradient(90deg, rgba(77,208,225,.05) 1px, transparent 1px) -1px -1px / 40px 40px,
-    radial-gradient(ellipse 75% 70% at 50% 50%, #0F2C45 0%, #0A1E31 45%, #06111D 100%);
+    linear-gradient(rgba(46,211,230,.11) 1px, transparent 1px) -1px -1px / 200px 200px,
+    linear-gradient(90deg, rgba(46,211,230,.11) 1px, transparent 1px) -1px -1px / 200px 200px,
+    linear-gradient(rgba(46,211,230,.05) 1px, transparent 1px) -1px -1px / 40px 40px,
+    linear-gradient(90deg, rgba(46,211,230,.05) 1px, transparent 1px) -1px -1px / 40px 40px,
+    radial-gradient(ellipse 75% 70% at 50% 50%, #1A3A5E 0%, #132A46 45%, #0D1B2E 100%);
   -webkit-mask-image: radial-gradient(ellipse 85% 80% at 50% 50%, #000 55%, rgba(0,0,0,.55) 100%);
           mask-image: radial-gradient(ellipse 85% 80% at 50% 50%, #000 55%, rgba(0,0,0,.55) 100%); }
 /* 中心光晕 + 底部地平线辉光 */
@@ -200,26 +200,26 @@ const stageStyle = computed(() => ({
 .cy-portal .cy-floor { height: 36vh; opacity: .55; }
 
 /* 视口 HUD 边框 */
-.cy-frame { position: absolute; inset: 18px 24px; pointer-events: none; z-index: 0; border: 1px solid rgba(77,208,225,.08); }
+.cy-frame { position: absolute; inset: 18px 24px; pointer-events: none; z-index: 0; border: 1px solid rgba(46,211,230,.08); }
 .cy-frame .cy-corner { width: 22px; height: 22px; border-width: 2px; opacity: .7; }
 .cy-frame::before, .cy-frame::after { content: ''; position: absolute; top: 50%; width: 3px; height: 120px; transform: translateY(-50%); background: linear-gradient(180deg, transparent, var(--cyan), transparent); opacity: .5; }
 .cy-frame::before { left: -2px; } .cy-frame::after { right: -2px; }
 
 /* 顶栏 */
 .cy-top { position: relative; z-index: 10; flex: none; display: flex; align-items: center; justify-content: space-between; height: 68px; padding: 0 40px;
-  background: linear-gradient(180deg, rgba(6,17,29,.9), rgba(8,22,36,.7)); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
+  background: linear-gradient(180deg, rgba(13,27,46,.9), rgba(16,32,54,.7)); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
 .cy-top::after { content: ''; position: absolute; left: 50%; bottom: -1px; width: 360px; height: 1px; transform: translateX(-50%); background: linear-gradient(90deg, transparent, var(--cyan), transparent); }
 .cy-top-right { display: flex; align-items: center; gap: 22px; }
 .cy-clock { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.25; }
 .cy-clock b { font: 500 16px var(--mono); color: var(--ink); letter-spacing: 1px; }
 .cy-clock small { font-size: 11px; color: var(--dim); }
 .cy-user { position: relative; }
-.cy-ubtn { display: flex; align-items: center; gap: 10px; height: 42px; padding: 0 12px 0 5px; border: 1px solid var(--line); border-radius: 2px; background: rgba(77,208,225,.05); cursor: pointer; transition: all .2s; }
-.cy-ubtn:hover, .cy-ubtn[aria-expanded="true"] { border-color: var(--line-hi); background: rgba(77,208,225,.1); }
+.cy-ubtn { display: flex; align-items: center; gap: 10px; height: 42px; padding: 0 12px 0 5px; border: 1px solid var(--line); border-radius: 2px; background: rgba(46,211,230,.05); cursor: pointer; transition: all .2s; }
+.cy-ubtn:hover, .cy-ubtn[aria-expanded="true"] { border-color: var(--line-hi); background: rgba(46,211,230,.1); }
 .cy-ubtn .who { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.25; font-size: 13.5px; }
 .cy-ubtn small { color: var(--muted); font-size: 11.5px; }
 .av { width: 32px; height: 32px; display: grid; place-items: center; background: linear-gradient(135deg, #12B5CB, #1E88E5); color: #fff; font-weight: 600; font-size: 13px; clip-path: polygon(0 0, calc(100% - 7px) 0, 100% 7px, 100% 100%, 7px 100%, 0 calc(100% - 7px)); }
-.cy-menu { position: absolute; right: 0; top: 50px; min-width: 150px; padding: 5px; background: rgba(10,24,38,.96); backdrop-filter: blur(12px); border: 1px solid var(--line-hi); box-shadow: 0 16px 40px rgba(0,0,0,.6); }
+.cy-menu { position: absolute; right: 0; top: 50px; min-width: 150px; padding: 5px; background: rgba(19,35,57,.96); backdrop-filter: blur(12px); border: 1px solid var(--line-hi); box-shadow: 0 16px 40px rgba(0,0,0,.6); }
 .cy-menu button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 12px; border: 0; background: none; font-size: 13.5px; cursor: pointer; }
 .cy-menu button:hover { background: rgba(255,107,107,.12); color: #FFD0D0; }
 
@@ -233,9 +233,9 @@ const stageStyle = computed(() => ({
 .gauge { animation: pt-spin 60s linear infinite; }
 .spin-r { animation: pt-spin 9s linear infinite reverse; }
 @keyframes pt-spin { to { transform: rotate(360deg); } }
-.beat { filter: drop-shadow(0 0 10px #4DD0E1); animation: pt-beat 2.6s ease-in-out infinite; transform-origin: 800px 505px; transform-box: view-box; }
+.beat { filter: drop-shadow(0 0 10px #2ED3E6); animation: pt-beat 2.6s ease-in-out infinite; transform-origin: 800px 505px; transform-box: view-box; }
 @keyframes pt-beat { 50% { opacity: .55; transform: scale(.8); } }
-.core-t { font: 11px var(--mono); letter-spacing: 3px; fill: rgba(77,208,225,.6); }
+.core-t { font: 11px var(--mono); letter-spacing: 3px; fill: rgba(46,211,230,.6); }
 
 /* 模块节点：六边形底板中心 = 五边形顶点 */
 .mod-node { position: absolute; width: var(--pw); height: var(--ph); translate: -50% -50%; padding: 0; border: 0; background: none; text-align: center; cursor: pointer;
@@ -243,24 +243,24 @@ const stageStyle = computed(() => ({
 @keyframes node-in { from { opacity: 0; } }
 .node-plate { position: absolute; inset: 0; display: block; }
 .node-plate::before, .node-plate::after { content: ''; position: absolute; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); transition: background .35s, opacity .35s; }
-.node-plate::before { inset: 0; background: linear-gradient(180deg, rgba(77,208,225,.85), rgba(77,208,225,.14) 50%, rgba(47,107,255,.55)); }
+.node-plate::before { inset: 0; background: linear-gradient(180deg, rgba(46,211,230,.85), rgba(46,211,230,.14) 50%, rgba(47,107,255,.55)); }
 .node-plate::after { inset: 2px;
   background:
-    radial-gradient(160px 130px at 50% 30%, rgba(77,208,225,.18), transparent 70%),
-    repeating-linear-gradient(0deg, rgba(77,208,225,.035) 0 1px, transparent 1px 6px),
-    linear-gradient(180deg, #123350, #0A1C2E 60%, #0B2137); }
+    radial-gradient(160px 130px at 50% 30%, rgba(46,211,230,.18), transparent 70%),
+    repeating-linear-gradient(0deg, rgba(46,211,230,.035) 0 1px, transparent 1px 6px),
+    linear-gradient(180deg, #1e426b, #132742 60%, #142D4D); }
 /* 内层细边六边形 */
-.node-ring { position: absolute; inset: 12px; z-index: 1; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); background: rgba(77,208,225,.2); transition: background .35s; }
-.node-ring::after { content: ''; position: absolute; inset: 1px; clip-path: inherit; background: linear-gradient(180deg, #0F2B44, #0A1D30 70%, #0C2238); }
+.node-ring { position: absolute; inset: 12px; z-index: 1; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); background: rgba(46,211,230,.2); transition: background .35s; }
+.node-ring::after { content: ''; position: absolute; inset: 1px; clip-path: inherit; background: linear-gradient(180deg, #1A385D, #132845 70%, #162E4E); }
 .node-art { position: absolute; z-index: 2; left: 50%; top: 7%; width: 140px; height: 140px; translate: -50% 0; }
-.node-art :deep(svg) { width: 100%; height: 100%; display: block; filter: drop-shadow(0 6px 16px rgba(77,208,225,.45)); transition: filter .35s; }
+.node-art :deep(svg) { width: 100%; height: 100%; display: block; filter: drop-shadow(0 6px 16px rgba(46,211,230,.45)); transition: filter .35s; }
 
 /* 文字放进六边形内部下半区 */
 .node-meta { position: absolute; z-index: 3; left: 16px; right: 16px; top: 51.5%; display: flex; flex-direction: column; align-items: center; }
 .node-idx { font: 600 11px var(--mono); letter-spacing: 3px; color: var(--cyan); opacity: .75; display: flex; align-items: center; gap: 8px; }
-.node-idx::before, .node-idx::after { content: ''; width: 22px; height: 1px; background: linear-gradient(90deg, transparent, rgba(77,208,225,.7)); }
+.node-idx::before, .node-idx::after { content: ''; width: 22px; height: 1px; background: linear-gradient(90deg, transparent, rgba(46,211,230,.7)); }
 .node-idx::after { transform: scaleX(-1); }
-.node-title { margin-top: 8px; font-size: 24px; font-weight: 700; line-height: 1.25; color: #fff; letter-spacing: 2px; white-space: nowrap; text-shadow: 0 0 18px rgba(77,208,225,.35); transition: color .3s, text-shadow .3s; }
+.node-title { margin-top: 8px; font-size: 24px; font-weight: 700; line-height: 1.25; color: #fff; letter-spacing: 2px; white-space: nowrap; text-shadow: 0 0 18px rgba(46,211,230,.35); transition: color .3s, text-shadow .3s; }
 .node-title.long { font-size: 21px; letter-spacing: 1px; }
 .node-en { margin-top: 6px; font: 11px var(--mono); letter-spacing: 2.5px; text-transform: uppercase; color: #7FA6BA; white-space: nowrap; }
 .node-status { margin-top: 14px; display: inline-flex; align-items: center; gap: 6px; padding: 4px 14px; font-size: 13px; letter-spacing: 1px; white-space: nowrap;
@@ -271,12 +271,12 @@ const stageStyle = computed(() => ({
 .node-status.wait { color: var(--warn); background: rgba(255,183,77,.12); }
 .node-status.off { color: #8197A6; background: rgba(120,140,155,.16); }
 
-.mod-node:not(.disabled):hover { scale: 1.05; filter: drop-shadow(0 0 24px rgba(77,208,225,.5)); }
+.mod-node:not(.disabled):hover { scale: 1.05; filter: drop-shadow(0 0 24px rgba(46,211,230,.5)); }
 .mod-node:not(.disabled):hover .node-plate::before { background: linear-gradient(180deg, #7FF3FF, #26C6DA 50%, #2F6BFF); }
-.mod-node:not(.disabled):hover .node-ring { background: rgba(77,208,225,.5); }
-.mod-node:not(.disabled):hover .node-art :deep(svg) { filter: drop-shadow(0 0 18px rgba(77,208,225,.95)); }
-.mod-node:not(.disabled):hover .node-title { color: #7FF3FF; text-shadow: 0 0 18px rgba(77,208,225,.7); }
-.mod-node:focus-visible { outline: none; filter: drop-shadow(0 0 20px rgba(77,208,225,.95)); }
+.mod-node:not(.disabled):hover .node-ring { background: rgba(46,211,230,.5); }
+.mod-node:not(.disabled):hover .node-art :deep(svg) { filter: drop-shadow(0 0 18px rgba(46,211,230,.95)); }
+.mod-node:not(.disabled):hover .node-title { color: #7FF3FF; text-shadow: 0 0 18px rgba(46,211,230,.7); }
+.mod-node:focus-visible { outline: none; filter: drop-shadow(0 0 20px rgba(46,211,230,.95)); }
 .mod-node.disabled { cursor: not-allowed; }
 .mod-node.disabled .node-art, .mod-node.disabled .node-title, .mod-node.disabled .node-en, .mod-node.disabled .node-idx { filter: grayscale(1); opacity: .4; }
 .mod-node.disabled .node-plate::before { background: linear-gradient(180deg, rgba(120,140,155,.4), rgba(120,140,155,.08) 50%, rgba(120,140,155,.25)); }

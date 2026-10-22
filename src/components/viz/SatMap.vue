@@ -26,7 +26,7 @@ let layer: AMapNS[] = []
 let robotMk: AMapNS = null
 
 const ptHtml = (i: number, st = 'todo') => `<div class="sm-pt ${st}">${i + 1}</div>`
-const robotHtml = (yaw: number) => `<div class="sm-rb"><i></i><svg viewBox="-6 -6 12 12" style="transform:rotate(${yaw}deg)"><path d="M4.5 0 L-2.6 3.2 L-1.2 0 L-2.6 -3.2 Z" fill="#7FF3FF" stroke="#04121D" stroke-width=".4"/></svg></div>`
+const robotHtml = (yaw: number) => `<div class="sm-rb"><i></i><svg viewBox="-6 -6 12 12" style="transform:rotate(${yaw}deg)"><path d="M4.5 0 L-2.6 3.2 L-1.2 0 L-2.6 -3.2 Z" fill="#7FF3FF" stroke="#0B1C2E" stroke-width=".4"/></svg></div>`
 
 function draw() {
   if (!map) return
@@ -34,8 +34,8 @@ function draw() {
   const add = (o: AMapNS) => { layer.push(o); return o }
   for (const g of props.ghost) add(new A.Polyline({ path: g, strokeColor: '#C9DCE6', strokeOpacity: 0.45, strokeWeight: 2, strokeStyle: 'dashed', strokeDasharray: [6, 6] }))
   if (props.route?.length) {
-    add(new A.Polyline({ path: props.route, strokeColor: '#4DE8B0', strokeWeight: 9, strokeOpacity: 0.25, lineJoin: 'round' }))
-    add(new A.Polyline({ path: props.route, strokeColor: '#4DE8B0', strokeWeight: 3, strokeStyle: 'dashed', strokeDasharray: [10, 6], lineJoin: 'round' }))
+    add(new A.Polyline({ path: props.route, strokeColor: '#45E3A8', strokeWeight: 9, strokeOpacity: 0.25, lineJoin: 'round' }))
+    add(new A.Polyline({ path: props.route, strokeColor: '#45E3A8', strokeWeight: 3, strokeStyle: 'dashed', strokeDasharray: [10, 6], lineJoin: 'round' }))
     add(new A.Marker({ position: props.route[0], content: '<div class="sm-start">起点</div>', offset: new A.Pixel(-16, -28) }))
   }
   if (props.done && props.done.length > 1) add(new A.Polyline({ path: props.done, strokeColor: '#26C6DA', strokeWeight: 5, lineJoin: 'round' }))
@@ -80,19 +80,19 @@ onBeforeUnmount(() => { map?.destroy(); map = null })
 </template>
 
 <style scoped>
-.sat { position: relative; width: 100%; height: 100%; min-height: 120px; background: #0A1622; overflow: hidden; }
+.sat { position: relative; width: 100%; height: 100%; min-height: 120px; background: #132034; overflow: hidden; }
 .sat-map { position: absolute; inset: 0; }
-.sat-st { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--muted, #8FB3C7); font-size: 13px; }
-.sat :deep(.amap-scalecontrol) { background: rgba(6,18,32,.6) !important; color: #E6F7FB; }
-.sat :deep(.sm-pt) { width: 20px; height: 20px; display: grid; place-items: center; font: 600 11px var(--mono, monospace); color: #FFD08A; background: #0B1A28; border: 2px solid #FFB74D; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,.5); }
-.sat :deep(.sm-pt.done) { color: #04121D; background: #26C6DA; border-color: #7FF3FF; }
-.sat :deep(.sm-pt.bad) { color: #fff; background: #FF6B6B; border-color: #FF9C9C; }
+.sat-st { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--muted, #B6CADC); font-size: 13px; }
+.sat :deep(.amap-scalecontrol) { background: rgba(13,28,49,.6) !important; color: #F3F8FC; }
+.sat :deep(.sm-pt) { width: 20px; height: 20px; display: grid; place-items: center; font: 600 11px var(--mono, monospace); color: #FFD08A; background: #14253B; border: 2px solid #FFC15C; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,.5); }
+.sat :deep(.sm-pt.done) { color: #0B1C2E; background: #26C6DA; border-color: #7FF3FF; }
+.sat :deep(.sm-pt.bad) { color: #fff; background: #FF7A7A; border-color: #FFB0B0; }
 .sat :deep(.sm-pt.cur) { border-color: #fff; }
-.sat :deep(.sm-start) { padding: 1px 6px; font-size: 11px; white-space: nowrap; color: #FFB74D; background: rgba(6,18,32,.85); border: 1px solid #FFB74D; border-radius: 4px; }
+.sat :deep(.sm-start) { padding: 1px 6px; font-size: 11px; white-space: nowrap; color: #FFC15C; background: rgba(13,28,49,.85); border: 1px solid #FFC15C; border-radius: 4px; }
 .sat :deep(.sm-rb) { position: relative; width: 36px; height: 36px; display: grid; place-items: center; }
 .sat :deep(.sm-rb i) { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(rgba(127,243,255,.55), rgba(127,243,255,0) 70%); animation: sm-pulse 2.8s ease-in-out infinite; }
 .sat :deep(.sm-rb svg) { width: 26px; height: 26px; position: relative; }
-.sat :deep(.sm-arrow) { width: 46px; height: 3px; background: #FF6B6B; transform-origin: 0 50%; position: relative; }
-.sat :deep(.sm-arrow::after) { content: ''; position: absolute; right: -6px; top: -5px; border: 6px solid transparent; border-left: 8px solid #FF6B6B; border-right: 0; }
+.sat :deep(.sm-arrow) { width: 46px; height: 3px; background: #FF7A7A; transform-origin: 0 50%; position: relative; }
+.sat :deep(.sm-arrow::after) { content: ''; position: absolute; right: -6px; top: -5px; border: 6px solid transparent; border-left: 8px solid #FF7A7A; border-right: 0; }
 @keyframes sm-pulse { 0%, 100% { opacity: .9; transform: scale(.85); } 50% { opacity: .35; transform: scale(1.15); } }
 </style>

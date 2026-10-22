@@ -148,7 +148,7 @@ const cols = computed(() => [
       <div class="bz-bar">
         <span>所属地图 <b>{{ route.map || 'INS 坐标系' }}</b></span><span>长度 <b class="mono">{{ lenM(route.shape) }} m</b></span>
         <span>任务组 <b>{{ groupsOf(route.id).length }}</b></span><span>任务点 <b>{{ ptsOf(route.id) }}</b></span><span>创建 <b class="mono">{{ route.created }}</b></span>
-        <span class="sp" /><span>距起点 <b class="mono" :style="{ color: startDist(route) < 2 ? '#4DE8B0' : '#FFB74D' }">{{ startDist(route).toFixed(1) }} m</b></span>
+        <span class="sp" /><span>距起点 <b class="mono" :style="{ color: startDist(route) < 2 ? '#45E3A8' : '#FFC15C' }">{{ startDist(route).toFixed(1) }} m</b></span>
       </div>
       <div v-if="editing" class="bz-bar">
         <a-radio-group v-model:value="et.tool" size="small" button-style="solid"><a-radio-button value="seg"><ScissorOutlined /> 选段</a-radio-button><a-radio-button value="draw"><HighlightOutlined /> 绘制</a-radio-button></a-radio-group>
@@ -184,12 +184,12 @@ const cols = computed(() => [
       <div class="bz-bar">
         <span><a-badge :status="hasNav ? (rt.locOk ? 'success' : 'processing') : 'default'" />实时位姿</span>
         <span>X <b class="mono">{{ pose.x }}</b></span><span>Y <b class="mono">{{ pose.y }}</b></span><span>Z <b class="mono">0.00</b></span><span>角度 <b class="mono">{{ pose.yaw }}°</b></span>
-        <span v-if="!hasNav" style="color:#FFB74D">未开启定位，添加任务点需手动输入坐标</span>
+        <span v-if="!hasNav" style="color:#FFC15C">未开启定位，添加任务点需手动输入坐标</span>
         <span class="sp" /><a-button size="small" type="primary" :disabled="!group" @click="openPoint()"><EnvironmentOutlined />在当前位置添加任务点</a-button>
       </div>
       <div class="bz-canvas" style="aspect-ratio:16/7.6">
         <BizMap :seed="mapSeed(route?.map ?? pubSel?.map)" :mode="isIns ? 'sat' : 'grid'" :zones="false" :shape="route?.shape ?? null" :pts="mapPts" :sel="selPt" :robot="rt.pose" />
-        <div class="bz-legend"><span><i style="border-color:#4DD0E1;background:#4DD0E133;border-radius:50%" />任务点</span><span><i style="border-color:#FFB74D;border-radius:50%" />选中</span></div>
+        <div class="bz-legend"><span><i style="border-color:#2ED3E6;background:#4DD0E133;border-radius:50%" />任务点</span><span><i style="border-color:#FFC15C;border-radius:50%" />选中</span></div>
       </div>
       <a-table size="small" :pagination="false" :data-source="group?.points ?? []" row-key="id" :columns="cols" :scroll="{ x: 1100, y: 320 }"
         :custom-row="(r: any, i: any) => ({ onClick: () => (selPt = i), style: 'cursor:pointer' })" :row-class-name="(_r: any, i: any) => (i === selPt ? 'bz-row-on' : '')">
@@ -273,6 +273,6 @@ const cols = computed(() => [
 .rp-preset { display: grid; grid-template-columns: 1fr 170px; gap: 14px; margin-top: 12px; }
 .rp-cam { aspect-ratio: 16 / 9; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; } .rp-cam :deep(svg) { width: 100%; height: 100%; display: block; }
 .rp-ptz { display: flex; flex-direction: column; gap: 10px; }
-.rp-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; } .rp-pad button { height: 34px; color: var(--text); cursor: pointer; background: rgba(77,208,225,.06); border: 1px solid var(--line); border-radius: 4px; } .rp-pad button:hover { border-color: var(--cyan); }
+.rp-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; } .rp-pad button { height: 34px; color: var(--text); cursor: pointer; background: rgba(46,211,230,.06); border: 1px solid var(--line); border-radius: 4px; } .rp-pad button:hover { border-color: var(--cyan); }
 .rp-zoom { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 </style>

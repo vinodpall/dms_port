@@ -178,7 +178,7 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
           <template v-else>
             <div><small>CPU</small><b class="mono">38%</b></div>
             <div><small>内存</small><b class="mono">46%</b></div>
-            <div><small>磁盘</small><b class="mono" style="color:#FFB74D">83%</b></div>
+            <div><small>磁盘</small><b class="mono" style="color:#FFC15C">83%</b></div>
           </template>
         </div>
       </div>
@@ -204,11 +204,11 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
         <div v-if="on" class="hm-chart">
           <div class="cv"><b class="mono">{{ chart.cur }}</b><em>{{ sensor.unit }}</em><small>阈值 {{ sensor.lo != null ? sensor.lo + ' ~ ' : '≤ ' }}{{ sensor.hi }}</small></div>
           <svg viewBox="0 0 300 100" preserveAspectRatio="none">
-            <defs><linearGradient id="hm-sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4DE8B0" stop-opacity=".35" /><stop offset="1" stop-color="#4DE8B0" stop-opacity="0" /></linearGradient></defs>
-            <line v-if="chart.hi != null" x1="0" x2="300" :y1="chart.hi" :y2="chart.hi" stroke="#FF6B6B" stroke-dasharray="4 3" stroke-width="1" vector-effect="non-scaling-stroke" />
-            <line v-if="chart.lo != null" x1="0" x2="300" :y1="chart.lo" :y2="chart.lo" stroke="#FFB74D" stroke-dasharray="4 3" stroke-width="1" vector-effect="non-scaling-stroke" />
+            <defs><linearGradient id="hm-sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#45E3A8" stop-opacity=".35" /><stop offset="1" stop-color="#45E3A8" stop-opacity="0" /></linearGradient></defs>
+            <line v-if="chart.hi != null" x1="0" x2="300" :y1="chart.hi" :y2="chart.hi" stroke="#FF7A7A" stroke-dasharray="4 3" stroke-width="1" vector-effect="non-scaling-stroke" />
+            <line v-if="chart.lo != null" x1="0" x2="300" :y1="chart.lo" :y2="chart.lo" stroke="#FFC15C" stroke-dasharray="4 3" stroke-width="1" vector-effect="non-scaling-stroke" />
             <polygon :points="chart.area" fill="url(#hm-sg)" />
-            <polyline :points="chart.pts" fill="none" stroke="#4DE8B0" stroke-width="1.6" vector-effect="non-scaling-stroke" />
+            <polyline :points="chart.pts" fill="none" stroke="#45E3A8" stroke-width="1.6" vector-effect="non-scaling-stroke" />
           </svg>
         </div>
         <div v-else class="hm-empty sm">设备离线</div>
@@ -240,14 +240,14 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
 .hm-col .sub { margin-left: 8px; font-size: 12px; }
 .hm-grow { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .hm-cam { flex: none; display: flex; flex-direction: column; } .hm-cam .hm-box { aspect-ratio: 16 / 9; flex: none; }
-.hm-box { position: relative; flex: 1; min-height: 0; margin: 10px; overflow: hidden; border: 1px solid rgba(77,208,225,.16); border-radius: 4px; background: #050E18; }
+.hm-box { position: relative; flex: 1; min-height: 0; margin: 10px; overflow: hidden; border: 1px solid rgba(46,211,230,.16); border-radius: 4px; background: #0C1728; }
 .hm-empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--faint); font-size: 13px; } .hm-empty.sm { position: static; flex: 1; padding: 28px 0; }
 .hm-task { flex: 1; display: flex; flex-direction: column; gap: 12px; padding: 12px 14px; }
 .hm-task .nm { font-size: 13.5px; font-weight: 500; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .hm-task .ring { display: flex; align-items: center; gap: 14px; } .hm-task .ring :deep(.ant-progress-text) { color: #fff; font-size: 17px; }
 .hm-task .kv { flex: 1; min-width: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 8px; font-size: 12px; } .hm-task .kv span { color: var(--muted); } .hm-task .kv b { font-weight: 500; text-align: right; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.hm-task .st4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; text-align: center; } .hm-task .st4 > div { padding: 6px 0; background: rgba(77,208,225,.05); border-radius: 4px; }
-.hm-task .st4 b { display: block; font-size: 16px; color: #fff; } .hm-task .st4 b.ok { color: #4DE8B0; } .hm-task .st4 b.bad { color: #FF6B6B; } .hm-task .st4 small { font-size: 11px; color: var(--muted); }
+.hm-task .st4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; text-align: center; } .hm-task .st4 > div { padding: 6px 0; background: rgba(46,211,230,.05); border-radius: 4px; }
+.hm-task .st4 b { display: block; font-size: 16px; color: #fff; } .hm-task .st4 b.ok { color: #45E3A8; } .hm-task .st4 b.bad { color: #FF7A7A; } .hm-task .st4 small { font-size: 11px; color: var(--muted); }
 .hm-task .ops { display: flex; gap: 8px; margin-top: auto; } .hm-task .ops > * { flex: 1; }
 .hm-map { flex: 1.7; min-height: 0; display: flex; flex-direction: column; }
 .hm-lg { display: flex; gap: 10px; margin-left: 12px; font-size: 11.5px; color: var(--muted); } .hm-lg i { display: inline-block; width: 9px; height: 9px; margin-right: 4px; border: 1px solid; vertical-align: -1px; }
@@ -257,29 +257,29 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
 .hm-type { display: inline-flex; align-items: center; gap: 6px; } .hm-type i { width: 6px; height: 6px; border-radius: 50%; }
 .hm-right { overflow: auto; }
 .hm-big { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px 14px 4px; }
-.hm-big > div { padding: 7px 10px; background: rgba(77,208,225,.05); border: 1px solid rgba(77,208,225,.12); border-radius: 4px; }
-.hm-big small { display: block; font-size: 11.5px; color: var(--muted); } .hm-big b { font-size: 18px; font-weight: 600; color: #fff; } .hm-big b.low { color: #FF6B6B; } .hm-big em { font-style: normal; font-size: 11px; color: var(--muted); margin-left: 3px; }
+.hm-big > div { padding: 7px 10px; background: rgba(46,211,230,.05); border: 1px solid rgba(46,211,230,.12); border-radius: 4px; }
+.hm-big small { display: block; font-size: 11.5px; color: var(--muted); } .hm-big b { font-size: 18px; font-weight: 600; color: #fff; } .hm-big b.low { color: #FF7A7A; } .hm-big em { font-style: normal; font-size: 11px; color: var(--muted); margin-left: 3px; }
 .hm-big { grid-template-columns: repeat(3, 1fr) !important; } .hm-big b { font-size: 16px !important; }
 .hm-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; padding: 10px 12px 14px; }
-.hm-grid > div { min-width: 0; padding: 5px 1px; text-align: center; background: rgba(77,208,225,.04); border-radius: 4px; }
+.hm-grid > div { min-width: 0; padding: 5px 1px; text-align: center; background: rgba(46,211,230,.04); border-radius: 4px; }
 .hm-grid small { display: block; font-size: 11px; color: var(--muted); } .hm-grid b { display: block; font-size: 12px; font-weight: 500; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.hm-grid b.ok { color: #4DE8B0; } .hm-grid b.warn { color: #FFB74D; } .hm-grid .lk { cursor: pointer; border: 1px dashed rgba(77,232,176,.35); }
+.hm-grid b.ok { color: #45E3A8; } .hm-grid b.warn { color: #FFC15C; } .hm-grid .lk { cursor: pointer; border: 1px dashed rgba(77,232,176,.35); }
 .hm-rtk { display: grid; grid-template-columns: auto auto; gap: 6px 16px; font-size: 12.5px; } .hm-rtk span { color: var(--muted); } .hm-rtk b { font-weight: 500; text-align: right; }
-.hm-mic { color: #4DE8B0 !important; }
+.hm-mic { color: #45E3A8 !important; }
 .hm-ctl { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 12px 14px 14px; }
-.hm-ctl button { padding: 5px 0; font: inherit; font-size: 12px; color: var(--muted); cursor: pointer; background: rgba(77,208,225,.05); border: 1px solid var(--line); border-radius: 4px; }
+.hm-ctl button { padding: 5px 0; font: inherit; font-size: 12px; color: var(--muted); cursor: pointer; background: rgba(46,211,230,.05); border: 1px solid var(--line); border-radius: 4px; }
 .hm-ctl button:hover:not(:disabled) { color: var(--text); border-color: var(--line-strong); } .hm-ctl button.on { color: #fff; border-color: var(--accent); background: var(--accent-soft); }
-.hm-ctl button.stop { color: #fff; background: rgba(255,107,107,.55); border-color: #FF6B6B; } .hm-ctl button:disabled { cursor: not-allowed; opacity: .5; }
+.hm-ctl button.stop { color: #fff; background: rgba(255,107,107,.55); border-color: #FF7A7A; } .hm-ctl button:disabled { cursor: not-allowed; opacity: .5; }
 .hm-ctl button:nth-child(7), .hm-ctl button:nth-child(16) { margin-top: 4px; } .hm-ctl button:nth-child(8), .hm-ctl button:nth-child(9), .hm-ctl button:nth-child(17), .hm-ctl button:nth-child(18) { margin-top: 4px; }
 .hm-stog { gap: 0 !important; } .hm-stog b { min-width: 64px; text-align: center; font-size: 12.5px; font-weight: 500; }
-.hm-chart { padding: 8px 14px 12px; } .hm-chart .cv { display: flex; align-items: baseline; gap: 4px; } .hm-chart .cv b { font-size: 20px; color: #4DE8B0; } .hm-chart .cv em { font-style: normal; font-size: 11px; color: var(--muted); } .hm-chart .cv small { margin-left: auto; font-size: 11px; color: var(--faint); }
+.hm-chart { padding: 8px 14px 12px; } .hm-chart .cv { display: flex; align-items: baseline; gap: 4px; } .hm-chart .cv b { font-size: 20px; color: #45E3A8; } .hm-chart .cv em { font-style: normal; font-size: 11px; color: var(--muted); } .hm-chart .cv small { margin-left: auto; font-size: 11px; color: var(--faint); }
 .hm-chart svg { display: block; width: 100%; height: 110px; margin-top: 6px; border-bottom: 1px solid var(--line); }
 .hm-send { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px 14px; }
 .hm-send .ln { display: grid; grid-template-columns: 70px minmax(0, 1fr) auto; align-items: center; gap: 8px; font-size: 12.5px; }
 .hm-send .ln.loc { grid-template-columns: minmax(0, 1fr) auto; padding-bottom: 10px; border-bottom: 1px dashed var(--line); }
-.hm-send .tg { display: flex; } .hm-send .tg button { height: 24px; padding: 0 10px; font: inherit; font-size: 12px; color: var(--muted); cursor: pointer; background: rgba(77,208,225,.05); border: 1px solid var(--line-strong); margin-left: -1px; }
+.hm-send .tg { display: flex; } .hm-send .tg button { height: 24px; padding: 0 10px; font: inherit; font-size: 12px; color: var(--muted); cursor: pointer; background: rgba(46,211,230,.05); border: 1px solid var(--line-strong); margin-left: -1px; }
 .hm-send .tg button:first-child { border-radius: 4px 0 0 3px; } .hm-send .tg button:last-child { border-radius: 0 3px 3px 0; }
-.hm-send .tg button.on { color: #04121D; font-weight: 600; background: var(--cyan); border-color: var(--cyan); } .hm-send .tg button:disabled { cursor: not-allowed; opacity: .4; }
+.hm-send .tg button.on { color: #0B1C2E; font-weight: 600; background: var(--cyan); border-color: var(--cyan); } .hm-send .tg button:disabled { cursor: not-allowed; opacity: .4; }
 .hm-send label { color: var(--muted); } .hm-send .ins { font-size: 12px; }
 .hm-pic { aspect-ratio: 16 / 9; position: relative; overflow: hidden; border-radius: 4px; }
 </style>

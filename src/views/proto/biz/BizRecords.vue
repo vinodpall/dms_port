@@ -67,7 +67,7 @@ const del = () => Modal.confirm({ title: '删除记录', content: `确定删除�
 
   <a-modal :open="!!img" :title="img ? `${img.desc} · ${img.item}` : ''" :footer="null" :width="720" @cancel="img = null">
     <template v-if="img">
-      <div class="rc-img"><CamShot :seed="img.seed" :ir="img.item === '红外测温'" :box="img.result" :box-color="img.bad ? '#FF6B6B' : '#4DE8B0'" hud /></div>
+      <div class="rc-img"><CamShot :seed="img.seed" :ir="img.item === '红外测温'" :box="img.result" :box-color="img.bad ? '#FF7A7A' : '#45E3A8'" hud /></div>
       <div class="bz-kv" style="margin-top:12px"><span>时间</span><b class="mono">{{ img.time }}</b><span>路线 / 任务组</span><b>{{ img.route }} / {{ img.group }}</b><span>坐标</span><b class="mono">{{ img.coord }}</b><span>识别结果</span><b :class="{ ng: img.bad }">{{ img.result }}</b></div>
     </template>
   </a-modal>
@@ -92,8 +92,8 @@ const del = () => Modal.confirm({ title: '删除记录', content: `确定删除�
 </template>
 
 <style scoped>
-.rc-filter { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 14px 16px; border-bottom: 1px solid rgba(77,208,225,.1); font-size: 13px; color: var(--muted); }
+.rc-filter { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 14px 16px; border-bottom: 1px solid rgba(46,211,230,.1); font-size: 13px; color: var(--muted); }
 .rc-filter > span:not(:first-child) { margin-left: 6px; }
-.ng { color: #FF6B6B; }
+.ng { color: #FF7A7A; }
 .rc-img { aspect-ratio: 16 / 9; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; } .rc-img :deep(svg) { width: 100%; height: 100%; display: block; }
 </style>

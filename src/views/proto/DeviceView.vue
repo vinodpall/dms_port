@@ -23,17 +23,17 @@ const MENU = [
 ]
 const tab = ref('dash')
 /** 趋势图配色：允许外层（配色预览）通过 provide 覆盖 */
-const chartC = inject<Ref<[string, string]>>('pal-chart', ref<[string, string]>(['#4DD0E1', '#4DE8B0']))
+const chartC = inject<Ref<[string, string]>>('pal-chart', ref<[string, string]>(['#2ED3E6', '#45E3A8']))
 
 /* ---------- 统计 ---------- */
 const count = (s: DeviceStatus) => DEVICES.filter((d) => d.status === s).length
 const KPIS = computed(() => [
-  { label: '设备总数', v: DEVICES.length, unit: '台', k: '#4DD0E1' },
+  { label: '设备总数', v: DEVICES.length, unit: '台', k: '#2ED3E6' },
   { label: '运行中', v: count('working'), unit: '台', k: '#26C6DA' },
-  { label: '在线空闲', v: count('online'), unit: '台', k: '#4DE8B0' },
-  { label: '充电中', v: count('charging'), unit: '台', k: '#FFB74D' },
-  { label: '离线', v: count('offline'), unit: '台', k: '#5B7486' },
-  { label: '故障告警', v: count('fault'), unit: '台', k: '#FF6B6B' },
+  { label: '在线空闲', v: count('online'), unit: '台', k: '#45E3A8' },
+  { label: '充电中', v: count('charging'), unit: '台', k: '#FFC15C' },
+  { label: '离线', v: count('offline'), unit: '台', k: '#8EA6BE' },
+  { label: '故障告警', v: count('fault'), unit: '台', k: '#FF7A7A' },
 ])
 const TYPES = Object.keys(TYPE_META) as DeviceType[]
 
@@ -85,7 +85,7 @@ const columns = [
   { title: '操作', key: 'op', width: 150, fixed: 'right' },
 ]
 const capsText = (cs: Capability[]) => cs.map((c) => CAP_META[c]).join('、')
-const batColor = (b: number) => (b < 20 ? '#FF6B6B' : b < 50 ? '#FFB74D' : '#4DE8B0')
+const batColor = (b: number) => (b < 20 ? '#FF7A7A' : b < 50 ? '#FFC15C' : '#45E3A8')
 const selectedKeys = ref<string[]>([])
 
 /* ---------- 详情 ---------- */
@@ -301,9 +301,9 @@ const MAINT_ROWS = DEVICES.slice(0, 14).map((d, i) => ({ key: i, dev: d, type: [
       <div class="pp-head"><div><h2>维保记录</h2><p>设备保养、维修、升级与标定记录</p></div><div class="r"><a-button type="primary"><PlusOutlined />维保登记</a-button></div></div>
       <div class="pp-kpis">
         <div class="pp-kpi" style="--k:#26C6DA"><small>本月维保</small><b>18<em>次</em></b><span class="bar" /></div>
-        <div class="pp-kpi" style="--k:#FFB74D"><small>进行中</small><b>3<em>项</em></b><span class="bar" /></div>
-        <div class="pp-kpi" style="--k:#FF6B6B"><small>即将到期保养</small><b>5<em>台</em></b><span class="bar" /></div>
-        <div class="pp-kpi" style="--k:#4DE8B0"><small>平均修复时长</small><b>3.6<em>小时</em></b><span class="bar" /></div>
+        <div class="pp-kpi" style="--k:#FFC15C"><small>进行中</small><b>3<em>项</em></b><span class="bar" /></div>
+        <div class="pp-kpi" style="--k:#FF7A7A"><small>即将到期保养</small><b>5<em>台</em></b><span class="bar" /></div>
+        <div class="pp-kpi" style="--k:#45E3A8"><small>平均修复时长</small><b>3.6<em>小时</em></b><span class="bar" /></div>
       </div>
       <div class="pp-panel">
         <a-table :data-source="MAINT_ROWS" size="middle" :pagination="false" :columns="[{ title: '设备', key: 'dev' }, { title: '类型', key: 'type' }, { title: '内容', dataIndex: 'content' }, { title: '负责人', dataIndex: 'who' }, { title: '日期', dataIndex: 'date' }, { title: '状态', key: 'state' }]">
@@ -334,7 +334,7 @@ const MAINT_ROWS = DEVICES.slice(0, 14).map((d, i) => ({ key: i, dev: d, type: [
         <a-tabs class="dv-tabs">
           <a-tab-pane key="o" tab="实时状态">
             <div class="dv-gauges">
-              <div v-for="g in [{ l: '电量', v: cur.battery, c: batColor(cur.battery), u: '%' }, { l: 'CPU 负载', v: cur.cpu, c: '#4DD0E1', u: '%' }, { l: '主控温度', v: cur.temp, c: cur.temp > 58 ? '#FF6B6B' : '#5B9BFF', u: '℃' }, { l: '信号强度', v: cur.signal * 25, c: '#4DE8B0', u: '%' }]" :key="g.l" class="dv-gauge">
+              <div v-for="g in [{ l: '电量', v: cur.battery, c: batColor(cur.battery), u: '%' }, { l: 'CPU 负载', v: cur.cpu, c: '#2ED3E6', u: '%' }, { l: '主控温度', v: cur.temp, c: cur.temp > 58 ? '#FF7A7A' : '#5B9BFF', u: '℃' }, { l: '信号强度', v: cur.signal * 25, c: '#45E3A8', u: '%' }]" :key="g.l" class="dv-gauge">
                 <a-progress type="dashboard" :percent="g.v" :size="104" :stroke-color="g.c" :format="() => `${g.v}${g.u}`" />
                 <span>{{ g.l }}</span>
               </div>
@@ -391,7 +391,7 @@ const MAINT_ROWS = DEVICES.slice(0, 14).map((d, i) => ({ key: i, dev: d, type: [
       <a-form layout="vertical" style="margin-top:12px">
         <a-form-item label="设备类型" required>
           <div class="dv-pick">
-            <button v-for="t in TYPES" :key="t" type="button" :class="{ on: form.type === t }" @click="form.type = t"><DeviceGlyph :type="t" :size="34" :color="form.type === t ? TYPE_META[t].color : '#5B7486'" /><span>{{ TYPE_META[t].label }}</span></button>
+            <button v-for="t in TYPES" :key="t" type="button" :class="{ on: form.type === t }" @click="form.type = t"><DeviceGlyph :type="t" :size="34" :color="form.type === t ? TYPE_META[t].color : '#8EA6BE'" /><span>{{ TYPE_META[t].label }}</span></button>
           </div>
         </a-form-item>
         <a-row :gutter="16">
@@ -413,25 +413,25 @@ const MAINT_ROWS = DEVICES.slice(0, 14).map((d, i) => ({ key: i, dev: d, type: [
 .kdot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
 .dv-types { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 16px; }
 .dv-type { display: flex; align-items: center; gap: 12px; padding: 12px 14px; text-align: left; cursor: pointer; color: var(--text); font: inherit;
-  background: rgba(12,30,48,.7); border: 1px solid rgba(77,208,225,.12); border-radius: 6px; transition: all .2s; }
-.dv-type:hover { border-color: rgba(77,208,225,.4); }
-.dv-type.on { border-color: var(--c, #4DD0E1); background: linear-gradient(135deg, rgba(38,198,218,.16), rgba(12,30,48,.7)); box-shadow: inset 0 -2px 0 var(--c, #4DD0E1); }
-.dv-type .ic { width: 46px; height: 46px; display: grid; place-items: center; flex: none; background: rgba(77,208,225,.06); clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%); }
+  background: rgba(22,42,69,.7); border: 1px solid rgba(46,211,230,.12); border-radius: 6px; transition: all .2s; }
+.dv-type:hover { border-color: rgba(46,211,230,.4); }
+.dv-type.on { border-color: var(--c, #2ED3E6); background: linear-gradient(135deg, rgba(38,198,218,.16), rgba(22,42,69,.7)); box-shadow: inset 0 -2px 0 var(--c, #2ED3E6); }
+.dv-type .ic { width: 46px; height: 46px; display: grid; place-items: center; flex: none; background: rgba(46,211,230,.06); clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%); }
 .dv-type .ic.all { font-size: 22px; color: var(--cyan); }
 .dv-type b { display: block; font-size: 14px; font-weight: 600; }
 .dv-type small { color: var(--muted); font-size: 12px; }
 .dv-batch { display: flex; align-items: center; gap: 10px; padding: 8px 16px; font-size: 13px; background: rgba(38,198,218,.08); border-bottom: 1px solid var(--line); }
 .dv-cell { display: flex; align-items: center; gap: 10px; }
-.dv-av { width: 36px; height: 36px; flex: none; display: grid; place-items: center; background: rgba(77,208,225,.07); border: 1px solid color-mix(in srgb, var(--c) 35%, transparent); border-radius: 4px; }
+.dv-av { width: 36px; height: 36px; flex: none; display: grid; place-items: center; background: rgba(46,211,230,.07); border: 1px solid color-mix(in srgb, var(--c) 35%, transparent); border-radius: 4px; }
 .dv-bat { display: flex; align-items: center; gap: 8px; } .dv-bat :deep(.ant-progress) { margin: 0; flex: 1; } .dv-bat span { font-size: 12px; width: 34px; text-align: right; }
 .dv-sig { display: inline-flex; align-items: flex-end; gap: 2px; height: 14px; vertical-align: middle; }
-.dv-sig i { width: 3px; background: #28465C; border-radius: 1px; } .dv-sig i:nth-child(1) { height: 25%; } .dv-sig i:nth-child(2) { height: 50%; } .dv-sig i:nth-child(3) { height: 75%; } .dv-sig i:nth-child(4) { height: 100%; }
-.dv-sig[data-l="1"] i:nth-child(-n+1), .dv-sig[data-l="2"] i:nth-child(-n+2), .dv-sig[data-l="3"] i:nth-child(-n+3), .dv-sig[data-l="4"] i { background: #4DE8B0; }
-.dv-cap { background: rgba(77,208,225,.08) !important; border-color: rgba(77,208,225,.25) !important; color: #9FE6EF !important; }
+.dv-sig i { width: 3px; background: #3D5879; border-radius: 1px; } .dv-sig i:nth-child(1) { height: 25%; } .dv-sig i:nth-child(2) { height: 50%; } .dv-sig i:nth-child(3) { height: 75%; } .dv-sig i:nth-child(4) { height: 100%; }
+.dv-sig[data-l="1"] i:nth-child(-n+1), .dv-sig[data-l="2"] i:nth-child(-n+2), .dv-sig[data-l="3"] i:nth-child(-n+3), .dv-sig[data-l="4"] i { background: #45E3A8; }
+.dv-cap { background: rgba(46,211,230,.08) !important; border-color: rgba(46,211,230,.25) !important; color: #9FE6EF !important; }
 .ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px; display: inline-block; }
 .dv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; padding: 16px; }
 .dv-card { position: relative; padding: 14px; cursor: pointer; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px;
-  background: linear-gradient(180deg, rgba(20,48,74,.6), rgba(10,27,43,.8)); border: 1px solid rgba(77,208,225,.12); border-radius: 6px; transition: all .2s; }
+  background: linear-gradient(180deg, rgba(33,62,100,.6), rgba(19,38,63,.8)); border: 1px solid rgba(46,211,230,.12); border-radius: 6px; transition: all .2s; }
 .dv-card:hover { border-color: var(--c); transform: translateY(-2px); box-shadow: 0 10px 24px rgba(0,0,0,.35), 0 0 0 1px var(--c); }
 .dv-card-top { width: 100%; display: flex; justify-content: space-between; font-size: 12px; }
 .dv-card-art { margin: 8px 0 6px; width: 110px; height: 96px; display: grid; place-items: center; background: radial-gradient(closest-side, color-mix(in srgb, var(--c) 18%, transparent), transparent); }
@@ -472,7 +472,7 @@ const MAINT_ROWS = DEVICES.slice(0, 14).map((d, i) => ({ key: i, dev: d, type: [
 .db-alerts li { display: grid; grid-template-columns: 8px 44px 74px 1fr; align-items: center; gap: 10px; padding: 9px 16px; font-size: 13px; cursor: pointer; border-bottom: 1px dashed var(--line); }
 .db-alerts li:hover { background: rgba(var(--glow),.05); }
 .db-alerts .lv { width: 8px; height: 8px; border-radius: 50%; } .db-alerts li.error .lv { background: var(--bad); box-shadow: 0 0 8px var(--bad); } .db-alerts li.warning .lv { background: var(--warn); }
-.db-alerts li .m { color: var(--muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; } .db-alerts li.error .m { color: var(--bad-text, #FF9C9C); }
+.db-alerts li .m { color: var(--muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; } .db-alerts li.error .m { color: var(--bad-text, #FFB0B0); }
 .db-list { list-style: none; margin: 0; padding: 6px 16px 10px; }
 .db-list li { display: flex; align-items: center; gap: 10px; padding: 7px 0; font-size: 13px; border-bottom: 1px dashed var(--line); }
 .db-list li:last-child { border-bottom: 0; } .db-list li b { font-weight: 500; white-space: nowrap; } .db-list .r { margin-left: auto; margin-inline-end: 0; }
@@ -487,9 +487,9 @@ const MAINT_ROWS = DEVICES.slice(0, 14).map((d, i) => ({ key: i, dev: d, type: [
 </style>
 <style>
 /* 抽屉、弹窗挂载在 body 下 */
-.dv-drawer .ant-drawer-content { background: linear-gradient(180deg, #0E2438, #0A1B2B) !important; border-left: 1px solid rgba(77,208,225,.25); }
+.dv-drawer .ant-drawer-content { background: linear-gradient(180deg, #19304E, #13263F) !important; border-left: 1px solid rgba(46,211,230,.25); }
 .dv-drawer .ant-drawer-body { padding: 0 24px 24px; }
-.dv-hero { --c: #4DD0E1; display: flex; gap: 18px; align-items: flex-start; margin: 0 -24px; padding: 24px; background: linear-gradient(135deg, color-mix(in srgb, var(--c) 14%, transparent), transparent 60%); border-bottom: 1px solid rgba(77,208,225,.14); }
+.dv-hero { --c: #2ED3E6; display: flex; gap: 18px; align-items: flex-start; margin: 0 -24px; padding: 24px; background: linear-gradient(135deg, color-mix(in srgb, var(--c) 14%, transparent), transparent 60%); border-bottom: 1px solid rgba(46,211,230,.14); }
 .dv-hero-art { width: 120px; height: 120px; flex: none; display: grid; place-items: center; background: var(--well); border: 1px solid color-mix(in srgb, var(--c) 40%, transparent); clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%); }
 .dv-hero-b { flex: 1; min-width: 0; }
 .dv-hero-t { display: flex; align-items: center; gap: 12px; } .dv-hero-t b { font-size: 22px; color: #fff; }
@@ -497,11 +497,11 @@ const MAINT_ROWS = DEVICES.slice(0, 14).map((d, i) => ({ key: i, dev: d, type: [
 .dv-hero-task .dot { width: 6px; height: 6px; border-radius: 50%; background: #26C6DA; box-shadow: 0 0 8px #26C6DA; }
 .dv-tabs { margin-top: 6px; }
 .dv-gauges { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
-.dv-gauge { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px 0; background: rgba(16,38,59,.6); border: 1px solid rgba(77,208,225,.1); border-radius: 6px; font-size: 13px; color: #8FB3C7; }
+.dv-gauge { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px 0; background: rgba(27,51,82,.6); border: 1px solid rgba(46,211,230,.1); border-radius: 6px; font-size: 13px; color: #B6CADC; }
 .dv-gauge .ant-progress-text { color: #fff !important; font-family: 'JetBrains Mono', Consolas, monospace; font-size: 18px !important; }
 .dv-list .ant-list-item { padding: 10px 4px; }
 .dv-pick { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
-.dv-pick button { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 0; cursor: pointer; font: inherit; font-size: 13px; color: #8FB3C7; background: rgba(16,38,59,.6); border: 1px solid #1B3A52; border-radius: 6px; transition: all .2s; }
+.dv-pick button { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 0; cursor: pointer; font: inherit; font-size: 13px; color: #B6CADC; background: rgba(27,51,82,.6); border: 1px solid #2B4A6D; border-radius: 6px; transition: all .2s; }
 .dv-pick button.on { color: #fff; border-color: #26C6DA; background: rgba(38,198,218,.12); }
 .cell-main .ellipsis { max-width: 150px; }
 </style>

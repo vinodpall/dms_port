@@ -47,7 +47,7 @@ const emit = defineEmits<{ pick: [id: string]; 'update:filter': [v: string] }>()
 .filter-seg { display: flex; width: 100%; padding: 3px; border-radius: 8px; background: var(--surface-3); gap: 2px; }
 .filter-tab { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 3px; height: 28px; padding: 0 4px; border: 0; border-radius: 6px; background: none; color: var(--muted); font-size: 12px; cursor: pointer; white-space: nowrap; transition: all .15s ease; }
 .filter-tab:hover { color: var(--text); }
-.filter-tab[aria-pressed="true"] { background: var(--surface); color: var(--text); font-weight: 600; box-shadow: 0 1px 2px rgba(15,30,55,.12); }
+.filter-tab[aria-pressed="true"] { background: var(--surface); color: var(--text); font-weight: 600; box-shadow: 0 1px 2px rgba(26,42,77,.12); }
 .filter-tab .lbl { font-size: 11.5px; }
 .filter-tab .num-badge { font: 600 11px var(--font-mono); opacity: .75; }
 .cbody { overflow: auto; flex: 1; max-height: 820px; }

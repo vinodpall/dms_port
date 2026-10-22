@@ -23,7 +23,7 @@ const LEDS = [[1103, 178, 0], [1103, 232, 2.2], [1150, 205, 1], [1150, 262, 3.4]
       <svg viewBox="0 0 1800 1168" class="cy-hero-fx">
         <defs>
           <clipPath id="holo-clip"><polygon points="893,163 1045,78 1045,272 893,357" /></clipPath>
-          <radialGradient id="pad-g"><stop offset="0" stop-color="#7FF3FF" stop-opacity=".9" /><stop offset="1" stop-color="#4DD0E1" stop-opacity="0" /></radialGradient>
+          <radialGradient id="pad-g"><stop offset="0" stop-color="#7FF3FF" stop-opacity=".9" /><stop offset="1" stop-color="#2ED3E6" stop-opacity="0" /></radialGradient>
           <filter id="fx-glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
         </defs>
         <!-- 巡检路线：流动虚线 + 巡检光点 + 节点脉冲 -->

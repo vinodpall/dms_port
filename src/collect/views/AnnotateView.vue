@@ -837,7 +837,7 @@ function clearBatch() { router.replace({ name: 'annotate' }) }
 .req { color: var(--crit); font-style: normal; }
 .vseg { display: flex; gap: 2px; padding: 3px; border-radius: 8px; background: var(--surface-3); margin-bottom: 8px; }
 .vseg button { flex: 1 1 0; min-width: 0; height: 28px; padding: 0 4px; border: 0; border-radius: 6px; background: none; color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
-.vseg button[aria-selected="true"] { background: var(--surface); color: var(--text); font-weight: 600; box-shadow: 0 1px 2px rgba(15,30,55,.12); }
+.vseg button[aria-selected="true"] { background: var(--surface); color: var(--text); font-weight: 600; box-shadow: 0 1px 2px rgba(26,42,77,.12); }
 .claim { display: flex; gap: 6px; align-items: center; width: 100%; min-width: 0; }
 .claim :deep(.ant-btn), .claim :deep(.ant-input-number), .claim :deep(.ant-select-selector) { height: 28px !important; }
 .claim :deep(.ant-input-number-input) { height: 26px; }

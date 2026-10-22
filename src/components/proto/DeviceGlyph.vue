@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { DeviceType } from '@/models/device'
-withDefaults(defineProps<{ type: DeviceType; size?: number; color?: string }>(), { size: 40, color: '#4DD0E1' })
+withDefaults(defineProps<{ type: DeviceType; size?: number; color?: string }>(), { size: 40, color: '#2ED3E6' })
 </script>
 <template>
   <svg :width="size" :height="size" viewBox="0 0 64 64" fill="none" :stroke="color" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

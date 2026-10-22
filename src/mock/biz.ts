@@ -7,10 +7,10 @@ export type BizRobotKind = 'dog' | 'car'
 export type LocMode = 'lidar' | 'ins'
 export interface BizRobot { id: string; name: string; kind: BizRobotKind; model: string; loc: LocMode; rtk: boolean; online: boolean; battery: number; mileage: number; latency: number; ip: string; site: string }
 export const KIND_META: Record<BizRobotKind, { t: string; glyph: 'quadruped' | 'ugv'; c: string }> = {
-  dog: { t: '机器狗', glyph: 'quadruped', c: '#5B9BFF' }, car: { t: '无人车', glyph: 'ugv', c: '#4DE8B0' },
+  dog: { t: '机器狗', glyph: 'quadruped', c: '#5B9BFF' }, car: { t: '无人车', glyph: 'ugv', c: '#45E3A8' },
 }
 export const LOC_META: Record<LocMode, { t: string; s: string; c: string }> = {
-  lidar: { t: '激光雷达 SLAM', s: '激光', c: '#5B9BFF' }, ins: { t: 'INS 组合导航', s: 'INS', c: '#4DE8B0' },
+  lidar: { t: '激光雷达 SLAM', s: '激光', c: '#5B9BFF' }, ins: { t: 'INS 组合导航', s: 'INS', c: '#45E3A8' },
 }
 export const ROBOTS: BizRobot[] = [
   { id: 'DOG-001', name: '巡检狗 01', kind: 'dog', model: 'X30 Pro', loc: 'lidar', rtk: false, online: true, battery: 76, mileage: 1286.4, latency: 38, ip: '10.12.3.101', site: '综合楼' },
@@ -26,16 +26,16 @@ export const GROUNDS = ['实心地面', '镂空地面', '无踢面地面', '累�
 export const OBS_MODES = ['无避障', '停障模式', '绕障模式']
 /** 任务类型（对齐 /taskpoints/{id}/task_type_list：single 单选 / 多选组合） */
 export const TASK_TYPES = [
-  { cn: '可见光拍照', single: true, c: '#4DD0E1' }, { cn: '红外测温', single: true, c: '#FF8A50' }, { cn: '表计识别', single: true, c: '#5B9BFF' },
-  { cn: '录像', single: true, c: '#B48CFF' }, { cn: '气体检测', single: true, c: '#4DE8B0' }, { cn: '大模型识别', single: true, c: '#FFB74D' },
-  { cn: '到点停留', single: true, c: '#8FB3C7' },
-  { cn: '可见光+红外', single: false, c: '#4DD0E1' }, { cn: '拍照+录像', single: false, c: '#B48CFF' }, { cn: '表计+红外测温', single: false, c: '#5B9BFF' },
+  { cn: '可见光拍照', single: true, c: '#2ED3E6' }, { cn: '红外测温', single: true, c: '#FF8A50' }, { cn: '表计识别', single: true, c: '#5B9BFF' },
+  { cn: '录像', single: true, c: '#B48CFF' }, { cn: '气体检测', single: true, c: '#45E3A8' }, { cn: '大模型识别', single: true, c: '#FFC15C' },
+  { cn: '到点停留', single: true, c: '#B6CADC' },
+  { cn: '可见光+红外', single: false, c: '#2ED3E6' }, { cn: '拍照+录像', single: false, c: '#B48CFF' }, { cn: '表计+红外测温', single: false, c: '#5B9BFF' },
 ]
-export const typeColor = (t: string) => TASK_TYPES.find((x) => x.cn === t)?.c ?? '#8FB3C7'
+export const typeColor = (t: string) => TASK_TYPES.find((x) => x.cn === t)?.c ?? '#B6CADC'
 export const PRESETS = Array.from({ length: 8 }, (_, i) => `预置点${i + 1}`)
 export const ZONES = [
-  { k: 'forbid', t: '禁行区', c: '#FF6B6B' }, { k: 'stair', t: '楼梯', c: '#FFB74D' }, { k: 'slope', t: '斜坡', c: '#B48CFF' },
-  { k: 'narrow', t: '窄通道', c: '#4DD0E1' }, { k: 'grass', t: '草地', c: '#4DE8B0' },
+  { k: 'forbid', t: '禁行区', c: '#FF7A7A' }, { k: 'stair', t: '楼梯', c: '#FFC15C' }, { k: 'slope', t: '斜坡', c: '#B48CFF' },
+  { k: 'narrow', t: '窄通道', c: '#2ED3E6' }, { k: 'grass', t: '草地', c: '#45E3A8' },
 ] as const
 
 /* ---------------- 数据包 / 地图 ---------------- */
@@ -150,10 +150,10 @@ export const RECORDS: BizRecord[] = (() => {
 ROUNDS.sort((a, b) => b.start.localeCompare(a.start))
 
 export const ALARM_TYPES = [
-  { t: '设备异常', c: '#FF6B6B' }, { t: '温度超限', c: '#FF8A50' }, { t: '仪表异常', c: '#FFB74D' },
-  { t: '人员闯入', c: '#B48CFF' }, { t: '异物/遗留物', c: '#5B9BFF' }, { t: '气体超标', c: '#4DE8B0' }, { t: '摔倒检测', c: '#FF6B6B' },
+  { t: '设备异常', c: '#FF7A7A' }, { t: '温度超限', c: '#FF8A50' }, { t: '仪表异常', c: '#FFC15C' },
+  { t: '人员闯入', c: '#B48CFF' }, { t: '异物/遗留物', c: '#5B9BFF' }, { t: '气体超标', c: '#45E3A8' }, { t: '摔倒检测', c: '#FF7A7A' },
 ]
-export const alarmColor = (t: string) => ALARM_TYPES.find((x) => x.t === t)?.c ?? '#FF6B6B'
+export const alarmColor = (t: string) => ALARM_TYPES.find((x) => x.t === t)?.c ?? '#FF7A7A'
 export interface BizAlarm { id: string; time: string; robot: string; src: '可见光' | '红外' | '传感器' | '本体'; type: string; content: string; conf: string; coord: string; lnglat?: string; task: string; state: '待处理' | '误报' | '非误报'; who?: string; note?: string; handled?: string; seed: number }
 export const ALARMS: BizAlarm[] = (() => {
   const r = rng(99)

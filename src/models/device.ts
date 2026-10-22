@@ -42,18 +42,18 @@ export interface Device {
 }
 
 export const TYPE_META: Record<DeviceType, { label: string; short: string; color: string }> = {
-  humanoid: { label: '人形机器人', short: '人形', color: '#4DD0E1' },
+  humanoid: { label: '人形机器人', short: '人形', color: '#2ED3E6' },
   quadruped: { label: '机器狗', short: '四足', color: '#5B9BFF' },
-  ugv: { label: '无人车', short: '无人车', color: '#4DE8B0' },
+  ugv: { label: '无人车', short: '无人车', color: '#45E3A8' },
   uav: { label: '无人机', short: '无人机', color: '#B48CFF' },
-  usv: { label: '无人救生船', short: '救生船', color: '#FFB74D' },
+  usv: { label: '无人救生船', short: '救生船', color: '#FFC15C' },
 }
 export const STATUS_META: Record<DeviceStatus, { label: string; badge: 'processing' | 'success' | 'warning' | 'default' | 'error'; color: string }> = {
   working: { label: '运行中', badge: 'processing', color: '#26C6DA' },
-  online: { label: '在线空闲', badge: 'success', color: '#4DE8B0' },
-  charging: { label: '充电中', badge: 'warning', color: '#FFB74D' },
-  offline: { label: '离线', badge: 'default', color: '#5B7486' },
-  fault: { label: '故障', badge: 'error', color: '#FF6B6B' },
+  online: { label: '在线空闲', badge: 'success', color: '#45E3A8' },
+  charging: { label: '充电中', badge: 'warning', color: '#FFC15C' },
+  offline: { label: '离线', badge: 'default', color: '#8EA6BE' },
+  fault: { label: '故障', badge: 'error', color: '#FF7A7A' },
 }
 export const CAP_META: Record<Capability, string> = {
   collect: '多模态感知', patrol: '巡检', twin: '自主导航', rescue: '应急救援', teleop: '遥操作', mapping: '建图定位',

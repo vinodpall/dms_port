@@ -42,5 +42,5 @@ const uid = Math.random().toString(36).slice(2, 7)
 <style scoped>
 .lc-w { width: 100%; min-width: 0; overflow: hidden; }
 .lc { display: block; overflow: visible; }
-.lc-t { font: 10px 'JetBrains Mono', Consolas, monospace; fill: var(--axis, #6F92A8); }
+.lc-t { font: 10px 'JetBrains Mono', Consolas, monospace; fill: var(--axis, #9DB5CB); }
 </style>

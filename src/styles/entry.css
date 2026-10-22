@@ -7,7 +7,7 @@
 /* ---------- 登录 ---------- */
 .login { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(420px, .85fr); min-height: 100vh; }
 .login-hero { position: relative; color: #E8F1FF; padding: 44px 56px; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden;
-  background: radial-gradient(900px 500px at 15% 10%, #1B4F94 0%, transparent 60%), radial-gradient(700px 500px at 90% 95%, #0E6C86 0%, transparent 55%), linear-gradient(160deg, #081D38, #0B2747 55%, #0A1F3A); }
+  background: radial-gradient(900px 500px at 15% 10%, #1B4F94 0%, transparent 60%), radial-gradient(700px 500px at 90% 95%, #0E6C86 0%, transparent 55%), linear-gradient(160deg, #10284E, #143460 55%, #132B51); }
 .login-hero::before { content: ''; position: absolute; inset: 0; background-image: linear-gradient(rgba(120,170,230,.09) 1px, transparent 1px), linear-gradient(90deg, rgba(120,170,230,.09) 1px, transparent 1px); background-size: 44px 44px; mask-image: radial-gradient(ellipse at 40% 45%, #000 20%, transparent 75%); }
 .login-hero > * { position: relative; }
 .hero-copy h1 { font-size: 40px; line-height: 1.25; font-weight: 700; letter-spacing: 1px; margin-bottom: 14px; }
@@ -15,7 +15,7 @@
 .hero-copy p { max-width: 460px; color: #A9BEDA; font-size: 15px; line-height: 1.8; }
 .hero-art { position: absolute !important; right: -30px; top: 70px; width: 440px; max-width: 56%; opacity: .95; pointer-events: none; }
 .hero-mods { display: flex; flex-wrap: wrap; gap: 10px; }
-.hero-mods span { display: inline-flex; align-items: center; gap: 8px; padding: 7px 13px; border: 1px solid rgba(140,185,240,.28); border-radius: 20px; background: rgba(14,40,76,.55); backdrop-filter: blur(6px); font-size: 13px; color: #CFE0F7; }
+.hero-mods span { display: inline-flex; align-items: center; gap: 8px; padding: 7px 13px; border: 1px solid rgba(140,185,240,.28); border-radius: 20px; background: rgba(25,53,102,.55); backdrop-filter: blur(6px); font-size: 13px; color: #CFE0F7; }
 .hero-mods i { width: 7px; height: 7px; border-radius: 50%; background: var(--c); box-shadow: 0 0 8px var(--c); }
 .login-side { display: grid; place-items: center; padding: 32px; background: var(--bg); position: relative; }
 .login-theme { position: absolute; top: 20px; right: 24px; }

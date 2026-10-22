@@ -8,7 +8,7 @@ import { PALETTES, paletteTheme, contrast, type Palette } from './palettes'
 
 const route = useRoute()
 const router = useRouter()
-const cur = computed(() => PALETTES.find((p) => p.key === route.params.p) ?? PALETTES[1])
+const cur = computed(() => PALETTES.find((p) => p.key === route.params.p) ?? PALETTES[0])
 const pick = (k: string) => router.replace({ name: 'palette', params: { p: k } })
 const theme = computed(() => paletteTheme(cur.value, buildTheme(true)))
 provide('pal-chart', computed(() => cur.value.chart))

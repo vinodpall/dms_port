@@ -29,7 +29,7 @@ watch(routeLoading, (v) => {
 
 <style>
 .route-bar { position: fixed; top: 0; left: 0; height: 2px; width: 100%; z-index: 3000; pointer-events: none;
-  background: linear-gradient(90deg, transparent, #4dd0e1, #5b7cfa, transparent); background-size: 50% 100%; background-repeat: no-repeat;
+  background: linear-gradient(90deg, transparent, #2ed3e6, #5b7cfa, transparent); background-size: 50% 100%; background-repeat: no-repeat;
   animation: route-bar 1s ease-in-out infinite; }
 @keyframes route-bar { from { background-position: -50% 0; } to { background-position: 150% 0; } }
 </style>

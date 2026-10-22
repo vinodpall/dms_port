@@ -44,11 +44,11 @@ const leftTab = ref('stage')
 const ASSETS = [
   { model: 'Unitree B2', vendor: '宇树科技', type: 'quadruped', kind: '四足', c: '#5B9BFF' },
   { model: 'ANYmal C', vendor: 'ANYbotics', type: 'quadruped', kind: '四足', c: '#5B9BFF' },
-  { model: 'Unitree H1', vendor: '宇树科技', type: 'humanoid', kind: '人形', c: '#4DD0E1' },
-  { model: 'Walker S1', vendor: '优必选', type: 'humanoid', kind: '人形', c: '#4DD0E1' },
-  { model: 'Scout 2.0', vendor: '松灵机器人', type: 'ugv', kind: '轮式', c: '#4DE8B0' },
+  { model: 'Unitree H1', vendor: '宇树科技', type: 'humanoid', kind: '人形', c: '#2ED3E6' },
+  { model: 'Walker S1', vendor: '优必选', type: 'humanoid', kind: '人形', c: '#2ED3E6' },
+  { model: 'Scout 2.0', vendor: '松灵机器人', type: 'ugv', kind: '轮式', c: '#45E3A8' },
   { model: 'Iris Quadrotor', vendor: 'PX4 SITL', type: 'uav', kind: '多旋翼', c: '#B48CFF' },
-  { model: 'Franka Panda', vendor: 'Franka Emika', type: 'humanoid', kind: '机械臂', c: '#FFB74D' },
+  { model: 'Franka Panda', vendor: 'Franka Emika', type: 'humanoid', kind: '机械臂', c: '#FFC15C' },
 ] as const
 
 /* ---------- 视口中的并行环境 ---------- */
@@ -165,35 +165,35 @@ const doImport = () => { urdfStep.value = 3; message.success('USD 生成完成�
           </div>
           <svg class="sm-scene" viewBox="0 0 1200 520" preserveAspectRatio="xMidYMid slice">
             <defs>
-              <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0B2236" /><stop offset=".3" stop-color="#0E2D45" /><stop offset="1" stop-color="#071523" /></linearGradient>
+              <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#142E4C" /><stop offset=".3" stop-color="#193B5E" /><stop offset="1" stop-color="#0f1f35" /></linearGradient>
               <radialGradient id="spot" cx=".5" cy=".55" r=".55"><stop offset="0" stop-color="#26C6DA" stop-opacity=".18" /><stop offset="1" stop-color="#26C6DA" stop-opacity="0" /></radialGradient>
             </defs>
             <rect width="1200" height="520" fill="url(#sky)" />
             <rect width="1200" height="520" fill="url(#spot)" />
             <!-- 透视地面网格 -->
-            <g stroke="#4DD0E1" stroke-width="1">
+            <g stroke="#2ED3E6" stroke-width="1">
               <line v-for="v in floorV" :key="`v${v}`" :x1="600 + v * 30" y1="120" :x2="600 + v * 160" y2="520" :opacity="v === 0 ? .4 : .14" />
               <line v-for="h in floorH" :key="`h${h}`" x1="0" :y1="120 + Math.pow(h / 9, 1.8) * 400" x2="1200" :y2="120 + Math.pow(h / 9, 1.8) * 400" :opacity=".06 + h * .012" />
             </g>
-            <line x1="0" y1="120" x2="1200" y2="120" stroke="#4DD0E1" opacity=".35" />
+            <line x1="0" y1="120" x2="1200" y2="120" stroke="#2ED3E6" opacity=".35" />
             <!-- 地形：台阶 + 坡道 -->
-            <g fill="rgba(77,208,225,.05)" stroke="#4DD0E1" stroke-opacity=".35">
+            <g fill="rgba(46,211,230,.05)" stroke="#2ED3E6" stroke-opacity=".35">
               <path d="M70 330 L210 330 L210 300 L180 300 L180 270 L150 270 L150 240 L120 240 L120 330" />
               <path d="M1000 330 L1150 330 L1150 250 Z" />
             </g>
             <!-- 并行环境中的机器人 -->
             <g v-for="(e, i) in envs" :key="i" :transform="`translate(${e.x} ${e.y}) scale(${e.s})`" :opacity="0.35 + e.s * 0.55">
-              <ellipse cx="0" cy="26" rx="34" ry="7" :fill="e.sel ? 'rgba(38,198,218,.35)' : 'rgba(77,208,225,.1)'" />
-              <g class="bob" :style="{ animationDelay: `${e.d * 0.18}s` }"><g transform="translate(-32 -36)"><DeviceGlyph type="quadruped" :size="64" :color="e.sel ? '#7FF3FF' : '#4DD0E1'" /></g></g>
+              <ellipse cx="0" cy="26" rx="34" ry="7" :fill="e.sel ? 'rgba(38,198,218,.35)' : 'rgba(46,211,230,.1)'" />
+              <g class="bob" :style="{ animationDelay: `${e.d * 0.18}s` }"><g transform="translate(-32 -36)"><DeviceGlyph type="quadruped" :size="64" :color="e.sel ? '#7FF3FF' : '#2ED3E6'" /></g></g>
               <template v-if="e.sel">
-                <rect x="-44" y="-44" width="88" height="80" fill="none" stroke="#FFB74D" stroke-dasharray="4 3" />
-                <g stroke-width="3" stroke-linecap="round"><line x1="0" y1="0" x2="60" y2="0" stroke="#FF5A5A" /><line x1="0" y1="0" x2="0" y2="-62" stroke="#4DE8B0" /><line x1="0" y1="0" x2="-34" y2="30" stroke="#5B9BFF" /></g>
-                <polygon points="66,0 56,-5 56,5" fill="#FF5A5A" /><polygon points="0,-68 -5,-58 5,-58" fill="#4DE8B0" />
-                <text x="-44" y="-52" fill="#FFB74D" style="font: 12px 'JetBrains Mono', monospace">/World/envs/env_0/Robot</text>
+                <rect x="-44" y="-44" width="88" height="80" fill="none" stroke="#FFC15C" stroke-dasharray="4 3" />
+                <g stroke-width="3" stroke-linecap="round"><line x1="0" y1="0" x2="60" y2="0" stroke="#FF5A5A" /><line x1="0" y1="0" x2="0" y2="-62" stroke="#45E3A8" /><line x1="0" y1="0" x2="-34" y2="30" stroke="#5B9BFF" /></g>
+                <polygon points="66,0 56,-5 56,5" fill="#FF5A5A" /><polygon points="0,-68 -5,-58 5,-58" fill="#45E3A8" />
+                <text x="-44" y="-52" fill="#FFC15C" style="font: 12px 'JetBrains Mono', monospace">/World/envs/env_0/Robot</text>
               </template>
             </g>
           </svg>
-          <svg class="sm-axis" viewBox="0 0 60 60"><line x1="20" y1="40" x2="48" y2="40" stroke="#FF5A5A" stroke-width="2" /><line x1="20" y1="40" x2="20" y2="12" stroke="#4DE8B0" stroke-width="2" /><line x1="20" y1="40" x2="6" y2="54" stroke="#5B9BFF" stroke-width="2" /><text x="50" y="44" fill="#FF5A5A" font-size="9">X</text><text x="17" y="9" fill="#4DE8B0" font-size="9">Z</text><text x="0" y="60" fill="#5B9BFF" font-size="9">Y</text></svg>
+          <svg class="sm-axis" viewBox="0 0 60 60"><line x1="20" y1="40" x2="48" y2="40" stroke="#FF5A5A" stroke-width="2" /><line x1="20" y1="40" x2="20" y2="12" stroke="#45E3A8" stroke-width="2" /><line x1="20" y1="40" x2="6" y2="54" stroke="#5B9BFF" stroke-width="2" /><text x="50" y="44" fill="#FF5A5A" font-size="9">X</text><text x="17" y="9" fill="#45E3A8" font-size="9">Z</text><text x="0" y="60" fill="#5B9BFF" font-size="9">Y</text></svg>
           <div class="sm-hud mono"><span><i class="dot" />{{ playing ? 'PLAYING' : 'PAUSED' }}</span><span>GPU 0 · A100 80G · 71%</span><span>显存 46.2 / 80 GB</span></div>
         </section>
 
@@ -239,7 +239,7 @@ const doImport = () => { urdfStep.value = 3; message.success('USD 生成完成�
           </a-tab-pane>
           <a-tab-pane key="curve"><template #tab><LineChartOutlined />训练曲线</template>
             <div class="sm-curves">
-              <div><span class="muted">平均奖励 Mean Reward</span><LineChart :series="[{ name: 'reward', color: '#4DD0E1', data: reward }]" :height="150" /></div>
+              <div><span class="muted">平均奖励 Mean Reward</span><LineChart :series="[{ name: 'reward', color: '#2ED3E6', data: reward }]" :height="150" /></div>
               <div><span class="muted">回合长度 Episode Length (s)</span><LineChart :series="[{ name: 'len', color: '#B48CFF', data: epLen }]" :height="150" /></div>
             </div>
           </a-tab-pane>
@@ -255,7 +255,7 @@ const doImport = () => { urdfStep.value = 3; message.success('USD 生成完成�
             <div class="sm-urdf">
               <a-steps :current="urdfStep" size="small" :items="[{ title: '上传 URDF' }, { title: '解析关节与连杆' }, { title: '配置物理与驱动' }, { title: '生成 USD' }]" />
               <div class="sm-urdf-b">
-                <a-upload-dragger :before-upload="() => false" class="sm-drag"><p style="font-size:28px;color:#4DD0E1;margin:0"><InboxOutlined /></p><p>拖拽 URDF / xacro 文件或压缩包到此处</p><p class="muted" style="font-size:12px">支持 meshes 目录（.stl / .dae / .obj）</p></a-upload-dragger>
+                <a-upload-dragger :before-upload="() => false" class="sm-drag"><p style="font-size:28px;color:#2ED3E6;margin:0"><InboxOutlined /></p><p>拖拽 URDF / xacro 文件或压缩包到此处</p><p class="muted" style="font-size:12px">支持 meshes 目录（.stl / .dae / .obj）</p></a-upload-dragger>
                 <a-form layout="vertical" class="sm-urdf-f">
                   <a-row :gutter="12">
                     <a-col :span="12"><a-form-item label="关节驱动类型"><a-select value="pos" :options="[{ value: 'pos', label: '位置控制' }, { value: 'vel', label: '速度控制' }]" /></a-form-item></a-col>
@@ -275,44 +275,44 @@ const doImport = () => { urdfStep.value = 3; message.success('USD 生成完成�
 
 <style scoped>
 .sm { height: 100%; display: grid; grid-template-rows: auto 1fr 268px; }
-.sm-pane { background: rgba(8,22,36,.88); border: 1px solid rgba(77,208,225,.12); }
-.sm-bar { display: flex; align-items: center; gap: 18px; height: 42px; padding: 0 14px; background: rgba(6,17,29,.9); border-bottom: 1px solid rgba(77,208,225,.12); }
-.sm-menu { display: flex; gap: 2px; } .sm-menu span { padding: 4px 9px; font-size: 13px; color: var(--muted); cursor: pointer; border-radius: 4px; } .sm-menu span:hover { background: rgba(77,208,225,.1); color: #fff; }
+.sm-pane { background: rgba(16,32,54,.88); border: 1px solid rgba(46,211,230,.12); }
+.sm-bar { display: flex; align-items: center; gap: 18px; height: 42px; padding: 0 14px; background: rgba(13,27,46,.9); border-bottom: 1px solid rgba(46,211,230,.12); }
+.sm-menu { display: flex; gap: 2px; } .sm-menu span { padding: 4px 9px; font-size: 13px; color: var(--muted); cursor: pointer; border-radius: 4px; } .sm-menu span:hover { background: rgba(46,211,230,.1); color: #fff; }
 .sm-tools { padding-left: 14px; border-left: 1px solid var(--line); }
 .sm-play { display: flex; align-items: center; gap: 6px; margin: 0 auto; }
 .sm-time { font-size: 12px; color: #9FE6EF; margin-left: 8px; min-width: 100px; }
 .sm-tb-r { display: flex; gap: 8px; }
 .sm-body { min-height: 0; display: grid; grid-template-columns: 270px 1fr 310px; gap: 6px; padding: 6px 6px 0; }
 .sm-left, .sm-right { min-height: 0; overflow: auto; border-radius: 4px; }
-.sm-tabs :deep(.ant-tabs-nav) { margin: 0; padding: 0 12px; background: rgba(6,17,29,.6); }
+.sm-tabs :deep(.ant-tabs-nav) { margin: 0; padding: 0 12px; background: rgba(13,27,46,.6); }
 .sm-tabs :deep(.ant-tabs-tab) { font-size: 13px; padding: 9px 0; } .sm-tabs :deep(.ant-tabs-tab .anticon) { margin-right: 6px; }
 .sm-search { margin: 10px 10px 6px; width: calc(100% - 20px); }
 .sm-tree { background: transparent !important; padding: 0 6px 10px; font-size: 12.5px; }
 .sm-node { display: flex; align-items: center; gap: 6px; width: 100%; } .sm-node.dim { opacity: .4; }
 .sm-node .t { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sm-node .i.f { color: #FFB74D; } .sm-node .i.c { color: #B48CFF; } .sm-node .i.l { color: #FFE082; } .sm-node .i.r { color: #4DD0E1; } .sm-node .i.m { color: #6F92A8; }
-.sm-node .eye { color: #5B7486; opacity: 0; } .sm-node:hover .eye, .sm-node.dim .eye { opacity: 1; }
+.sm-node .i.f { color: #FFC15C; } .sm-node .i.c { color: #B48CFF; } .sm-node .i.l { color: #FFE082; } .sm-node .i.r { color: #2ED3E6; } .sm-node .i.m { color: #9DB5CB; }
+.sm-node .eye { color: #8EA6BE; opacity: 0; } .sm-node:hover .eye, .sm-node.dim .eye { opacity: 1; }
 .sm-assets { padding: 10px; display: flex; flex-direction: column; gap: 8px; }
-.sm-asset { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid rgba(77,208,225,.12); border-radius: 4px; background: rgba(16,38,59,.5); cursor: grab; }
-.sm-asset:hover { border-color: rgba(77,208,225,.45); }
+.sm-asset { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid rgba(46,211,230,.12); border-radius: 4px; background: rgba(27,51,82,.5); cursor: grab; }
+.sm-asset:hover { border-color: rgba(46,211,230,.45); }
 .sm-asset .dot { width: 7px; height: 7px; flex: none; border-radius: 50%; }
-.sm-asset .art { width: 40px; height: 40px; display: grid; place-items: center; background: rgba(77,208,225,.06); border-radius: 4px; }
+.sm-asset .art { width: 40px; height: 40px; display: grid; place-items: center; background: rgba(46,211,230,.06); border-radius: 4px; }
 .sm-asset div { flex: 1; display: flex; flex-direction: column; line-height: 1.3; } .sm-asset b { font-size: 13px; } .sm-asset small { color: var(--muted); font-size: 11.5px; }
-.sm-view { position: relative; min-height: 0; overflow: hidden; border: 1px solid rgba(77,208,225,.25); border-radius: 4px; background: #071523; }
+.sm-view { position: relative; min-height: 0; overflow: hidden; border: 1px solid rgba(46,211,230,.25); border-radius: 4px; background: #0f1f35; }
 .sm-scene { position: absolute; inset: 0; width: 100%; height: 100%; }
 .bob { animation: sm-bob 3.2s ease-in-out infinite; } @keyframes sm-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
 .sm-vbar { position: absolute; z-index: 2; left: 10px; right: 10px; top: 10px; display: flex; gap: 6px; align-items: center; }
-.glass { background: rgba(6,17,29,.7) !important; border-color: rgba(77,208,225,.2) !important; backdrop-filter: blur(6px); }
-.sm-stat { margin-left: auto; font-size: 11.5px; color: #9FE6EF; padding: 4px 10px; background: rgba(6,17,29,.7); border: 1px solid rgba(77,208,225,.2); border-radius: 4px; }
+.glass { background: rgba(13,27,46,.7) !important; border-color: rgba(46,211,230,.2) !important; backdrop-filter: blur(6px); }
+.sm-stat { margin-left: auto; font-size: 11.5px; color: #9FE6EF; padding: 4px 10px; background: rgba(13,27,46,.7); border: 1px solid rgba(46,211,230,.2); border-radius: 4px; }
 .sm-axis { position: absolute; left: 12px; bottom: 12px; width: 60px; height: 60px; }
 .sm-hud { position: absolute; right: 12px; bottom: 10px; display: flex; gap: 14px; font-size: 11px; color: var(--muted); }
 .sm-hud span { display: flex; align-items: center; gap: 6px; }
-.sm-ph { display: flex; flex-direction: column; gap: 2px; padding: 10px 14px; border-bottom: 1px solid var(--line); background: rgba(6,17,29,.6); } .sm-ph span { font-size: 11px; }
-.sm-collapse :deep(.ant-collapse-header) { padding: 10px 14px !important; font-size: 13px; font-weight: 600; border-bottom: 1px solid rgba(27,58,82,.6); }
+.sm-ph { display: flex; flex-direction: column; gap: 2px; padding: 10px 14px; border-bottom: 1px solid var(--line); background: rgba(13,27,46,.6); } .sm-ph span { font-size: 11px; }
+.sm-collapse :deep(.ant-collapse-header) { padding: 10px 14px !important; font-size: 13px; font-weight: 600; border-bottom: 1px solid rgba(43,74,109,.6); }
 .sm-collapse :deep(.ant-collapse-content-box) { padding: 10px 14px 14px !important; }
 .sm-xyz { display: grid; grid-template-columns: 34px repeat(3, 1fr); gap: 6px; align-items: center; margin-bottom: 8px; font-size: 12px; color: var(--muted); }
 .sm-xyz :deep(.ant-input-number) { width: 100%; border-left-width: 3px; }
-.sm-xyz .x { border-left-color: #FF5A5A; } .sm-xyz .y { border-left-color: #4DE8B0; } .sm-xyz .z { border-left-color: #5B9BFF; }
+.sm-xyz .x { border-left-color: #FF5A5A; } .sm-xyz .y { border-left-color: #45E3A8; } .sm-xyz .z { border-left-color: #5B9BFF; }
 .sm-joint { display: grid; grid-template-columns: 104px 1fr 40px; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
 .sm-joint :deep(.ant-slider) { margin: 6px 4px; } .sm-joint b { font-weight: 400; color: #fff; text-align: right; }
 .sm-fi { margin: 8px 0 0; }
@@ -323,16 +323,16 @@ const doImport = () => { urdfStep.value = 3; message.success('USD 生成完成�
 .sm-bottom :deep(.ant-tabs) { height: 100%; } .sm-bottom :deep(.ant-tabs-content-holder) { overflow: auto; }
 .sm-curves { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; padding: 14px 18px; font-size: 12px; }
 .sm-cams { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 12px; }
-.sm-cam { position: relative; height: 170px; border: 1px solid rgba(77,208,225,.2); border-radius: 4px; overflow: hidden; }
+.sm-cam { position: relative; height: 170px; border: 1px solid rgba(46,211,230,.2); border-radius: 4px; overflow: hidden; }
 .sm-cam span { z-index: 2; position: absolute; left: 8px; top: 6px; font-size: 11px; padding: 1px 6px; background: rgba(0,0,0,.5); border-radius: 4px; }
-.sm-cam.rgb { background: linear-gradient(180deg, #23465E 0 45%, #2E3A2E 45%), #222; background-image: linear-gradient(180deg, #3A6A86 0, #1C3B50 44%, #3A3F36 45%, #23281F 100%); }
-.sm-cam.rgb::after { content: ''; position: absolute; left: 30%; top: 40%; width: 40%; height: 35%; background: linear-gradient(#4E5A63, #2B3238); clip-path: polygon(0 100%, 0 30%, 20% 30%, 20% 0, 80% 0, 80% 30%, 100% 30%, 100% 100%); }
+.sm-cam.rgb { background: linear-gradient(180deg, #36587C 0 45%, #2E3A2E 45%), #222; background-image: linear-gradient(180deg, #3A6A86 0, #2C4B6B 44%, #3A3F36 45%, #23281F 100%); }
+.sm-cam.rgb::after { content: ''; position: absolute; left: 30%; top: 40%; width: 40%; height: 35%; background: linear-gradient(#726E82, #41404E); clip-path: polygon(0 100%, 0 30%, 20% 30%, 20% 0, 80% 0, 80% 30%, 100% 30%, 100% 100%); }
 .sm-cam.depth { background: radial-gradient(ellipse at 50% 120%, #fff 0, #888 30%, #222 70%, #000); filter: grayscale(1); }
 .sm-cam.seg { background: linear-gradient(180deg, #1E3A8A 0 44%, #16A34A 44% 100%); }
 .sm-cam.seg::after { content: ''; position: absolute; left: 32%; top: 38%; width: 36%; height: 38%; background: #F97316; clip-path: polygon(0 100%, 0 30%, 20% 30%, 20% 0, 80% 0, 80% 30%, 100% 30%, 100% 100%); }
-.sm-cam.lidar { background: #050B12 radial-gradient(circle at 50% 70%, transparent 0 8px, rgba(77,208,225,.0) 8px); }
-.sm-log { padding: 10px 16px; font-size: 12px; line-height: 1.9; } .sm-log b { font-weight: 600; color: #4DD0E1; margin: 0 6px; } .sm-log .warn b { color: #FFB74D; }
+.sm-cam.lidar { background: #0C1421 radial-gradient(circle at 50% 70%, transparent 0 8px, rgba(46,211,230,.0) 8px); }
+.sm-log { padding: 10px 16px; font-size: 12px; line-height: 1.9; } .sm-log b { font-weight: 600; color: #2ED3E6; margin: 0 6px; } .sm-log .warn b { color: #FFC15C; }
 .sm-urdf { padding: 14px 18px; } .sm-urdf-b { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 14px; }
-.sm-drag :deep(.ant-upload-drag) { background: rgba(16,38,59,.5); }
+.sm-drag :deep(.ant-upload-drag) { background: rgba(27,51,82,.5); }
 .sm-urdf-f :deep(.ant-form-item) { margin-bottom: 10px; }
 </style>

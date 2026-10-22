@@ -51,7 +51,7 @@ let robotObj: THREE.Group | null = null
 let liveT = 0
 
 /** 高度色带（蓝 → 青 → 绿 → 黄 → 橙） */
-const RAMP = ['#2F6BFF', '#26C6DA', '#4DE8B0', '#E8E35A', '#FF8A50'].map((c) => new THREE.Color(c))
+const RAMP = ['#2F6BFF', '#26C6DA', '#45E3A8', '#E8E35A', '#FF8A50'].map((c) => new THREE.Color(c))
 const ramp = (t: number, out: THREE.Color) => {
   const x = Math.min(0.999, Math.max(0, t)) * (RAMP.length - 1); const i = Math.floor(x)
   return out.copy(RAMP[i]).lerp(RAMP[i + 1], x - i)
@@ -84,7 +84,7 @@ function build(c: PointCloud) {
   paint()
   info.value = { n: c.count, shown: c.count }
   // 地面网格（10 m）
-  const grid = new THREE.GridHelper(Math.ceil(span / 10) * 10 + 40, Math.ceil(span / 10) + 4, 0x1f4560, 0x12293c)
+  const grid = new THREE.GridHelper(Math.ceil(span / 10) * 10 + 40, Math.ceil(span / 10) + 4, 0x30567e, 0x1e3653)
   grid.rotation.x = Math.PI / 2; grid.position.copy(center).setZ(groundZ - 0.05)
   ;(grid.material as THREE.Material).transparent = true; (grid.material as THREE.Material).opacity = 0.55
   scene.add(grid)
@@ -118,7 +118,7 @@ function drawOverlay() {
   const z = groundZ + 0.25
   const r = props.route
   if (r && r.length > 1) {
-    overlay.add(line(r, 0x4de8b0, 2, z, true))
+    overlay.add(line(r, 0x45e3a8, 2, z, true))
     if (props.done > 0) {
       // 截取已完成部分
       const L = r.slice(1).reduce((s, p, i) => s + Math.hypot(p[0] - r[i][0], p[1] - r[i][1]), 0)
@@ -214,21 +214,21 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.pcv { position: relative; width: 100%; height: 100%; min-height: 120px; overflow: hidden; background: radial-gradient(ellipse at 50% 40%, #0B2236, #050E18 75%); }
+.pcv { position: relative; width: 100%; height: 100%; min-height: 120px; overflow: hidden; background: radial-gradient(ellipse at 50% 40%, #142E4C, #0C1728 75%); }
 .pcv :deep(canvas) { display: block; width: 100% !important; height: 100% !important; }
 .pcv :deep(.pcv-labels) { position: absolute; inset: 0; pointer-events: none; }
-.pcv-st { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--muted, #8FB3C7); font-size: 13px; }
-.pcv-tb { position: absolute; left: 10px; top: 10px; display: flex; align-items: center; gap: 2px; padding: 3px; background: rgba(6,18,32,.78); border: 1px solid rgba(77,208,225,.2); border-radius: 6px; z-index: 2; }
-.pcv-tb button { height: 24px; padding: 0 9px; font: inherit; font-size: 12px; color: var(--muted, #8FB3C7); background: none; border: 0; border-radius: 4px; cursor: pointer; }
-.pcv-tb button:hover { color: #fff; } .pcv-tb button.on { color: #04212A; background: #26C6DA; }
-.pcv-tb i { width: 1px; height: 14px; margin: 0 4px; background: rgba(77,208,225,.25); }
-.pcv-info { position: absolute; left: 10px; bottom: 8px; display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--muted, #8FB3C7); z-index: 2; pointer-events: none; }
-.pcv-info .ramp { width: 54px; height: 6px; border-radius: 3px; background: linear-gradient(90deg, #2F6BFF, #26C6DA, #4DE8B0, #E8E35A, #FF8A50); }
-.pcv-info small { color: var(--faint, #5B7486); margin-left: 6px; }
+.pcv-st { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--muted, #B6CADC); font-size: 13px; }
+.pcv-tb { position: absolute; left: 10px; top: 10px; display: flex; align-items: center; gap: 2px; padding: 3px; background: rgba(13,28,49,.78); border: 1px solid rgba(46,211,230,.2); border-radius: 6px; z-index: 2; }
+.pcv-tb button { height: 24px; padding: 0 9px; font: inherit; font-size: 12px; color: var(--muted, #B6CADC); background: none; border: 0; border-radius: 4px; cursor: pointer; }
+.pcv-tb button:hover { color: #fff; } .pcv-tb button.on { color: #0B2D3D; background: #26C6DA; }
+.pcv-tb i { width: 1px; height: 14px; margin: 0 4px; background: rgba(46,211,230,.25); }
+.pcv-info { position: absolute; left: 10px; bottom: 8px; display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--muted, #B6CADC); z-index: 2; pointer-events: none; }
+.pcv-info .ramp { width: 54px; height: 6px; border-radius: 3px; background: linear-gradient(90deg, #2F6BFF, #26C6DA, #45E3A8, #E8E35A, #FF8A50); }
+.pcv-info small { color: var(--faint, #8EA6BE); margin-left: 6px; }
 .pcv :deep(.pcv-lb) { font: 600 10.5px var(--mono, monospace); pointer-events: none; }
-.pcv :deep(.pcv-lb.start) { padding: 1px 5px; color: #FFB74D; background: rgba(6,18,32,.8); border: 1px solid #FFB74D; border-radius: 4px; font-family: inherit; transform: translateY(-14px); }
-.pcv :deep(.pcv-lb.pt) { width: 18px; height: 18px; display: grid; place-items: center; color: #FFD08A; background: #0B1A28; border: 1.5px solid #FFB74D; border-radius: 50%; }
-.pcv :deep(.pcv-lb.pt.done) { color: #04121D; background: #26C6DA; border-color: #7FF3FF; }
-.pcv :deep(.pcv-lb.pt.bad) { color: #fff; background: #FF6B6B; border-color: #FF9C9C; }
+.pcv :deep(.pcv-lb.start) { padding: 1px 5px; color: #FFC15C; background: rgba(13,28,49,.8); border: 1px solid #FFC15C; border-radius: 4px; font-family: inherit; transform: translateY(-14px); }
+.pcv :deep(.pcv-lb.pt) { width: 18px; height: 18px; display: grid; place-items: center; color: #FFD08A; background: #14253B; border: 1.5px solid #FFC15C; border-radius: 50%; }
+.pcv :deep(.pcv-lb.pt.done) { color: #0B1C2E; background: #26C6DA; border-color: #7FF3FF; }
+.pcv :deep(.pcv-lb.pt.bad) { color: #fff; background: #FF7A7A; border-color: #FFB0B0; }
 .pcv :deep(.pcv-lb.pt.cur) { border-color: #fff; }
 </style>

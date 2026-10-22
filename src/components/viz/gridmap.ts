@@ -34,7 +34,7 @@ export function parsePGM(buf: ArrayBuffer): ParsedPGM {
 
 export interface GridStyle { free: string; occ: string; unknown: string }
 /** 深色主题配色：可通行 / 障碍 / 未知 */
-export const DARK_GRID: GridStyle = { free: '#0F2537', occ: '#A9D8EA', unknown: '#081521' }
+export const DARK_GRID: GridStyle = { free: '#1A324D', occ: '#A9D8EA', unknown: '#101f33' }
 const hex = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16))
 
 /** 渲染为图片（rotate=逆时针旋转 90°，让横向面板显示更饱满） */

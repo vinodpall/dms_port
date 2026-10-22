@@ -293,12 +293,12 @@ const delRoute = (id: string) => del('路线及其任务组', () => { db.routes.
 <style scoped>
 .nv-field { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; font-size: 13px; color: var(--muted); }
 .nv-speed { display: flex; align-items: center; gap: 14px; } .nv-speed b { width: 80px; text-align: center; font-size: 15px; }
-.nv-tools { position: absolute; z-index: 1; left: 10px; top: 10px; display: flex; flex-direction: column; gap: 4px; padding: 4px; background: rgba(6,18,30,.82); border: 1px solid var(--line); border-radius: 6px; }
+.nv-tools { position: absolute; z-index: 1; left: 10px; top: 10px; display: flex; flex-direction: column; gap: 4px; padding: 4px; background: rgba(13,28,47,.82); border: 1px solid var(--line); border-radius: 6px; }
 .nv-tools button { width: 30px; height: 30px; display: grid; place-items: center; font-size: 15px; color: var(--muted); cursor: pointer; background: none; border: 1px solid transparent; border-radius: 4px; }
 .nv-tools button:hover { color: #fff; } .nv-tools button.on { color: #fff; background: var(--accent-soft); border-color: var(--accent); }
 .nv-zones { list-style: none; margin: 0; padding: 6px 12px 10px; } .nv-zones li { display: flex; align-items: center; gap: 10px; padding: 8px 4px; border-bottom: 1px dashed var(--line); }
 .nv-zones li > i { width: 12px; height: 12px; flex: none; border: 1px solid; } .nv-zones li div { flex: 1; min-width: 0; } .nv-zones li b { display: block; font-size: 13px; font-weight: 500; } .nv-zones li small { font-size: 11.5px; color: var(--muted); }
 .nv-zones li.empty { justify-content: center; color: var(--faint); border: 0; padding: 30px 0; font-size: 13px; }
-.danger { color: #FF6B6B; } .danger.dis { color: var(--faint); cursor: not-allowed; }
+.danger { color: #FF7A7A; } .danger.dis { color: var(--faint); cursor: not-allowed; }
 :deep(.bz-row-on) td { background: var(--accent-soft) !important; }
 </style>
