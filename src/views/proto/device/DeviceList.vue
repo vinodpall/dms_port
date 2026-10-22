@@ -1,32 +1,30 @@
 <script setup lang="ts">
 /** 设备列表：左侧「类型 → 型号」树，右侧状态筛选 + 表格；只展示关键信息，其余进详情查看 */
-import { computed, reactive } from 'vue'
+import { computed, reactive, watch } from 'vue'
 import { Modal, message } from 'ant-design-vue'
-import { PlusOutlined, SearchOutlined, MoreOutlined, DownOutlined, RightOutlined, ImportOutlined, ExportOutlined } from '@ant-design/icons-vue'
+import { PlusOutlined, SearchOutlined, MoreOutlined, DownOutlined, ImportOutlined, ExportOutlined } from '@ant-design/icons-vue'
 import DeviceGlyph from '@/components/proto/DeviceGlyph.vue'
 import { AREAS, STATUSES, STATUS_META, TYPES, TYPE_META, canTeleop, isOnline, type Device, type DeviceStatus, type DeviceType } from '@/models/device'
 import { fleet, modelOf, removeDevice } from './store'
 
+const props = defineProps<{ preset?: { type?: DeviceType; status?: DeviceStatus; n: number } | null }>()
 const emit = defineEmits<{ open: [Device]; teleop: [Device]; edit: [Device]; add: [] }>()
 
 const f = reactive({ type: undefined as DeviceType | undefined, model: undefined as string | undefined, status: undefined as DeviceStatus | undefined, area: undefined as string | undefined, kw: '' })
-const fold = reactive<Record<string, boolean>>({})
+/* 从概览跳转过来时带入筛选 */
+watch(() => props.preset?.n, () => { if (props.preset) Object.assign(f, { type: props.preset.type, status: props.preset.status, model: undefined, area: undefined, kw: '' }) }, { immediate: true })
 
-const tree = computed(() => TYPES.map((t) => ({
-  t, n: fleet.devices.filter((d) => d.type === t).length,
-  models: fleet.models.filter((m) => m.type === t).map((m) => ({ id: m.id, name: m.name, n: fleet.devices.filter((d) => d.modelId === m.id).length })),
-})))
-const pickType = (t?: DeviceType) => { f.type = t; f.model = undefined }
-const pickModel = (t: DeviceType, id: string) => { f.type = t; f.model = id }
+const typeTabs = computed(() => [{ k: 'all', l: '全部', n: fleet.devices.length }, ...TYPES.map((t) => ({ k: t, l: TYPE_META[t].label, n: fleet.devices.filter((d) => d.type === t).length }))])
+const tabKey = computed({ get: () => f.type ?? 'all', set: (v: string) => { f.type = v === 'all' ? undefined : (v as DeviceType); f.model = undefined } })
+const modelOpts = computed(() => fleet.models.filter((m) => !f.type || m.type === f.type).map((m) => ({ value: m.id, label: m.name })))
 
-/** 先按树与关键字过滤，再统计状态（状态条既是统计也是筛选） */
+/** 先按类型 / 型号 / 区域 / 关键字过滤，再统计状态（状态条既是统计也是筛选） */
 const scoped = computed(() => {
   const kw = f.kw.trim().toLowerCase()
   return fleet.devices.filter((d) => (!f.type || d.type === f.type) && (!f.model || d.modelId === f.model) && (!f.area || d.area === f.area) &&
     (!kw || [d.name, d.sn, d.ip].some((s) => s.toLowerCase().includes(kw))))
 })
 const rows = computed(() => scoped.value.filter((d) => !f.status || d.status === f.status))
-const online = computed(() => scoped.value.filter(isOnline).length)
 const stat = (s: DeviceStatus) => scoped.value.filter((d) => d.status === s).length
 
 const columns = [
@@ -50,7 +48,7 @@ const onMenu = (key: string, d: Device) => (key === 'edit' ? emit('edit', d) : d
 <template>
   <div>
   <div class="pp-head">
-    <div><h2>设备列表</h2><p>共 {{ fleet.devices.length }} 台设备 · {{ fleet.models.length }} 个型号</p></div>
+    <div><h2>设备列表</h2><p>共 {{ fleet.devices.length }} 台设备，在线 {{ fleet.devices.filter(isOnline).length }} 台</p></div>
     <div class="r" style="margin-left:auto; display:flex; gap:8px">
       <a-dropdown><a-button>批量 <DownOutlined /></a-button>
         <template #overlay><a-menu><a-menu-item key="i"><ImportOutlined /> 批量导入</a-menu-item><a-menu-item key="e"><ExportOutlined /> 导出列表</a-menu-item></a-menu></template>
@@ -59,31 +57,19 @@ const onMenu = (key: string, d: Device) => (key === 'edit' ? emit('edit', d) : d
     </div>
   </div>
 
-  <div class="dl">
-    <!-- 类型 → 型号 -->
-    <aside class="pp-panel dl-tree">
-      <button type="button" class="dl-node all" :class="{ on: !f.type }" @click="pickType()"><span>全部设备</span><em>{{ fleet.devices.length }}</em></button>
-      <div v-for="g in tree" :key="g.t" class="dl-group">
-        <button type="button" class="dl-node" :class="{ on: f.type === g.t && !f.model }" @click="pickType(g.t)">
-          <i class="tw" @click.stop="fold[g.t] = !fold[g.t]"><RightOutlined v-if="fold[g.t]" /><DownOutlined v-else /></i>
-          <DeviceGlyph :type="g.t" :size="20" :color="TYPE_META[g.t].color" /><span>{{ TYPE_META[g.t].label }}</span><em>{{ g.n }}</em>
-        </button>
-        <template v-if="!fold[g.t]">
-          <button v-for="m in g.models" :key="m.id" type="button" class="dl-node leaf" :class="{ on: f.model === m.id }" @click="pickModel(g.t, m.id)"><span>{{ m.name }}</span><em>{{ m.n }}</em></button>
-        </template>
-      </div>
-    </aside>
-
-    <section class="pp-panel dl-main">
+  <section class="pp-panel dl-main">
+      <a-tabs v-model:active-key="tabKey" class="dl-tabs">
+        <a-tab-pane v-for="t in typeTabs" :key="t.k"><template #tab>{{ t.l }} <span class="dl-n">{{ t.n }}</span></template></a-tab-pane>
+      </a-tabs>
       <div class="dl-bar">
         <div class="dl-stat">
           <button type="button" :class="{ on: !f.status }" @click="f.status = undefined">全部 <b>{{ scoped.length }}</b></button>
           <button v-for="s in STATUSES" :key="s" type="button" :class="{ on: f.status === s }" @click="f.status = f.status === s ? undefined : s"><a-badge :status="STATUS_META[s].badge" />{{ STATUS_META[s].label }} <b>{{ stat(s) }}</b></button>
         </div>
-        <span class="muted dl-on">在线 {{ online }} / {{ scoped.length }}</span>
         <div class="dl-q">
+          <a-select v-model:value="f.model" allow-clear placeholder="型号" style="width: 130px" :options="modelOpts" />
           <a-select v-model:value="f.area" allow-clear placeholder="所属区域" style="width: 150px" :options="AREAS.map((v) => ({ value: v, label: v }))" />
-          <a-input v-model:value="f.kw" allow-clear placeholder="名称 / 序列号 / IP" style="width: 200px"><template #prefix><SearchOutlined class="muted" /></template></a-input>
+          <a-input v-model:value="f.kw" allow-clear placeholder="名称 / 序列号 / IP" style="width: 190px"><template #prefix><SearchOutlined class="muted" /></template></a-input>
         </div>
       </div>
 
@@ -112,24 +98,16 @@ const onMenu = (key: string, d: Device) => (key === 'edit' ? emit('edit', d) : d
           </template>
         </template>
       </a-table>
-    </section>
-  </div>
+  </section>
   </div>
 </template>
 
 <style scoped>
-.dl { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 16px; align-items: start; }
-.dl-tree { padding: 10px 8px; }
-.dl-node { width: 100%; display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 10px; border: 0; border-radius: 4px; background: none; color: var(--text); font: inherit; font-size: 13.5px; cursor: pointer; text-align: left; }
-.dl-node:hover { background: rgba(46,211,230,.06); }
-.dl-node.on { background: rgba(46,211,230,.12); color: var(--title); }
-.dl-node em { margin-left: auto; font-style: normal; font-size: 12px; color: var(--muted); font-family: var(--mono); }
-.dl-node.all { font-weight: 600; margin-bottom: 4px; }
-.dl-node .tw { width: 14px; font-size: 10px; color: var(--muted); display: grid; place-items: center; font-style: normal; }
-.dl-node.leaf { height: 32px; padding-left: 56px; color: var(--muted); font-size: 13px; }
-.dl-node.leaf.on { color: var(--title); }
-.dl-group + .dl-group { margin-top: 2px; }
 .dl-main { min-width: 0; }
+.dl-tabs { padding: 0 16px; }
+.dl-tabs :deep(.ant-tabs-nav) { margin: 0; }
+.dl-n { margin-left: 4px; font-size: 12px; color: var(--muted); font-family: var(--mono); }
+.dl-main :deep(.ant-table-tbody > tr > td) { padding-top: 10px; padding-bottom: 10px; }
 .dl-bar { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
 .dl-stat { display: flex; gap: 4px; }
 .dl-stat button { display: inline-flex; align-items: center; gap: 4px; height: 30px; padding: 0 12px; border: 1px solid transparent; border-radius: 4px; background: none; color: var(--muted); font: inherit; font-size: 13px; cursor: pointer; }
@@ -137,10 +115,9 @@ const onMenu = (key: string, d: Device) => (key === 'edit' ? emit('edit', d) : d
 .dl-stat button:hover { color: var(--text); }
 .dl-stat button.on { border-color: rgba(46,211,230,.35); background: rgba(46,211,230,.08); color: var(--title); }
 .dl-stat :deep(.ant-badge-status-dot) { top: -1px; }
-.dl-on { font-size: 12.5px; }
 .dl-q { margin-left: auto; display: flex; gap: 8px; }
 .dl-dev { display: flex; align-items: center; gap: 10px; }
 .dl-dev b { display: block; font-weight: 500; }
-.dl-dev small { font-size: 11.5px; }
+.dl-dev small { display: block; font-size: 11.5px; line-height: 1.4; }
 .dl-op { display: flex; justify-content: flex-end; align-items: center; }
 </style>
