@@ -1,9 +1,8 @@
 <script setup lang="ts">
-/** 设备概览：只回答三个问题——设备总体情况、各类设备在线情况、哪些设备需要处理 */
+/** 设备概览：只回答三个问题——设备总体情况、哪些设备需要处理、设备分布 */
 import { computed } from 'vue'
 import { RightOutlined } from '@ant-design/icons-vue'
-import DeviceGlyph from '@/components/proto/DeviceGlyph.vue'
-import { AREAS, STATUSES, STATUS_META, TYPES, TYPE_META, isOnline, type Device, type DeviceStatus, type DeviceType } from '@/models/device'
+import { AREAS, TYPE_META, isOnline, type Device, type DeviceStatus, type DeviceType } from '@/models/device'
 import { fleet, modelOf } from './store'
 
 const emit = defineEmits<{ open: [Device]; list: [{ type?: DeviceType; status?: DeviceStatus }] }>()
@@ -18,12 +17,17 @@ const KPIS = computed(() => [
   { l: '故障', v: n('fault'), sub: `离线 ${n('offline')}`, go: { status: 'fault' as const }, bad: true },
 ])
 
-/* 状态色：仅用于概览的状态条 */
-const SC: Record<DeviceStatus, string> = { working: '#26C6DA', idle: '#45E3A8', charging: '#FFC15C', fault: '#FF7A7A', offline: '#4A6380' }
-const types = computed(() => TYPES.map((t) => {
-  const ds = all.value.filter((d) => d.type === t)
-  return { t, total: ds.length, on: ds.filter(isOnline).length, seg: STATUSES.map((s) => ({ s, n: ds.filter((d) => d.status === s).length })).filter((x) => x.n) }
-}))
+/* 类型分布：类型从设备数据中动态汇总，新增类型无需改页面 */
+const types = computed(() => {
+  const m = new Map<DeviceType, { t: DeviceType; total: number; on: number }>()
+  for (const d of all.value) {
+    const x = m.get(d.type) ?? { t: d.type, total: 0, on: 0 }
+    x.total++; if (isOnline(d)) x.on++; m.set(d.type, x)
+  }
+  return [...m.values()].sort((p, q) => q.total - p.total)
+})
+const typeMax = computed(() => Math.max(1, ...types.value.map((x) => x.total)))
+const typeLabel = (t: DeviceType) => TYPE_META[t]?.label ?? t
 
 /* 需关注：故障 > 低电量 > 离线 */
 const todo = computed(() => [
@@ -45,15 +49,6 @@ const areaMax = computed(() => Math.max(1, ...areas.value.map((x) => x.total)))
     </button>
   </div>
 
-  <div class="ds-types">
-    <button v-for="x in types" :key="x.t" type="button" class="pp-panel ds-type" @click="emit('list', { type: x.t })">
-      <div class="h"><DeviceGlyph :type="x.t" :size="30" :color="TYPE_META[x.t].color" /><b>{{ TYPE_META[x.t].label }}</b><RightOutlined class="go" /></div>
-      <div class="v"><b class="mono">{{ x.on }}</b><span class="muted">/ {{ x.total }} 在线</span></div>
-      <div class="seg"><i v-for="g in x.seg" :key="g.s" :title="`${STATUS_META[g.s].label} ${g.n} 台`" :style="{ flexGrow: g.n, background: SC[g.s] }" /></div>
-    </button>
-  </div>
-  <div class="ds-legend"><span v-for="s in STATUSES" :key="s"><i :style="{ background: SC[s] }" />{{ STATUS_META[s].label }}</span></div>
-
   <div class="ds-row">
     <section class="pp-panel">
       <div class="pp-panel-h"><h3>需关注</h3><span class="ds-cnt">{{ todo.length }}</span></div>
@@ -64,12 +59,23 @@ const areaMax = computed(() => Math.max(1, ...areas.value.map((x) => x.total)))
       </ul>
       <a-empty v-else description="暂无需要处理的设备" style="padding: 32px 0" />
     </section>
-    <section class="pp-panel">
+    <div class="ds-side">
+      <section class="pp-panel">
       <div class="pp-panel-h"><h3>区域分布</h3><span class="r muted" style="font-size:12px">在线 / 总数</span></div>
       <ul class="ds-area">
         <li v-for="x in areas" :key="x.a"><span>{{ x.a }}</span><div class="bar"><i class="t" :style="{ width: (x.total / areaMax) * 100 + '%' }" /><i class="o" :style="{ width: (x.on / areaMax) * 100 + '%' }" /></div><b class="mono">{{ x.on }}<em>/{{ x.total }}</em></b></li>
       </ul>
     </section>
+      <section class="pp-panel">
+        <div class="pp-panel-h"><h3>类型分布</h3><span class="r ds-lg"><i class="o" />在线<i class="t" />离线</span></div>
+        <div class="ds-cols">
+          <button v-for="x in types" :key="x.t" type="button" class="col" :title="`${typeLabel(x.t)}：在线 ${x.on} / 共 ${x.total} 台`" @click="emit('list', { type: x.t })">
+            <div class="plot"><b class="mono">{{ x.on }}<em>/{{ x.total }}</em></b><div class="bar" :style="{ height: `calc((100% - 22px) * ${x.total / typeMax})` }"><i :style="{ height: (x.on / (x.total || 1)) * 100 + '%' }" /></div></div>
+            <span>{{ typeLabel(x.t) }}</span>
+          </button>
+        </div>
+      </section>
+    </div>
   </div>
 </template>
 
@@ -80,16 +86,7 @@ const areaMax = computed(() => Math.max(1, ...areas.value.map((x) => x.total)))
 .ds-kpi b { font-size: 30px; font-weight: 600; line-height: 1.2; color: var(--title); }
 .ds-kpi span { font-size: 12px; }
 .ds-kpi.bad b { color: var(--bad); }
-.ds-kpi:hover, .ds-type:hover { border-color: rgba(46,211,230,.4); }
-.ds-types { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-.ds-type { padding: 14px 18px 16px; text-align: left; font: inherit; color: var(--text); cursor: pointer; }
-.ds-type .h { display: flex; align-items: center; gap: 10px; } .ds-type .h b { font-size: 14.5px; font-weight: 600; }
-.ds-type .go { margin-left: auto; font-size: 11px; color: var(--faint, #5d7690); }
-.ds-type .v { margin: 12px 0 10px; display: flex; align-items: baseline; gap: 6px; }
-.ds-type .v b { font-size: 24px; font-weight: 600; color: var(--title); } .ds-type .v span { font-size: 12.5px; }
-.ds-type .seg { display: flex; align-items: stretch; gap: 2px; height: 6px; border-radius: 3px; overflow: hidden; } .ds-type .seg i { display: block; flex-basis: 0; min-width: 4px; height: 6px; }
-.ds-legend { display: flex; justify-content: flex-end; gap: 16px; margin: 10px 2px 16px; font-size: 12px; color: var(--muted); }
-.ds-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; }
+.ds-kpi:hover { border-color: rgba(46,211,230,.4); }
 .ds-row { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 16px; align-items: start; }
 .ds-cnt { min-width: 22px; height: 20px; padding: 0 6px; border-radius: 10px; background: rgba(255,122,122,.15); color: var(--bad); font-size: 12px; display: grid; place-items: center; }
 .ds-todo { list-style: none; margin: 0; padding: 4px 0; }
@@ -103,6 +100,17 @@ const areaMax = computed(() => Math.max(1, ...areas.value.map((x) => x.total)))
 .ds-todo em { margin-left: auto; font-style: normal; font-size: 12.5px; }
 .ds-todo .bad em { color: var(--bad); } .ds-todo .warn em { color: var(--warn); } .ds-todo .off em { color: var(--muted); }
 .ds-todo .go { font-size: 10px; color: var(--faint, #5d7690); }
+.ds-side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.ds-lg { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.ds-lg i { width: 8px; height: 8px; border-radius: 2px; margin-left: 6px; } .ds-lg .o { background: #2ED3E6; } .ds-lg .t { background: rgba(46,211,230,.18); }
+.ds-cols { display: flex; align-items: stretch; gap: 10px; height: 210px; padding: 14px 16px 12px; overflow-x: auto; }
+.ds-cols .col { flex: 1 0 56px; max-width: 96px; min-height: 0; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px; padding: 0; border: 0; background: none; font: inherit; color: var(--text); cursor: pointer; }
+.ds-cols .plot { flex: 1 1 0; min-height: 0; border-bottom: 1px solid var(--line); width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px; }
+.ds-cols .col b { font-size: 12.5px; font-weight: 600; color: var(--title); } .ds-cols .col em { font-style: normal; font-weight: 400; color: var(--muted); }
+.ds-cols .bar { position: relative; width: 28px; min-height: 4px; border-radius: 4px 4px 0 0; background: rgba(46,211,230,.18); display: flex; align-items: flex-end; overflow: hidden; transition: filter .15s; }
+.ds-cols .bar i { display: block; width: 100%; background: linear-gradient(180deg, #2ED3E6, #1a9fb8); }
+.ds-cols .col:hover .bar { filter: brightness(1.25); }
+.ds-cols .col span { flex: none; line-height: 18px; font-size: 12.5px; color: var(--muted); white-space: nowrap; }
 .ds-area { list-style: none; margin: 0; padding: 10px 16px 14px; }
 .ds-area li { display: grid; grid-template-columns: 120px 1fr 52px; align-items: center; gap: 12px; height: 42px; font-size: 13px; }
 .ds-area .bar { position: relative; height: 8px; border-radius: 4px; background: rgba(46,211,230,.06); }
