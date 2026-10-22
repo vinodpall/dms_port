@@ -156,7 +156,7 @@
 /* 插画已去掉自带的深色底块（原先四周像被雾包裹），直接落在等距网格地面上 */
 .cy-login { --bg: #10233a; background: var(--bg); }
 .cy-login-bg { background: #10233a; overflow: hidden; }
-.cy-floor { position: absolute; left: 34%; top: 54%; width: 3200px; height: 3200px; margin: -1600px 0 0 -1600px;
+.cy-lfloor { position: absolute; left: 34%; top: 54%; width: 3200px; height: 3200px; margin: -1600px 0 0 -1600px;
   transform: rotateX(57deg) rotateZ(45deg); transform-origin: 50% 50%;
   background:
     linear-gradient(rgba(46,211,230,.13) 1px, transparent 1px) 0 0 / 160px 160px,
@@ -203,10 +203,12 @@
   background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.28); box-shadow: inset 0 1px 0 rgba(255,255,255,.16); }
 .cy-go:hover { filter: none; background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.42); box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 8px 24px rgba(0,0,0,.2); }
 .cy-err { border-radius: 12px; border-left: 0; border: 1px solid rgba(255,122,122,.35); background: rgba(255,107,107,.12); }
-@media (max-width: 900px) { .cy-card { padding: 32px 22px 24px; border-radius: 22px; } .cy-card h2 { font-size: 28px; } .cy-floor { left: 50%; top: 30%; } }
+@media (max-width: 900px) { .cy-card { padding: 32px 22px 24px; border-radius: 22px; } .cy-card h2 { font-size: 28px; } .cy-lfloor { left: 50%; top: 30%; } }
 /* 自动填充：不再用深色内阴影盖底（会在输入框里形成一块发黑的矩形），改为延迟浏览器底色，保持透明 */
 .cy-box input:-webkit-autofill, .cy-box input:-webkit-autofill:hover, .cy-box input:-webkit-autofill:focus, .cy-box input:-webkit-autofill:active {
   -webkit-box-shadow: 0 0 0 1000px transparent inset !important; box-shadow: none !important; background-clip: text;
   -webkit-text-fill-color: #F3F8FC; caret-color: #F3F8FC; transition: background-color 99999s ease-out 0s; }
 /* 去掉卡片外侧的深色投影 */
 .cy-card { box-shadow: inset 0 1px 1px rgba(255,255,255,.25), inset 0 0 24px rgba(255,255,255,.03); }
+/* 插画改为静态：去掉缓慢缩放与入场动画（缩放会让图片在合成层里被重采样而发虚） */
+.cy-hero { animation: none; transform: none; will-change: auto; }
