@@ -36,6 +36,21 @@ const todo = computed(() => [
   ...all.value.filter((d) => d.status === 'offline').map((d) => ({ d, lv: 'off', why: `离线 · ${d.lastSeen}` })),
 ])
 
+/* 最近动态（演示数据：由设备当前状态推导，接入后端后替换为事件流） */
+const events = computed(() => {
+  const out: { k: string; t: string; d: Device; c: string; lv: string }[] = []
+  let m = 10 * 60 + 18
+  const push = (d: Device, c: string, lv: string) => { const t = `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`; out.push({ k: d.id + c, t, d, c, lv }); m -= 7 + (out.length * 5) % 13 }
+  const L = all.value.length
+  all.value.map((_, i) => all.value[(i * 7) % L]).forEach((d, i) => {
+    if (d.status === 'fault') push(d, '上报故障，已停止作业', 'bad')
+    else if (d.status === 'offline') push(d, '失去连接', 'off')
+    else if (d.status === 'charging') push(d, '返回充电桩，开始充电', 'warn')
+    else if (d.status === 'working' && i % 3 === 0) push(d, `${d.owner} 开始作业`, 'ok')
+  })
+  return out.sort((a, b) => (a.t < b.t ? 1 : -1))
+})
+
 const areas = computed(() => AREAS.map((a) => { const ds = all.value.filter((d) => d.area === a); return { a, total: ds.length, on: ds.filter(isOnline).length } }))
 const areaMax = computed(() => Math.max(1, ...areas.value.map((x) => x.total)))
 </script>
@@ -49,33 +64,39 @@ const areaMax = computed(() => Math.max(1, ...areas.value.map((x) => x.total)))
     </button>
   </div>
 
-  <div class="ds-row">
+  <div class="ds-grid">
     <section class="pp-panel">
       <div class="pp-panel-h"><h3>需关注</h3><span class="ds-cnt">{{ todo.length }}</span></div>
-      <ul v-if="todo.length" class="ds-todo">
-        <li v-for="x in todo.slice(0, 8)" :key="x.d.id" :class="x.lv" @click="emit('open', x.d)">
+      <ul v-if="todo.length" class="ds-todo ds-body">
+        <li v-for="x in todo" :key="x.d.id" :class="x.lv" @click="emit('open', x.d)">
           <i class="dot" /><b>{{ x.d.name }}</b><span class="muted">{{ modelOf(x.d)?.name }} · {{ x.d.area }}</span><em>{{ x.why }}</em><RightOutlined class="go" />
         </li>
       </ul>
       <a-empty v-else description="暂无需要处理的设备" style="padding: 32px 0" />
     </section>
-    <div class="ds-side">
-      <section class="pp-panel">
+    <section class="pp-panel">
+      <div class="pp-panel-h"><h3>类型分布</h3><span class="r ds-lg"><i class="o" />在线<i class="t" />离线</span></div>
+      <div class="ds-cols ds-body">
+        <button v-for="x in types" :key="x.t" type="button" class="col" :title="`${typeLabel(x.t)}：在线 ${x.on} / 共 ${x.total} 台`" @click="emit('list', { type: x.t })">
+          <div class="plot"><b class="mono">{{ x.on }}<em>/{{ x.total }}</em></b><div class="bar" :style="{ height: `calc((100% - 22px) * ${x.total / typeMax})` }"><i :style="{ height: (x.on / (x.total || 1)) * 100 + '%' }" /></div></div>
+          <span>{{ typeLabel(x.t) }}</span>
+        </button>
+      </div>
+    </section>
+    <section class="pp-panel">
+      <div class="pp-panel-h"><h3>最近动态</h3><span class="r muted" style="font-size:12px">今日</span></div>
+      <ul class="ds-evt ds-body">
+        <li v-for="e in events" :key="e.k" @click="emit('open', e.d)">
+          <span class="mono muted">{{ e.t }}</span><i class="dot" :class="e.lv" /><b>{{ e.d.name }}</b><span class="txt">{{ e.c }}</span>
+        </li>
+      </ul>
+    </section>
+    <section class="pp-panel">
       <div class="pp-panel-h"><h3>区域分布</h3><span class="r muted" style="font-size:12px">在线 / 总数</span></div>
-      <ul class="ds-area">
+      <ul class="ds-area ds-body">
         <li v-for="x in areas" :key="x.a"><span>{{ x.a }}</span><div class="bar"><i class="t" :style="{ width: (x.total / areaMax) * 100 + '%' }" /><i class="o" :style="{ width: (x.on / areaMax) * 100 + '%' }" /></div><b class="mono">{{ x.on }}<em>/{{ x.total }}</em></b></li>
       </ul>
     </section>
-      <section class="pp-panel">
-        <div class="pp-panel-h"><h3>类型分布</h3><span class="r ds-lg"><i class="o" />在线<i class="t" />离线</span></div>
-        <div class="ds-cols">
-          <button v-for="x in types" :key="x.t" type="button" class="col" :title="`${typeLabel(x.t)}：在线 ${x.on} / 共 ${x.total} 台`" @click="emit('list', { type: x.t })">
-            <div class="plot"><b class="mono">{{ x.on }}<em>/{{ x.total }}</em></b><div class="bar" :style="{ height: `calc((100% - 22px) * ${x.total / typeMax})` }"><i :style="{ height: (x.on / (x.total || 1)) * 100 + '%' }" /></div></div>
-            <span>{{ typeLabel(x.t) }}</span>
-          </button>
-        </div>
-      </section>
-    </div>
   </div>
 </template>
 
@@ -87,7 +108,9 @@ const areaMax = computed(() => Math.max(1, ...areas.value.map((x) => x.total)))
 .ds-kpi span { font-size: 12px; }
 .ds-kpi.bad b { color: var(--bad); }
 .ds-kpi:hover { border-color: rgba(46,211,230,.4); }
-.ds-row { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.ds-grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); grid-template-rows: 1fr 1fr; gap: 16px; height: max(600px, calc(100vh - 306px)); }
+.ds-grid > .pp-panel { display: flex; flex-direction: column; min-height: 0; }
+.ds-body { flex: 1; min-height: 0; overflow-y: auto; }
 .ds-cnt { min-width: 22px; height: 20px; padding: 0 6px; border-radius: 10px; background: rgba(255,122,122,.15); color: var(--bad); font-size: 12px; display: grid; place-items: center; }
 .ds-todo { list-style: none; margin: 0; padding: 4px 0; }
 .ds-todo li { display: flex; align-items: center; gap: 12px; height: 46px; padding: 0 16px; cursor: pointer; font-size: 13px; border-bottom: 1px dashed var(--line); }
@@ -100,10 +123,9 @@ const areaMax = computed(() => Math.max(1, ...areas.value.map((x) => x.total)))
 .ds-todo em { margin-left: auto; font-style: normal; font-size: 12.5px; }
 .ds-todo .bad em { color: var(--bad); } .ds-todo .warn em { color: var(--warn); } .ds-todo .off em { color: var(--muted); }
 .ds-todo .go { font-size: 10px; color: var(--faint, #5d7690); }
-.ds-side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .ds-lg { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
 .ds-lg i { width: 8px; height: 8px; border-radius: 2px; margin-left: 6px; } .ds-lg .o { background: #2ED3E6; } .ds-lg .t { background: rgba(46,211,230,.18); }
-.ds-cols { display: flex; align-items: stretch; gap: 10px; height: 210px; padding: 14px 16px 12px; overflow-x: auto; }
+.ds-cols { display: flex; align-items: stretch; gap: 10px; overflow-y: hidden; padding: 14px 16px 12px; overflow-x: auto; }
 .ds-cols .col { flex: 1 0 56px; max-width: 96px; min-height: 0; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px; padding: 0; border: 0; background: none; font: inherit; color: var(--text); cursor: pointer; }
 .ds-cols .plot { flex: 1 1 0; min-height: 0; border-bottom: 1px solid var(--line); width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px; }
 .ds-cols .col b { font-size: 12.5px; font-weight: 600; color: var(--title); } .ds-cols .col em { font-style: normal; font-weight: 400; color: var(--muted); }
@@ -111,8 +133,15 @@ const areaMax = computed(() => Math.max(1, ...areas.value.map((x) => x.total)))
 .ds-cols .bar i { display: block; width: 100%; background: linear-gradient(180deg, #2ED3E6, #1a9fb8); }
 .ds-cols .col:hover .bar { filter: brightness(1.25); }
 .ds-cols .col span { flex: none; line-height: 18px; font-size: 12.5px; color: var(--muted); white-space: nowrap; }
-.ds-area { list-style: none; margin: 0; padding: 10px 16px 14px; }
+.ds-area { list-style: none; margin: 0; padding: 8px 16px 12px; display: flex; flex-direction: column; justify-content: space-around; }
 .ds-area li { display: grid; grid-template-columns: 120px 1fr 52px; align-items: center; gap: 12px; height: 42px; font-size: 13px; }
+.ds-evt { list-style: none; margin: 0; padding: 4px 0; }
+.ds-evt li { display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 16px; font-size: 13px; cursor: pointer; }
+.ds-evt li:hover { background: rgba(46,211,230,.05); }
+.ds-evt .mono { width: 40px; flex: none; font-size: 12px; }
+.ds-evt .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: #6A84A0; }
+.ds-evt .dot.bad { background: var(--bad); } .ds-evt .dot.warn { background: var(--warn); } .ds-evt .dot.ok { background: #2ED3E6; }
+.ds-evt b { font-weight: 500; width: 90px; flex: none; } .ds-evt .txt { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ds-area .bar { position: relative; height: 8px; border-radius: 4px; background: rgba(46,211,230,.06); }
 .ds-area .bar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; }
 .ds-area .bar .t { background: rgba(46,211,230,.18); } .ds-area .bar .o { background: #2ED3E6; }
