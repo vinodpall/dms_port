@@ -151,3 +151,56 @@
   .cy-side { padding: 0 16px 40px; justify-content: flex-start; }
   .cy-card { padding: 32px 22px 28px; }
 }
+
+/* ================= 登录页：背景与「数采管理平台」登录页一致 ================= */
+/* 插画已去掉自带的深色底块（原先四周像被雾包裹），直接落在等距网格地面上 */
+.cy-login { --bg: #10233a; background: var(--bg); }
+.cy-login-bg { background: #10233a; overflow: hidden; }
+.cy-floor { position: absolute; left: 34%; top: 54%; width: 3200px; height: 3200px; margin: -1600px 0 0 -1600px;
+  transform: rotateX(57deg) rotateZ(45deg); transform-origin: 50% 50%;
+  background:
+    linear-gradient(rgba(46,211,230,.13) 1px, transparent 1px) 0 0 / 160px 160px,
+    linear-gradient(90deg, rgba(46,211,230,.13) 1px, transparent 1px) 0 0 / 160px 160px,
+    linear-gradient(rgba(46,211,230,.045) 1px, transparent 1px) 0 0 / 40px 40px,
+    linear-gradient(90deg, rgba(46,211,230,.045) 1px, transparent 1px) 0 0 / 40px 40px;
+  -webkit-mask-image: radial-gradient(closest-side, #000 30%, transparent 75%); mask-image: radial-gradient(closest-side, #000 30%, transparent 75%); }
+.cy-login-fade { background:
+    radial-gradient(ellipse 60% 70% at 32% 52%, transparent 55%, rgba(16,35,58,.75) 100%),
+    linear-gradient(90deg, transparent 55%, rgba(16,35,58,.55) 72%, rgba(16,35,58,.8)),
+    linear-gradient(rgba(46,211,230,.045) 1px, transparent 1px) 0 0 / 48px 48px,
+    linear-gradient(90deg, rgba(46,211,230,.045) 1px, transparent 1px) 0 0 / 48px 48px; }
+
+/* ================= 登录卡片：通透玻璃（与数采登录页一致） ================= */
+.cy-card { padding: 46px 44px 36px; border-radius: 30px; border: 1px solid rgba(255,255,255,.06);
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.015) 55%, rgba(255,255,255,.03));
+  -webkit-backdrop-filter: blur(7px) saturate(150%); backdrop-filter: blur(7px) saturate(150%);
+  box-shadow: 0 20px 60px rgba(0,0,0,.28), inset 0 1px 1px rgba(255,255,255,.25), inset 0 0 24px rgba(255,255,255,.03); }
+.cy-card::before { left: 0; right: 0; top: 0; bottom: 0; height: auto; border-radius: inherit; pointer-events: none; box-shadow: none;
+  background: radial-gradient(120% 55% at 50% 0%, rgba(255,255,255,.07), rgba(255,255,255,0) 70%); }
+.cy-card::after { animation: none;
+  background: linear-gradient(160deg, rgba(255,255,255,.55), rgba(255,255,255,.1) 40%, rgba(255,255,255,.05) 70%, rgba(255,255,255,.25)); }
+.cy-card > * { position: relative; }
+.cy-card-head { text-align: center; margin-bottom: 30px; }
+.cy-card h2 { font-size: 34px; font-weight: 500; letter-spacing: 6px; text-shadow: 0 2px 18px rgba(0,0,0,.3); }
+.cy-card .sub { font-size: 13.5px; color: rgba(235,245,255,.72); }
+.cy-field { margin-bottom: 18px; }
+.cy-lb { display: block; margin: 0 0 8px 2px; font-size: 13px; font-weight: 500; color: rgba(240,248,255,.88); }
+.cy-box { height: 50px; padding: 0 16px; border-radius: 14px; color: rgba(235,245,255,.65);
+  background: rgba(255,255,255,.035); border: 1px solid rgba(255,255,255,.18); box-shadow: none; }
+.cy-box:hover { border-color: rgba(255,255,255,.32); }
+.cy-box:focus-within { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.55); box-shadow: 0 0 0 4px rgba(255,255,255,.07); color: #fff; }
+.cy-box.bad { border-color: var(--bad); }
+.cy-box input { font-size: 14.5px; }
+.cy-box input::placeholder { color: rgba(220,235,248,.45); }
+.cy-box input:-webkit-autofill, .cy-box input:-webkit-autofill:hover, .cy-box input:-webkit-autofill:focus { -webkit-box-shadow: 0 0 0 1000px #1a2c45 inset; box-shadow: 0 0 0 1000px #1a2c45 inset; }
+.cy-eye { border-radius: 8px; color: rgba(235,245,255,.6); }
+.cy-eye:hover { color: #fff; }
+.cy-check { color: rgba(235,245,255,.8); }
+.cy-check input { accent-color: #6FA8FF; }
+.cy-row { color: rgba(220,235,248,.6); }
+.cy-row > span { color: #8DB8FF; }
+.cy-go { height: 50px; border-radius: 14px; letter-spacing: 6px; font-weight: 500; color: #fff;
+  background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.28); box-shadow: inset 0 1px 0 rgba(255,255,255,.16); }
+.cy-go:hover { filter: none; background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.42); box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 8px 24px rgba(0,0,0,.2); }
+.cy-err { border-radius: 12px; border-left: 0; border: 1px solid rgba(255,122,122,.35); background: rgba(255,107,107,.12); }
+@media (max-width: 900px) { .cy-card { padding: 32px 22px 24px; border-radius: 22px; } .cy-card h2 { font-size: 28px; } .cy-floor { left: 50%; top: 30%; } }

@@ -17,7 +17,7 @@ const LEDS = [[1103, 178, 0], [1103, 232, 2.2], [1150, 205, 1], [1150, 262, 3.4]
 
 <template>
   <div class="cy cy-login" :style="{ '--hero': `url(${hero})` }">
-    <div class="cy-login-bg" aria-hidden="true" />
+    <div class="cy-login-bg" aria-hidden="true"><div class="cy-floor" /></div>
     <div class="cy-hero" aria-hidden="true">
       <img :src="hero" alt="" draggable="false" />
       <svg viewBox="0 0 1800 1168" class="cy-hero-fx">
@@ -45,7 +45,6 @@ const LEDS = [[1103, 178, 0], [1103, 232, 2.2], [1150, 205, 1], [1150, 262, 3.4]
       </svg>
     </div>
     <div class="cy-login-fade" aria-hidden="true" />
-    <div class="cy-login-grid" aria-hidden="true" />
 
     <!-- 左上：品牌 -->
     <header class="cy-title">
@@ -62,7 +61,6 @@ const LEDS = [[1103, 178, 0], [1103, 232, 2.2], [1150, 205, 1], [1150, 262, 3.4]
     <!-- 右侧：登录 -->
     <section class="cy-side">
       <form class="cy-card" novalidate @submit.prevent="submit">
-        <span class="cy-corner tl" /><span class="cy-corner tr" /><span class="cy-corner bl" /><span class="cy-corner br" />
         <div class="cy-card-head">
           <h2>账号登录</h2>
           <p class="sub">欢迎登录{{ PLATFORM.name }}</p>
@@ -71,13 +69,14 @@ const LEDS = [[1103, 178, 0], [1103, 232, 2.2], [1150, 205, 1], [1150, 262, 3.4]
         <div v-if="err" class="cy-err" :class="{ shake }" role="alert"><AppIcon name="alert" size="sm" />{{ err }}</div>
 
         <label class="cy-field">
-          <span class="cy-box" :class="{ bad: uErr }"><AppIcon name="user" size="sm" /><input v-model="f.u" placeholder="账号" aria-label="账号" autocomplete="username" :aria-invalid="!!uErr" @blur="touched.u = true" /></span>
+          <span class="cy-lb">账号</span>
+          <span class="cy-box" :class="{ bad: uErr }"><input v-model="f.u" placeholder="请输入账号" aria-label="账号" autocomplete="username" :aria-invalid="!!uErr" @blur="touched.u = true" /></span>
           <small v-if="uErr" class="cy-help">{{ uErr }}</small>
         </label>
         <label class="cy-field">
+          <span class="cy-lb">密码</span>
           <span class="cy-box" :class="{ bad: pErr }">
-            <AppIcon name="lock" size="sm" />
-            <input v-model="f.p" :type="showPwd ? 'text' : 'password'" placeholder="密码" aria-label="密码" autocomplete="current-password" :aria-invalid="!!pErr" @blur="touched.p = true" />
+            <input v-model="f.p" :type="showPwd ? 'text' : 'password'" placeholder="请输入密码" aria-label="密码" autocomplete="current-password" :aria-invalid="!!pErr" @blur="touched.p = true" />
             <button type="button" class="cy-eye" :aria-label="showPwd ? '隐藏密码' : '显示密码'" @click="showPwd = !showPwd"><AppIcon :name="showPwd ? 'eyeoff' : 'eye'" size="sm" /></button>
           </span>
           <small v-if="pErr" class="cy-help">{{ pErr }}</small>
