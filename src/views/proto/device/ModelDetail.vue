@@ -25,7 +25,7 @@ const specs = computed(() => m.value ? [
         <div class="md-info">
           <span class="md-type" :style="{ color: typeMeta(m.type).color }">{{ typeMeta(m.type).label }}</span>
           <h3>{{ m.name }}</h3>
-          <p class="muted">{{ m.vendor }} · {{ m.protocol }}</p>
+          <p class="muted">{{ m.vendor }}</p>
           <div class="md-count">
             <div><b>{{ devs.length }}</b><small>台设备</small></div>
             <ul><li v-for="s in STATUSES" :key="s"><a-badge :status="STATUS_META[s].badge" :text="STATUS_META[s].label" /><span class="mono">{{ devs.filter((d) => d.status === s).length }}</span></li></ul>

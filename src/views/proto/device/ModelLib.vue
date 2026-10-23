@@ -2,7 +2,7 @@
 /** 型号管理：列表只显示关键信息，点击型号名称查看详情；规格在编辑弹窗中维护 */
 import { computed, reactive, ref } from 'vue'
 import { Modal, message } from 'ant-design-vue'
-import { PlusOutlined, AppstoreOutlined, SearchOutlined } from '@ant-design/icons-vue'
+import { PlusOutlined, AppstoreOutlined, SearchOutlined, MoreOutlined } from '@ant-design/icons-vue'
 import TypeManager from './TypeManager.vue'
 import ImagePick from '@/components/proto/ImagePick.vue'
 import ModelDetail from './ModelDetail.vue'
@@ -13,11 +13,10 @@ import { countOf, fleet, removeModel, saveModel } from './store'
 const TYPE_OPTS = computed(() => TYPES.map((t) => ({ value: t, label: TYPE_META[t].label })))
 const typesOpen = ref(false)
 const type = ref<DeviceType>()
-const protocol = ref<string>()
 const host = ref<HTMLElement>()
-const { size: pageSize } = useFitRows(host, 56)
+const { size: pageSize } = useFitRows(host, 64)
 const kw = ref('')
-const rows = computed(() => { const k = kw.value.trim().toLowerCase(); return fleet.models.filter((m) => (!type.value || m.type === type.value) && (!protocol.value || m.protocol === protocol.value) && (!k || [m.name, m.vendor].some((x) => x.toLowerCase().includes(k)))) })
+const rows = computed(() => { const k = kw.value.trim().toLowerCase(); return fleet.models.filter((m) => (!type.value || m.type === type.value) && (!k || [m.name, m.vendor].some((x) => x.toLowerCase().includes(k)))) })
 const onlineOf = (id: string) => fleet.devices.filter((d) => d.modelId === id && d.status === 'online').length
 /* 详情 */
 const view = ref<DeviceModel | null>(null)
@@ -25,13 +24,11 @@ const viewOpen = ref(false)
 const show = (m: DeviceModel) => { view.value = m; viewOpen.value = true }
 const editFromView = (m: DeviceModel) => { viewOpen.value = false; edit(m) }
 const columns = [
-  { title: '型号', key: 'name', width: '16%' },
-  { title: '厂商', dataIndex: 'vendor', width: '15%' },
-  { title: '类型', key: 'type', width: '13%' },
-  { title: '通信协议', dataIndex: 'protocol', width: '11%' },
-  { title: '摄像头', key: 'cams', width: '20%' },
-  { title: '设备', key: 'n', width: '13%' },
-  { title: '操作', key: 'op', width: 120, align: 'right' as const },
+  { title: '型号', key: 'name', width: '24%' },
+  { title: '类型', key: 'type', width: '18%' },
+  { title: '摄像头', key: 'cams', width: '26%' },
+  { title: '设备数量', key: 'n', width: '18%' },
+  { title: '操作', key: 'op', align: 'right' as const },
 ]
 
 /* 编辑 */
@@ -66,19 +63,22 @@ const del = (m: DeviceModel) => Modal.confirm({ title: `删除型号「${m.name}
     <div class="pp-filter">
       <a-input v-model:value="kw" allow-clear placeholder="型号 / 厂商" style="width: 220px"><template #prefix><SearchOutlined /></template></a-input>
       <a-select v-model:value="type" allow-clear placeholder="设备类型" style="width: 130px" :options="TYPE_OPTS" />
-      <a-select v-model:value="protocol" allow-clear placeholder="通信协议" style="width: 120px" :options="['ROS2', 'SDK', 'MAVLink'].map((v) => ({ value: v, label: v }))" />
-      <a v-if="kw || type || protocol" class="reset" @click="kw = ''; type = undefined; protocol = undefined">重置</a>
+      <a v-if="kw || type" class="reset" @click="kw = ''; type = undefined">重置</a>
       <span class="sum">共<b>{{ rows.length }}</b>个型号</span>
     </div>
-    <a-table :data-source="rows" :columns="columns" row-key="id" size="middle" class="pp-table ml-table" :pagination="{ pageSize, showSizeChanger: false, size: 'small' }">
+    <a-table :data-source="rows" :columns="columns" row-key="id" size="middle" class="pp-table" :custom-row="(r: DeviceModel) => ({ onClick: () => show(r), style: 'cursor:pointer' })" :pagination="{ pageSize, showSizeChanger: false, size: 'small' }">
       <template #bodyCell="{ column, record }">
-        <template v-if="column.key === 'name'"><a class="ml-name" @click="show(record as DeviceModel)">{{ record.name }}</a></template>
+        <template v-if="column.key === 'name'"><div class="pp-cell"><b class="ml-name" @click.stop="show(record as DeviceModel)">{{ record.name }}</b><small>{{ record.vendor }}</small></div></template>
         <template v-else-if="column.key === 'type'"><span class="ml-t"><i :style="{ background: TYPE_META[record.type as DeviceType]?.color }" />{{ TYPE_META[record.type as DeviceType]?.label }}</span></template>
-        <template v-else-if="column.key === 'cams'"><span class="ml-cams"><b class="mono">{{ record.cameras.length }}</b> 路<span class="muted">{{ record.cameras.join(' / ') }}</span></span></template>
-        <template v-else-if="column.key === 'n'"><span class="ml-cnt"><b class="mono">{{ countOf(record.id) }}</b> 台<small v-if="countOf(record.id)" class="muted">在线 {{ onlineOf(record.id) }}</small></span></template>
+        <template v-else-if="column.key === 'cams'"><div class="pp-cell"><span>{{ record.cameras.length }} 路</span><small>{{ record.cameras.join(' / ') }}</small></div></template>
+        <template v-else-if="column.key === 'n'"><div class="pp-cell"><span>{{ countOf(record.id) }} 台</span><small>在线 {{ onlineOf(record.id) }}</small></div></template>
         <template v-else-if="column.key === 'op'">
-          <a-button type="link" size="small" @click="edit(record as DeviceModel)">编辑</a-button>
-          <a-tooltip :title="countOf(record.id) ? '该型号下还有设备，不能删除' : ''"><a-button type="link" size="small" danger :disabled="!!countOf(record.id)" @click="del(record as DeviceModel)">删除</a-button></a-tooltip>
+          <div class="pp-op" @click.stop>
+            <a-button type="link" size="small" @click="edit(record as DeviceModel)">编辑</a-button>
+            <a-dropdown :trigger="['click']"><a-button type="text" size="small"><MoreOutlined /></a-button>
+              <template #overlay><a-menu><a-menu-item key="del" danger :disabled="!!countOf(record.id)" @click="del(record as DeviceModel)">{{ countOf(record.id) ? '删除（该型号下还有设备）' : '删除' }}</a-menu-item></a-menu></template>
+            </a-dropdown>
+          </div>
         </template>
       </template>
     </a-table>
@@ -91,8 +91,7 @@ const del = (m: DeviceModel) => Modal.confirm({ title: `删除型号「${m.name}
         <div class="mf-base">
           <a-form-item label="型号名称" name="name"><a-input v-model:value="f.name" placeholder="如：B2" /></a-form-item>
           <a-form-item label="厂商" name="vendor"><a-input v-model:value="f.vendor" placeholder="如：宇树科技" /></a-form-item>
-          <a-form-item label="设备类型"><a-select v-model:value="f.type" :disabled="!!editId && !!countOf(editId)" :options="TYPE_OPTS" /></a-form-item>
-          <a-form-item label="通信协议"><a-select v-model:value="f.protocol" :options="['ROS2', 'SDK', 'MAVLink'].map((v) => ({ value: v, label: v }))" /></a-form-item>
+          <a-form-item label="设备类型" class="mf-span"><a-select v-model:value="f.type" :disabled="!!editId && !!countOf(editId)" :options="TYPE_OPTS" /></a-form-item>
           <a-form-item label="摄像头" name="cameras" class="mf-span"><a-select v-model:value="f.cameras" mode="tags" placeholder="输入摄像头名称后回车，如：前视" /></a-form-item>
         </div>
       </div>
@@ -114,13 +113,8 @@ const del = (m: DeviceModel) => Modal.confirm({ title: `删除型号「${m.name}
 </template>
 
 <style scoped>
-.ml-table :deep(.ant-table-tbody > tr > td) { height: 56px; padding-top: 0; padding-bottom: 0; }
-.ml-name { color: var(--title); font-weight: 500; } .ml-name:hover { color: #2ED3E6; text-decoration: underline; text-underline-offset: 3px; }
+.ml-name { cursor: pointer; }
 .ml-t { display: inline-flex; align-items: center; gap: 8px; } .ml-t i { width: 6px; height: 6px; border-radius: 50%; }
-.ml-cams { display: inline-flex; align-items: baseline; gap: 4px; min-width: 0; max-width: 100%; white-space: nowrap; }
-.ml-cams b, .ml-cnt b { font-weight: 500; color: var(--title); }
-.ml-cams .muted { margin-left: 8px; font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; }
-.ml-cnt { display: inline-flex; align-items: baseline; gap: 4px; } .ml-cnt small { margin-left: 8px; font-size: 12px; }
 .mf { margin-top: 16px; }
 .mf-top { display: flex; gap: 20px; }
 .mf-pic { flex: none; margin-bottom: 0; }

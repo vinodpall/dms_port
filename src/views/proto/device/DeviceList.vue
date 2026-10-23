@@ -78,16 +78,16 @@ const onMenu = (key: string, d: Device) => (key === 'edit' ? emit('edit', d) : d
       <a-table :data-source="rows" :columns="columns" row-key="id" size="middle" :pagination="{ pageSize, showSizeChanger: false, size: 'small', hideOnSinglePage: false }" class="pp-table"
         :custom-row="(r: Device) => ({ onClick: () => emit('open', r), style: 'cursor:pointer' })">
         <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'name'"><div class="dl-2"><b>{{ record.name }}</b><small class="mono">{{ record.sn }}</small></div></template>
-          <template v-else-if="column.key === 'model'"><div class="dl-2"><span>{{ modelOf(record)?.name ?? '—' }}</span><small>{{ TYPE_META[record.type as DeviceType]?.label }}<template v-if="modelOf(record)"> · {{ modelOf(record)?.vendor }}</template></small></div></template>
+          <template v-if="column.key === 'name'"><div class="pp-cell"><b>{{ record.name }}</b><small class="mono">{{ record.sn }}</small></div></template>
+          <template v-else-if="column.key === 'model'"><div class="pp-cell"><span>{{ modelOf(record)?.name ?? '—' }}</span><small>{{ TYPE_META[record.type as DeviceType]?.label }}<template v-if="modelOf(record)"> · {{ modelOf(record)?.vendor }}</template></small></div></template>
           <template v-else-if="column.key === 'status'">
-            <div class="dl-2"><a-badge :status="STATUS_META[record.status as DeviceStatus].badge" :text="STATUS_META[record.status as DeviceStatus].label" /><small v-if="record.status === 'offline'">最后在线 {{ record.lastSeen }}</small></div>
+            <div class="pp-cell"><a-badge :status="STATUS_META[record.status as DeviceStatus].badge" :text="STATUS_META[record.status as DeviceStatus].label" /><small v-if="record.status === 'offline'">最后在线 {{ record.lastSeen }}</small></div>
           </template>
           <template v-else-if="column.key === 'battery'"><span class="mono" :style="{ color: isOnline(record) ? batColor(record.battery) : 'var(--muted)' }">{{ isOnline(record) ? record.battery + '%' : '—' }}</span></template>
-          <template v-else-if="column.key === 'ip'"><div class="dl-2"><span class="mono">{{ record.ip }}</span><small v-if="record.publicIp" class="mono">外网 {{ record.publicIp }}</small></div></template>
+          <template v-else-if="column.key === 'ip'"><div class="pp-cell"><span class="mono">{{ record.ip }}</span><small v-if="record.publicIp" class="mono">外网 {{ record.publicIp }}</small></div></template>
           <template v-else-if="column.dataIndex === 'area'"><span class="dl-area">{{ record.area }}</span></template>
           <template v-else-if="column.key === 'op'">
-            <div class="dl-op" @click.stop>
+            <div class="pp-op" @click.stop>
               <a-tooltip v-if="TYPE_META[record.type as DeviceType].teleop" :title="canTeleop(record) ? '' : '设备离线或故障，暂不可遥操作'">
                 <a-button type="link" size="small" :disabled="!canTeleop(record)" @click="emit('teleop', record)">遥操作</a-button>
               </a-tooltip>
@@ -105,12 +105,4 @@ const onMenu = (key: string, d: Device) => (key === 'edit' ? emit('edit', d) : d
 
 <style scoped>
 .dl-main { min-width: 0; }
-.dl-main :deep(.ant-table-tbody > tr > td) { height: 64px; padding-top: 0; padding-bottom: 0; }
-.dl-main :deep(.ant-table-tbody > tr:hover b) { color: #2ED3E6; }
-.dl-2 { display: flex; flex-direction: column; gap: 1px; line-height: 1.45; }
-.dl-2 b { font-weight: 500; color: var(--title); transition: color .15s; }
-.dl-2 small { font-size: 12px; color: var(--muted); white-space: nowrap; }
-.dl-2 :deep(.ant-badge-status-text) { margin-inline-start: 6px; }
-.dl-area { color: var(--text); }
-.dl-op { display: flex; justify-content: flex-end; align-items: center; }
 </style>
