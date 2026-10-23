@@ -108,8 +108,6 @@ function del() {
             <a-descriptions-item label="内网 IP"><span class="mono">{{ d.ip }}</span></a-descriptions-item>
             <a-descriptions-item label="外网 IP"><span class="mono">{{ d.publicIp || '—' }}</span></a-descriptions-item>
             <a-descriptions-item label="相机 IP"><span class="mono">{{ d.cameraIps?.length ? d.cameraIps.join('; ') : '—' }}</span></a-descriptions-item>
-            <a-descriptions-item label="电压范围"><span class="mono">{{ d.voltMin != null && d.voltMax != null ? `${d.voltMin} – ${d.voltMax} V` : '—' }}</span></a-descriptions-item>
-            <a-descriptions-item label="尺寸"><span class="mono">{{ d.size ? `${d.size} mm` : '—' }}</span></a-descriptions-item>
             <a-descriptions-item label="所属区域">{{ d.area }}</a-descriptions-item>
             <a-descriptions-item label="通信协议">{{ m.protocol }}</a-descriptions-item>
             <a-descriptions-item label="固件版本"><span class="mono">{{ d.firmware }}</span></a-descriptions-item>
@@ -123,6 +121,8 @@ function del() {
             <a-descriptions-item label="续航">{{ m.spec.endurance }}</a-descriptions-item>
             <a-descriptions-item label="负载">{{ m.spec.payload }}</a-descriptions-item>
             <a-descriptions-item label="重量">{{ m.spec.weight }}</a-descriptions-item>
+            <a-descriptions-item label="电压范围"><span class="mono">{{ m.voltMin != null && m.voltMax != null ? `${m.voltMin} – ${m.voltMax} V` : '—' }}</span></a-descriptions-item>
+            <a-descriptions-item label="尺寸"><span class="mono">{{ m.size ? `${m.size} mm` : '—' }}</span></a-descriptions-item>
             <a-descriptions-item label="摄像头">{{ m.cameras.join('、') }}</a-descriptions-item>
           </a-descriptions>
         </a-tab-pane>

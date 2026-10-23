@@ -2,12 +2,14 @@
 /** 型号管理：列表只显示型号、类型、摄像头数、设备数；规格在编辑弹窗中维护 */
 import { computed, reactive, ref } from 'vue'
 import { Modal, message } from 'ant-design-vue'
-import { PlusOutlined } from '@ant-design/icons-vue'
+import { PlusOutlined, AppstoreOutlined } from '@ant-design/icons-vue'
+import TypeManager from './TypeManager.vue'
 import DeviceGlyph from '@/components/proto/DeviceGlyph.vue'
 import { TYPES, TYPE_META, type DeviceModel, type DeviceType } from '@/models/device'
 import { countOf, fleet, removeModel, saveModel } from './store'
 
-const TYPE_OPTS = TYPES.map((t) => ({ value: t, label: TYPE_META[t].label }))
+const TYPE_OPTS = computed(() => TYPES.map((t) => ({ value: t, label: TYPE_META[t].label })))
+const typesOpen = ref(false)
 const type = ref<DeviceType | 'all'>('all')
 const rows = computed(() => fleet.models.filter((m) => type.value === 'all' || m.type === type.value))
 const columns = [
@@ -22,7 +24,7 @@ const columns = [
 /* 编辑 */
 const open = ref(false)
 const editId = ref<string | null>(null)
-const blank = (): DeviceModel => ({ id: '', type: 'quadruped', name: '', vendor: '', protocol: 'ROS2', cameras: ['前视'], spec: { speed: '', endurance: '', payload: '', weight: '' } })
+const blank = (): DeviceModel => ({ id: '', type: TYPES[0], name: '', vendor: '', protocol: 'ROS2', cameras: ['前视'], spec: { speed: '', endurance: '', payload: '', weight: '' }, voltMin: undefined, voltMax: undefined, size: undefined })
 const f = reactive<DeviceModel>(blank())
 const formRef = ref()
 const edit = (m?: DeviceModel) => {
@@ -30,10 +32,12 @@ const edit = (m?: DeviceModel) => {
   Object.assign(f, m ? { ...m, cameras: [...m.cameras], spec: { ...m.spec } } : blank())
   open.value = true; formRef.value?.clearValidate()
 }
-const rules = { name: [{ required: true, message: '请输入型号名称' }], vendor: [{ required: true, message: '请输入厂商' }], cameras: [{ required: true, type: 'array', min: 1, message: '至少配置一路摄像头' }] }
+const rules = {
+  voltMax: [{ validator: async (_: unknown, v?: number) => { if (v != null && f.voltMin != null && v < f.voltMin) throw new Error('最大电压不能小于最小电压') } }],
+  name: [{ required: true, message: '请输入型号名称' }], vendor: [{ required: true, message: '请输入厂商' }], cameras: [{ required: true, type: 'array', min: 1, message: '至少配置一路摄像头' }] }
 async function submit() {
   await formRef.value.validate()
-  saveModel({ ...f, id: editId.value ?? `m-${Date.now().toString(36)}`, cameras: [...f.cameras], spec: { ...f.spec } })
+  saveModel({ ...f, size: f.size || undefined, id: editId.value ?? `m-${Date.now().toString(36)}`, cameras: [...f.cameras], spec: { ...f.spec } })
   message.success(editId.value ? '已保存' : '型号已添加'); open.value = false
 }
 const del = (m: DeviceModel) => Modal.confirm({ title: `删除型号「${m.name}」？`, okText: '删除', okType: 'danger', cancelText: '取消', onOk: () => { removeModel(m.id); message.success('已删除') } })
@@ -42,7 +46,7 @@ const del = (m: DeviceModel) => Modal.confirm({ title: `删除型号「${m.name}
 <template>
   <div class="pp-head">
     <div><h2>型号管理</h2><p>维护设备型号的规格与摄像头配置，新增设备时选择型号即可带出</p></div>
-    <div class="r" style="margin-left:auto"><a-button type="primary" @click="edit()"><PlusOutlined />新增型号</a-button></div>
+    <div class="r" style="margin-left:auto; display:flex; gap:8px"><a-button @click="typesOpen = true"><AppstoreOutlined />设备类型</a-button><a-button type="primary" @click="edit()"><PlusOutlined />新增型号</a-button></div>
   </div>
 
   <section class="pp-panel">
@@ -80,9 +84,13 @@ const del = (m: DeviceModel) => Modal.confirm({ title: `删除型号「${m.name}
         <a-col :span="6"><a-form-item label="续航"><a-input v-model:value="f.spec.endurance" /></a-form-item></a-col>
         <a-col :span="6"><a-form-item label="负载"><a-input v-model:value="f.spec.payload" /></a-form-item></a-col>
         <a-col :span="6"><a-form-item label="重量"><a-input v-model:value="f.spec.weight" /></a-form-item></a-col>
+        <a-col :span="8"><a-form-item label="最小电压"><a-input-number v-model:value="f.voltMin" :min="0" :step="0.1" addon-after="V" placeholder="如：42" style="width: 100%" /></a-form-item></a-col>
+        <a-col :span="8"><a-form-item label="最大电压" name="voltMax"><a-input-number v-model:value="f.voltMax" :min="0" :step="0.1" addon-after="V" placeholder="如：58.8" style="width: 100%" /></a-form-item></a-col>
+        <a-col :span="8"><a-form-item label="尺寸（长×宽×高）"><a-input v-model:value="f.size" placeholder="如：1098×450×645" suffix="mm" /></a-form-item></a-col>
       </a-row>
     </a-form>
   </a-modal>
+  <TypeManager v-model:open="typesOpen" />
 </template>
 
 <style scoped>
