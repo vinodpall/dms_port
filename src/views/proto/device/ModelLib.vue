@@ -4,6 +4,7 @@ import { computed, reactive, ref } from 'vue'
 import { Modal, message } from 'ant-design-vue'
 import { PlusOutlined, AppstoreOutlined } from '@ant-design/icons-vue'
 import TypeManager from './TypeManager.vue'
+import ImagePick from '@/components/proto/ImagePick.vue'
 import DeviceGlyph from '@/components/proto/DeviceGlyph.vue'
 import { TYPES, TYPE_META, type DeviceModel, type DeviceType } from '@/models/device'
 import { countOf, fleet, removeModel, saveModel } from './store'
@@ -24,7 +25,7 @@ const columns = [
 /* 编辑 */
 const open = ref(false)
 const editId = ref<string | null>(null)
-const blank = (): DeviceModel => ({ id: '', type: TYPES[0], name: '', vendor: '', protocol: 'ROS2', cameras: ['前视'], spec: { speed: '', endurance: '', payload: '', weight: '' }, voltMin: undefined, voltMax: undefined, size: undefined })
+const blank = (): DeviceModel => ({ id: '', type: TYPES[0], name: '', vendor: '', protocol: 'ROS2', cameras: ['前视'], spec: { speed: '', endurance: '', payload: '', weight: '' }, voltMin: undefined, voltMax: undefined, size: undefined, image: undefined })
 const f = reactive<DeviceModel>(blank())
 const formRef = ref()
 const edit = (m?: DeviceModel) => {
@@ -58,7 +59,7 @@ const del = (m: DeviceModel) => Modal.confirm({ title: `删除型号「${m.name}
     </div>
     <a-table :data-source="rows" :columns="columns" row-key="id" size="middle" :pagination="false">
       <template #bodyCell="{ column, record }">
-        <template v-if="column.key === 'name'"><div class="ml-n"><b>{{ record.name }}</b><small class="muted">{{ record.vendor }}</small></div></template>
+        <template v-if="column.key === 'name'"><div class="ml-row"><span class="ml-img"><img v-if="record.image" :src="record.image" alt="" /><DeviceGlyph v-else :type="record.type" :size="26" :color="TYPE_META[record.type].color" /></span><div class="ml-n"><b>{{ record.name }}</b><small class="muted">{{ record.vendor }}</small></div></div></template>
         <template v-else-if="column.key === 'type'"><span class="ml-t"><DeviceGlyph :type="record.type" :size="20" :color="TYPE_META[record.type as DeviceType].color" />{{ TYPE_META[record.type as DeviceType].label }}</span></template>
         <template v-else-if="column.key === 'cams'"><a-tooltip :title="record.cameras.join('、')"><span class="mono">{{ record.cameras.length }} 路</span></a-tooltip></template>
         <template v-else-if="column.key === 'n'"><span class="mono">{{ countOf(record.id) }}</span></template>
@@ -72,6 +73,9 @@ const del = (m: DeviceModel) => Modal.confirm({ title: `删除型号「${m.name}
 
   <a-modal v-model:open="open" :title="editId ? '编辑型号' : '新增型号'" :width="560" :ok-text="editId ? '保存' : '添加'" @ok="submit">
     <a-form ref="formRef" :model="f" :rules="rules" layout="vertical" style="margin-top: 12px">
+      <a-form-item label="型号图片">
+        <ImagePick v-model:value="f.image" :size="120" hint="用于设备详情展示，建议透明底 PNG；上传后自动裁掉多余留白" />
+      </a-form-item>
       <a-row :gutter="16">
         <a-col :span="12"><a-form-item label="设备类型"><a-select v-model:value="f.type" :disabled="!!editId && !!countOf(editId)" :options="TYPE_OPTS" /></a-form-item></a-col>
         <a-col :span="12"><a-form-item label="通信协议"><a-select v-model:value="f.protocol" :options="['ROS2', 'SDK', 'MAVLink'].map((v) => ({ value: v, label: v }))" /></a-form-item></a-col>
@@ -95,6 +99,9 @@ const del = (m: DeviceModel) => Modal.confirm({ title: `删除型号「${m.name}
 
 <style scoped>
 .ml-bar { padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.ml-row { display: flex; align-items: center; gap: 12px; }
+.ml-img { width: 48px; height: 40px; flex: none; display: grid; place-items: center; border-radius: 6px; background: rgba(46,211,230,.06); overflow: hidden; }
+.ml-img img { max-width: 44px; max-height: 36px; object-fit: contain; }
 .ml-n b { display: block; font-weight: 500; } .ml-n small { font-size: 12px; }
 .ml-t { display: inline-flex; align-items: center; gap: 8px; }
 </style>

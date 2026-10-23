@@ -2,7 +2,7 @@
 /** 新增 / 编辑设备 */
 import { computed, reactive, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
-import { AREAS, type Device } from '@/models/device'
+import { AREAS, STATUSES, STATUS_META, type Device, type DeviceStatus } from '@/models/device'
 import { fleet, ipTaken, saveDevice } from './store'
 
 const props = defineProps<{ open: boolean; device?: Device | null }>()
@@ -10,7 +10,7 @@ const emit = defineEmits<{ 'update:open': [boolean]; saved: [Device] }>()
 
 const blank = () => ({
   modelId: undefined as string | undefined, name: '', sn: '', ip: '', publicIp: '', cams: '',
-  area: AREAS[0], remark: '',
+  area: AREAS[0], status: 'offline' as DeviceStatus, remark: '',
 })
 const f = reactive(blank())
 const formRef = ref()
@@ -21,7 +21,7 @@ watch(() => props.open, (v) => {
   const d = props.device
   Object.assign(f, d ? {
     modelId: d.modelId, name: d.name, sn: d.sn, ip: d.ip, publicIp: d.publicIp ?? '', cams: (d.cameraIps ?? []).join('; '),
-    area: d.area, remark: d.remark ?? '',
+    area: d.area, status: d.status, remark: d.remark ?? '',
   } : blank())
   formRef.value?.clearValidate()
 })
@@ -56,7 +56,7 @@ async function submit() {
   const d: Device = base
     ? { ...base, ...v }
     : { id: `D-${Date.now().toString(36).toUpperCase()}`, ...v,
-        status: 'offline', battery: 0, firmware: '—', commissioned: new Date().toISOString().slice(0, 10), lastSeen: '未接入',
+        battery: f.status === 'offline' ? 0 : 100, firmware: '—', commissioned: new Date().toISOString().slice(0, 10), lastSeen: f.status === 'offline' ? '未接入' : '刚刚',
         tm: { speed: 0, latency: 0, x: 0, y: 0, yaw: 0 } }
   saveDevice(d)
   message.success(base ? '已保存' : '设备已添加')
@@ -68,9 +68,8 @@ async function submit() {
 <template>
   <a-modal :open="open" :title="editing ? '编辑设备' : '新增设备'" :width="560" :ok-text="editing ? '保存' : '添加'" @ok="submit" @cancel="emit('update:open', false)">
     <a-form ref="formRef" :model="f" :rules="rules" layout="vertical" style="margin-top: 12px">
+      <a-form-item label="型号" name="modelId"><a-select v-model:value="f.modelId" placeholder="选择设备型号" :options="modelOptions" show-search option-filter-prop="label" /></a-form-item>
       <a-row :gutter="16">
-        <a-col :span="12"><a-form-item label="型号" name="modelId"><a-select v-model:value="f.modelId" placeholder="选择设备型号" :options="modelOptions" show-search option-filter-prop="label" /></a-form-item></a-col>
-        <a-col :span="12"><a-form-item label="所属区域"><a-select v-model:value="f.area" :options="AREAS.map((v) => ({ value: v, label: v }))" /></a-form-item></a-col>
         <a-col :span="12"><a-form-item label="设备名称" name="name"><a-input v-model:value="f.name" placeholder="如：机器狗-15" /></a-form-item></a-col>
         <a-col :span="12"><a-form-item label="序列号" name="sn"><a-input v-model:value="f.sn" placeholder="设备铭牌序列号" /></a-form-item></a-col>
         <a-col :span="12"><a-form-item label="内网 IP" name="ip"><a-input v-model:value="f.ip" placeholder="如：10.20.1.15" /></a-form-item></a-col>
@@ -79,7 +78,17 @@ async function submit() {
       <a-form-item label="相机 IP" name="cams" extra="多个相机 IP 请用英文分号 ; 分隔">
         <a-input v-model:value="f.cams" placeholder="如：10.20.1.101; 10.20.1.102" />
       </a-form-item>
+      <a-row :gutter="16">
+        <a-col :span="12"><a-form-item label="所属区域"><a-select v-model:value="f.area" :options="AREAS.map((v) => ({ value: v, label: v }))" /></a-form-item></a-col>
+        <a-col :span="12"><a-form-item label="状态">
+          <a-radio-group v-model:value="f.status" button-style="solid" class="df-st"><a-radio-button v-for="s in STATUSES" :key="s" :value="s">{{ STATUS_META[s].label }}</a-radio-button></a-radio-group>
+        </a-form-item></a-col>
+      </a-row>
       <a-form-item label="备注" style="margin-bottom: 0"><a-textarea v-model:value="f.remark" :rows="2" placeholder="选填" /></a-form-item>
     </a-form>
   </a-modal>
 </template>
+
+<style scoped>
+.df-st { display: flex; } .df-st :deep(.ant-radio-button-wrapper) { flex: 1; text-align: center; }
+</style>

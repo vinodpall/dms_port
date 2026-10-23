@@ -1,5 +1,12 @@
 import type { Device, DeviceModel, DeviceStatus, DeviceType } from '@/models/device'
 import { AREAS } from '@/models/device'
+import imgGo2 from '@/assets/models/go2.webp'
+import imgX30 from '@/assets/models/x30.webp'
+import imgZsl from '@/assets/models/zsl1.webp'
+import imgX2 from '@/assets/models/x2.webp'
+import imgKnight from '@/assets/models/knight.webp'
+import imgWeeder from '@/assets/models/weeder.webp'
+import imgDock from '@/assets/models/dock3.webp'
 
 const VOLT: Record<DeviceType, [number, number]> = { quadruped: [42, 58.8], ugv: [22, 29.4], uav: [44.4, 52.8], humanoid: [43.2, 54.6] }
 const SIZE: Record<string, string> = {
@@ -7,15 +14,16 @@ const SIZE: Record<string, string> = {
   'ug-scout': '930×699×349', 'ug-hunter': '820×640×310', 'ug-bunker': '660×584×281',
   'ua-m350': '810×670×430', 'ua-m30t': '470×585×215', 'ua-m3e': '347×283×108', 'ua-m4t': '307×388×149', 'ua-x500': '410×410×300',
   'hm-walker': '560×370×1720', 'hm-h1': '570×220×1800',
+  'qd-zsl1': '720×400×520', 'hm-x2': '450×280×1310', 'ug-knight': '1150×780×860', 'ug-weeder': '1250×800×900', 'ua-dock3': '1760×890×1080',
 }
 
-const M = (id: string, type: DeviceType, name: string, vendor: string, protocol: DeviceModel['protocol'], cameras: string[], spec: DeviceModel['spec']): DeviceModel =>
-  ({ id, type, name, vendor, protocol, cameras, spec, voltMin: VOLT[type]?.[0], voltMax: VOLT[type]?.[1], size: SIZE[id] })
+const M = (id: string, type: DeviceType, name: string, vendor: string, protocol: DeviceModel['protocol'], cameras: string[], spec: DeviceModel['spec'], image?: string): DeviceModel =>
+  ({ id, type, name, vendor, protocol, cameras, spec, image, voltMin: VOLT[type]?.[0], voltMax: VOLT[type]?.[1], size: SIZE[id] })
 
 export const MODELS: DeviceModel[] = [
   M('qd-b2', 'quadruped', 'B2', '宇树科技', 'ROS2', ['前视', '后视', '云台'], { speed: '6 m/s', endurance: '4 h', payload: '40 kg', weight: '60 kg' }),
-  M('qd-go2', 'quadruped', 'Go2 EDU', '宇树科技', 'SDK', ['前视'], { speed: '3.7 m/s', endurance: '2 h', payload: '8 kg', weight: '15 kg' }),
-  M('qd-x30', 'quadruped', 'X30', '云深处', 'ROS2', ['前视', '后视', '云台'], { speed: '4 m/s', endurance: '4 h', payload: '85 kg', weight: '56 kg' }),
+  M('qd-go2', 'quadruped', 'Go2 EDU', '宇树科技', 'SDK', ['前视'], { speed: '3.7 m/s', endurance: '2 h', payload: '8 kg', weight: '15 kg' }, imgGo2),
+  M('qd-x30', 'quadruped', 'X30', '云深处', 'ROS2', ['前视', '后视', '云台'], { speed: '4 m/s', endurance: '4 h', payload: '85 kg', weight: '56 kg' }, imgX30),
   M('qd-lite3', 'quadruped', 'Lite3', '云深处', 'ROS2', ['前视'], { speed: '2.5 m/s', endurance: '1.5 h', payload: '7.5 kg', weight: '12 kg' }),
   M('qd-spot', 'quadruped', 'Spot', 'Boston Dynamics', 'SDK', ['前视', '左侧', '右侧', '后视'], { speed: '1.6 m/s', endurance: '1.5 h', payload: '14 kg', weight: '32 kg' }),
   M('ug-scout', 'ugv', 'Scout 2.0', '松灵机器人', 'ROS2', ['前视', '全景'], { speed: '1.5 m/s', endurance: '8 h', payload: '50 kg', weight: '62 kg' }),
@@ -28,13 +36,18 @@ export const MODELS: DeviceModel[] = [
   M('ua-x500', 'uav', 'X500 V2', 'Holybro', 'MAVLink', ['前视'], { speed: '15 m/s', endurance: '18 min', payload: '1 kg', weight: '1.3 kg' }),
   M('hm-walker', 'humanoid', 'Walker S1', '优必选', 'ROS2', ['头部', '左腕', '右腕'], { speed: '2 m/s', endurance: '2 h', payload: '15 kg', weight: '76 kg' }),
   M('hm-h1', 'humanoid', 'H1', '宇树科技', 'SDK', ['头部'], { speed: '3.3 m/s', endurance: '1.5 h', payload: '10 kg', weight: '47 kg' }),
+  M('qd-zsl1', 'quadruped', 'ZSL-1', '智身科技', 'ROS2', ['前视', '后视'], { speed: '3 m/s', endurance: '2.5 h', payload: '10 kg', weight: '18 kg' }, imgZsl),
+  M('hm-x2', 'humanoid', 'X2', '智元机器人', 'ROS2', ['头部'], { speed: '1.5 m/s', endurance: '2 h', payload: '5 kg', weight: '38 kg' }, imgX2),
+  M('ug-knight', 'ugv', '骑士巡逻', '待补充', 'ROS2', ['云台', '前视', '后视'], { speed: '2 m/s', endurance: '6 h', payload: '60 kg', weight: '120 kg' }, imgKnight),
+  M('ug-weeder', 'ugv', '除草机器人', '待补充', 'ROS2', ['云台', '前视'], { speed: '1.2 m/s', endurance: '5 h', payload: '—', weight: '150 kg' }, imgWeeder),
+  M('ua-dock3', 'uav', '机场 3', '大疆', 'MAVLink', ['广角', '变焦', '红外'], { speed: '21 m/s', endurance: '54 min', payload: '—', weight: '1.4 kg' }, imgDock),
 ]
 
-const COUNT = [3, 4, 2, 2, 1, 3, 2, 2, 2, 3, 2, 1, 2, 3, 2]
+const COUNT = [3, 4, 2, 2, 1, 3, 2, 2, 2, 3, 2, 1, 2, 3, 2, 2, 1, 2, 1, 2]
 const CODE: Record<DeviceType, string> = { quadruped: 'QD', ugv: 'UG', uav: 'UA', humanoid: 'HM' }
 const NAME: Record<DeviceType, string> = { quadruped: '机器狗', ugv: '无人车', uav: '无人机', humanoid: '人形' }
 const AREA: Record<DeviceType, number[]> = { quadruped: [0, 1], ugv: [2, 1], uav: [3], humanoid: [0] }
-const CYCLE: DeviceStatus[] = ['working', 'idle', 'working', 'charging', 'idle', 'offline', 'working', 'idle', 'fault', 'working', 'idle']
+const CYCLE: DeviceStatus[] = ['online', 'online', 'online', 'online', 'online', 'offline', 'online', 'online', 'fault', 'online', 'online']
 const GAITS = ['行走', '小跑', '爬楼']
 
 let seed = 11
@@ -49,7 +62,7 @@ export const DEVICES: Device[] = MODELS.flatMap((m, mi) =>
     const n = ++seq[t]
     const status = CYCLE[k++ % CYCLE.length]
     const off = status === 'offline'
-    const run = status === 'working'
+    const run = status === 'online' && k % 2 === 0
     const no = String(n).padStart(2, '0')
     const ai = AREA[t][n % AREA[t].length]
     return {
@@ -57,7 +70,7 @@ export const DEVICES: Device[] = MODELS.flatMap((m, mi) =>
       sn: `${CODE[t]}24${String(10350 + n * 37 + mi * 11).padStart(6, '0')}`,
       name: `${NAME[t]}-${no}`,
       type: t, modelId: m.id, status,
-      battery: off ? 0 : status === 'charging' ? 30 + Math.round(rnd() * 40) : 25 + Math.round(rnd() * 74),
+      battery: off ? 0 : 25 + Math.round(rnd() * 74),
       ip: `10.20.${['quadruped', 'ugv', 'uav', 'humanoid'].indexOf(t) + 1}.${10 + n}`,
       area: AREAS[ai],
       publicIp: n % 3 === 0 ? `112.64.${20 + mi}.${100 + n}` : undefined,

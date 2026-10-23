@@ -4,6 +4,7 @@ import { reactive, ref, watch } from 'vue'
 import { Modal, message } from 'ant-design-vue'
 import { PlusOutlined, LeftOutlined } from '@ant-design/icons-vue'
 import DeviceGlyph from '@/components/proto/DeviceGlyph.vue'
+import ImagePick from '@/components/proto/ImagePick.vue'
 import { TYPES, TYPE_META, type DeviceType, type GlyphKey } from '@/models/device'
 import { removeType, saveType, typeDeviceCount, typeModelCount } from './store'
 
@@ -15,14 +16,14 @@ const COLORS = ['#5B9BFF', '#45E3A8', '#B48CFF', '#2ED3E6', '#FFC15C', '#FF8FB1'
 
 const mode = ref<'list' | 'edit'>('list')
 const editId = ref<DeviceType | null>(null)
-const f = reactive({ label: '', icon: 'generic' as GlyphKey, color: COLORS[0], teleop: false })
+const f = reactive({ label: '', icon: 'generic' as GlyphKey, img: undefined as string | undefined, color: COLORS[0], teleop: false })
 const formRef = ref()
 watch(() => props.open, (v) => { if (v) mode.value = 'list' })
 
 const edit = (t?: DeviceType) => {
   editId.value = t ?? null
   const m = t ? TYPE_META[t] : null
-  Object.assign(f, m ? { label: m.label, icon: m.icon, color: m.color, teleop: m.teleop } : { label: '', icon: 'generic', color: COLORS[TYPES.length % COLORS.length], teleop: false })
+  Object.assign(f, m ? { label: m.label, icon: m.icon, img: m.img, color: m.color, teleop: m.teleop } : { label: '', icon: 'generic', img: undefined, color: COLORS[TYPES.length % COLORS.length], teleop: false })
   mode.value = 'edit'; formRef.value?.clearValidate()
 }
 const rules = { label: [{ required: true, validator: async (_: unknown, v: string) => {
@@ -63,8 +64,9 @@ const del = (t: DeviceType) => Modal.confirm({ title: `删除类型「${TYPE_MET
       <a-form-item label="类型名称" name="label"><a-input v-model:value="f.label" placeholder="如：机械臂" :maxlength="12" /></a-form-item>
       <a-form-item label="图标">
         <div class="tm-icons">
-          <button v-for="x in ICONS" :key="x.k" type="button" :class="{ on: f.icon === x.k }" @click="f.icon = x.k"><DeviceGlyph :type="x.k" :size="28" :color="f.color" /><span>{{ x.l }}</span></button>
+          <button v-for="x in ICONS" :key="x.k" type="button" :class="{ on: !f.img && f.icon === x.k }" @click="f.icon = x.k; f.img = undefined"><DeviceGlyph :type="x.k" :size="28" :color="f.color" /><span>{{ x.l }}</span></button>
         </div>
+        <div class="tm-up"><span class="muted">或上传自定义小图标</span><ImagePick v-model:value="f.img" :size="56" :max="128" hint="建议正方形透明底，自动裁边" /></div>
       </a-form-item>
       <a-form-item label="颜色">
         <div class="tm-colors"><button v-for="c in COLORS" :key="c" type="button" :class="{ on: f.color === c }" :style="{ background: c }" @click="f.color = c" /></div>
@@ -87,6 +89,7 @@ const del = (t: DeviceType) => Modal.confirm({ title: `删除类型「${TYPE_MET
 .tm-icons { display: flex; gap: 10px; }
 .tm-icons button { width: 72px; padding: 8px 0 6px; display: flex; flex-direction: column; align-items: center; gap: 4px; border: 1px solid var(--line); border-radius: 8px; background: rgba(10,24,42,.35); font: inherit; font-size: 12px; color: var(--muted); cursor: pointer; }
 .tm-icons button.on { border-color: #2ED3E6; color: #2ED3E6; background: rgba(46,211,230,.08); }
+.tm-up { display: flex; align-items: center; gap: 12px; margin-top: 12px; font-size: 12.5px; }
 .tm-colors { display: flex; gap: 10px; }
 .tm-colors button { width: 26px; height: 26px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; box-shadow: inset 0 0 0 2px rgba(10,24,42,.6); }
 .tm-colors button.on { border-color: #fff; }

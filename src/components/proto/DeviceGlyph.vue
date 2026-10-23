@@ -4,9 +4,11 @@ import { TYPE_META } from '@/models/device'
 /** type 可传设备类型 ID 或图标键；自定义类型按其配置的图标绘制 */
 const props = withDefaults(defineProps<{ type: string; size?: number; color?: string }>(), { size: 40, color: '#2ED3E6' })
 const icon = computed(() => TYPE_META[props.type]?.icon ?? props.type)
+const img = computed(() => TYPE_META[props.type]?.img)
 </script>
 <template>
-  <svg :width="size" :height="size" viewBox="0 0 64 64" fill="none" :stroke="color" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <img v-if="img" :src="img" alt="" :width="size" :height="size" style="object-fit: contain; display: inline-block; vertical-align: middle" />
+  <svg v-else :width="size" :height="size" viewBox="0 0 64 64" fill="none" :stroke="color" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
     <template v-if="icon === 'humanoid'">
       <rect x="25" y="5" width="14" height="12" rx="4" /><path d="M28 11h.01M36 11h.01" stroke-width="3" />
       <path d="M22 21h20l2 18H20z" /><path d="M22 23l-7 13 3 5M42 23l7 13-3 5" /><path d="M26 39l-2 20M38 39l2 20M22 59h5M37 59h5" />

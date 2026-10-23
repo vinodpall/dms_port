@@ -75,6 +75,16 @@ function del() {
       </section>
 
       <div class="dd-side">
+        <!-- 型号图片：不同来源的图尺寸不一，统一按等比缩放居中于固定舞台 -->
+        <section class="pp-panel dd-hero">
+          <div class="dd-stage"><img v-if="m.image" :src="m.image" :alt="m.name" /><DeviceGlyph v-else :type="d.type" :size="88" :color="TYPE_META[d.type].color" /></div>
+          <dl class="dd-mi">
+            <div><dt>型号</dt><dd>{{ m.name }}</dd></div>
+            <div><dt>厂商</dt><dd>{{ m.vendor }}</dd></div>
+            <div><dt>序列号</dt><dd class="mono">{{ d.sn }}</dd></div>
+            <div><dt>尺寸</dt><dd class="mono">{{ m.size ? `${m.size} mm` : '—' }}</dd></div>
+          </dl>
+        </section>
         <!-- 关键指标 -->
         <section class="pp-panel">
           <div class="pp-panel-h"><h3>实时状态</h3><span class="r muted" style="font-size:12px">{{ on ? '刚刚更新' : `最后在线 ${d.lastSeen}` }}</span></div>
@@ -138,7 +148,7 @@ function del() {
 <style scoped>
 .dd-head { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
 .dd-back { font-size: 16px; color: var(--muted); }
-.dd-ic { width: 48px; height: 48px; display: grid; place-items: center; background: rgba(46,211,230,.06); border: 1px solid var(--line); border-radius: 6px; }
+.dd-ic { width: 48px; height: 48px; overflow: hidden; display: grid; place-items: center; background: rgba(46,211,230,.06); border: 1px solid var(--line); border-radius: 6px; }
 .dd-t b { font-size: 20px; font-weight: 600; color: var(--title); margin-right: 12px; }
 .dd-t small { display: block; margin-top: 2px; font-size: 12.5px; }
 .dd-op { margin-left: auto; display: flex; gap: 8px; }
@@ -150,7 +160,15 @@ function del() {
 .dd-live i { width: 6px; height: 6px; border-radius: 50%; background: #FF5A5A; }
 .dd-empty { height: 100%; display: grid; place-items: center; color: var(--muted); font-size: 13px; }
 .dd-side { display: flex; flex-direction: column; gap: 16px; }
+.dd-hero { display: flex; align-items: stretch; gap: 16px; padding: 14px; }
+.dd-stage { position: relative; flex: 0 0 52%; height: 168px; padding: 10px 12px 16px; display: grid; place-items: center; border-radius: 6px; overflow: hidden;
+  background: radial-gradient(ellipse 70% 60% at 50% 45%, rgba(46,211,230,.12), rgba(46,211,230,0) 70%), rgba(10,24,42,.45); }
+.dd-stage::after { content: ''; position: absolute; left: 18%; right: 18%; bottom: 10px; height: 10px; border-radius: 50%; background: radial-gradient(ellipse, rgba(0,0,0,.45), transparent 70%); }
+.dd-stage img { position: absolute; z-index: 1; inset: 10px 12px 14px; width: calc(100% - 24px); height: calc(100% - 24px); object-fit: contain; filter: drop-shadow(0 6px 10px rgba(0,0,0,.35)); }
+.dd-mi { flex: 1; min-width: 0; margin: 0; display: flex; flex-direction: column; justify-content: center; gap: 10px; }
+.dd-mi div { display: flex; flex-direction: column; gap: 1px; } .dd-mi dt { font-size: 12px; color: var(--muted); } .dd-mi dd { margin: 0; font-size: 13.5px; color: var(--title); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dd-metrics { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: var(--line); }
+.dd-metrics > div:last-child:nth-child(odd) { grid-column: span 2; }
 .dd-metrics > div { padding: 14px 16px; background: var(--panel-2, #13263f); }
 .dd-metrics small { display: block; color: var(--muted); font-size: 12px; margin-bottom: 4px; }
 .dd-metrics b { font-size: 22px; font-weight: 600; color: var(--title); }

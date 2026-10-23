@@ -16,7 +16,7 @@ const typeColor = (t: DeviceType) => TYPE_META[t]?.color ?? '#2ED3E6'
 /* 总览条 */
 const vendors = computed(() => new Set(fleet.models.map((m) => m.vendor)).size)
 const typesN = computed(() => new Set(fleet.models.map((m) => m.type)).size)
-const SC: Record<DeviceStatus, string> = { working: '#2ED3E6', idle: '#45E3A8', charging: '#FFC15C', fault: '#FF7A7A', offline: '#4A6380' }
+const SC: Record<DeviceStatus, string> = { online: '#2ED3E6', fault: '#FF7A7A', offline: '#4A6380' }
 const status = computed(() => STATUSES.map((s) => ({ s, n: all.value.filter((d) => d.status === s).length })))
 
 /* 型号库存：类型从数据动态汇总 */
@@ -72,7 +72,7 @@ const recent = computed(() => [...all.value].sort((a, b) => (a.commissioned < b.
       </div>
       <div class="ds-cards">
         <button v-for="x in stock" :key="x.m.id" type="button" class="card" @click="emit('list', { model: x.m.id })">
-          <div class="ic" :style="{ '--c': typeColor(x.m.type) }"><DeviceGlyph :type="x.m.type" :size="30" :color="typeColor(x.m.type)" /></div>
+          <div class="ic" :class="{ pic: x.m.image }" :style="{ '--c': typeColor(x.m.type) }"><img v-if="x.m.image" :src="x.m.image" alt="" /><DeviceGlyph v-else :type="x.m.type" :size="30" :color="typeColor(x.m.type)" /></div>
           <div class="info"><b>{{ x.m.name }}</b><span class="muted">{{ x.m.vendor }} · {{ typeLabel(x.m.type) }}</span></div>
           <div class="cnt"><b class="mono">{{ x.total }}</b><span class="muted">台</span></div>
           <div class="sub muted"><span>在线 {{ x.on }}</span><span v-if="x.bad" class="bad">故障 {{ x.bad }}</span><span>{{ x.m.protocol }}</span></div>
@@ -133,6 +133,7 @@ const recent = computed(() => [...all.value].sort((a, b) => (a.commissioned < b.
 .ds-cards .card { display: grid; grid-template-columns: 44px 1fr auto; grid-template-rows: auto auto; gap: 10px 12px; align-items: center; padding: 14px 16px; border: 1px solid var(--line); border-radius: 8px; background: rgba(10,24,42,.35); font: inherit; color: var(--text); text-align: left; cursor: pointer; transition: border-color .15s, background .15s; }
 .ds-cards .card:hover { border-color: rgba(46,211,230,.45); background: rgba(46,211,230,.05); }
 .ds-cards .ic { width: 44px; height: 44px; border-radius: 10px; display: grid; place-items: center; background: color-mix(in srgb, var(--c) 12%, transparent); }
+.ds-cards .ic.pic { background: rgba(46,211,230,.06); padding: 3px; } .ds-cards .ic img { max-width: 100%; max-height: 100%; object-fit: contain; }
 .ds-cards .info { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .ds-cards .info b { font-size: 14px; font-weight: 600; color: var(--title); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ds-cards .info span { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
