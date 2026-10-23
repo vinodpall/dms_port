@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /** 设备概览：按「设备仓库」组织——库里有什么（型号库存）、哪些要处理、最近入库了什么 */
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { RightOutlined } from '@ant-design/icons-vue'
 import DeviceGlyph from '@/components/proto/DeviceGlyph.vue'
 import { STATUSES, STATUS_META, TYPE_META, isOnline, type Device, type DeviceModel, type DeviceStatus, type DeviceType } from '@/models/device'
@@ -22,10 +22,16 @@ const status = computed(() => STATUSES.map((s) => ({ s, n: all.value.filter((d) 
 /* 型号库存：类型从数据动态汇总 */
 const tf = ref<DeviceType | 'all'>('all')
 const typeTabs = computed(() => [...new Set(fleet.models.map((m) => m.type))].map((t) => ({ t, n: all.value.filter((d) => d.type === t).length })))
-const stock = computed(() => fleet.models
-  .filter((m) => tf.value === 'all' || m.type === tf.value)
-  .map((m) => { const ds = all.value.filter((d) => d.modelId === m.id); return { m, total: ds.length, on: ds.filter(isOnline).length, bad: ds.filter((d) => d.status === 'fault').length } })
-  .sort((a, b) => b.total - a.total))
+/** 柱状图：按类型分组，组内按数量降序 */
+const groups = computed(() => {
+  const order = [...new Set(fleet.models.map((m) => m.type))].filter((t) => tf.value === 'all' || t === tf.value)
+  return order.map((t) => ({ t, items: fleet.models.filter((m) => m.type === t)
+    .map((m) => ({ m, n: all.value.filter((d) => d.modelId === m.id).length })).sort((a, b) => b.n - a.n) }))
+})
+const yMax = computed(() => { const mx = Math.max(1, ...groups.value.flatMap((g) => g.items.map((x) => x.n))); const st = mx <= 5 ? 1 : mx <= 10 ? 2 : 5; return Math.ceil((mx + 0.5) / st) * st })
+const ticks = computed(() => { const st = yMax.value <= 6 ? 1 : yMax.value <= 12 ? 2 : 5; const r = []; for (let v = 0; v <= yMax.value; v += st) r.push(v); return r })
+const grown = ref(false)
+onMounted(() => requestAnimationFrame(() => requestAnimationFrame(() => (grown.value = true))))
 
 /* 待处理：故障 > 离线 > 固件待升级（同型号最高版本为最新） */
 const ver = (v: string) => v.replace(/^v/, '').split('.').map(Number)
@@ -70,13 +76,22 @@ const recent = computed(() => [...all.value].sort((a, b) => (a.commissioned < b.
           <button v-for="x in typeTabs" :key="x.t" type="button" :class="{ on: tf === x.t }" @click="tf = x.t">{{ typeLabel(x.t) }}</button>
         </div>
       </div>
-      <div class="ds-cards">
-        <button v-for="x in stock" :key="x.m.id" type="button" class="card" @click="emit('list', { model: x.m.id })">
-          <div class="ic" :class="{ pic: x.m.image }" :style="{ '--c': typeColor(x.m.type) }"><img v-if="x.m.image" :src="x.m.image" alt="" /><DeviceGlyph v-else :type="x.m.type" :size="30" :color="typeColor(x.m.type)" /></div>
-          <div class="info"><b>{{ x.m.name }}</b><span class="muted">{{ x.m.vendor }} · {{ typeLabel(x.m.type) }}</span></div>
-          <div class="cnt"><b class="mono">{{ x.total }}</b><span class="muted">台</span></div>
-          <div class="sub muted"><span>在线 {{ x.on }}</span><span v-if="x.bad" class="bad">故障 {{ x.bad }}</span><span>{{ x.m.protocol }}</span></div>
-        </button>
+      <div class="ds-chart" :class="{ tight: groups.reduce((a, g) => a + g.items.length, 0) > 10 }">
+        <div class="y"><span v-for="v in ticks" :key="v" class="mono" :style="{ bottom: `calc(var(--xb) + (100% - var(--xb) - var(--pt)) * ${v / yMax})` }">{{ v }}</span></div>
+        <div class="plot">
+          <i v-for="v in ticks" :key="v" class="grid" :class="{ base: v === 0 }" :style="{ bottom: `calc(var(--xb) + (100% - var(--xb) - var(--pt)) * ${v / yMax})` }" />
+          <div v-for="g in groups" :key="g.t" class="grp" :style="{ flexGrow: g.items.length, '--c': typeColor(g.t) }">
+            <div class="cols">
+              <a-tooltip v-for="x in g.items" :key="x.m.id" :title="`${x.m.name} · ${x.m.vendor}：${x.n} 台`" :mouse-enter-delay="0.15">
+                <button type="button" class="col" @click="emit('list', { model: x.m.id })">
+                  <div class="track"><div class="bar" :style="{ height: grown ? `${(x.n / yMax) * 100}%` : '0%' }"><b class="mono">{{ x.n }}</b></div></div>
+                  <span class="lb"><em>{{ x.m.name }}</em></span>
+                </button>
+              </a-tooltip>
+            </div>
+            <div class="gl"><span>{{ typeLabel(g.t) }}</span></div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -129,17 +144,6 @@ const recent = computed(() => [...all.value].sort((a, b) => (a.commissioned < b.
 .ds-seg button.on { background: rgba(46,211,230,.18); color: #2ED3E6; }
 
 /* 型号卡片 */
-.ds-cards { flex: 1; min-height: 0; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); align-content: start; gap: 12px; padding: 16px; }
-.ds-cards .card { display: grid; grid-template-columns: 44px 1fr auto; grid-template-rows: auto auto; gap: 10px 12px; align-items: center; padding: 14px 16px; border: 1px solid var(--line); border-radius: 8px; background: rgba(10,24,42,.35); font: inherit; color: var(--text); text-align: left; cursor: pointer; transition: border-color .15s, background .15s; }
-.ds-cards .card:hover { border-color: rgba(46,211,230,.45); background: rgba(46,211,230,.05); }
-.ds-cards .ic { width: 44px; height: 44px; border-radius: 10px; display: grid; place-items: center; background: color-mix(in srgb, var(--c) 12%, transparent); }
-.ds-cards .ic.pic { background: rgba(46,211,230,.06); padding: 3px; overflow: hidden; } .ds-cards .ic img { display: block; width: 100%; height: 100%; min-width: 0; min-height: 0; object-fit: contain; }
-.ds-cards .info { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.ds-cards .info b { font-size: 14px; font-weight: 600; color: var(--title); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ds-cards .info span { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ds-cards .cnt { display: flex; align-items: baseline; gap: 3px; } .ds-cards .cnt b { font-size: 24px; font-weight: 600; color: var(--title); } .ds-cards .cnt span { font-size: 12px; }
-.ds-cards .sub { grid-column: 1 / -1; display: flex; gap: 14px; padding-top: 10px; border-top: 1px dashed var(--line); font-size: 12px; }
-.ds-cards .sub span:last-child { margin-left: auto; } .ds-cards .sub .bad { color: var(--bad); }
 
 /* 列表 */
 .ds-cnt { min-width: 22px; height: 20px; padding: 0 6px; margin-left: 8px; border-radius: 10px; background: rgba(255,122,122,.15); color: var(--bad); font-size: 12px; display: grid; place-items: center; }
@@ -153,4 +157,29 @@ const recent = computed(() => [...all.value].sort((a, b) => (a.commissioned < b.
 .ds-todo span { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; }
 .ds-todo small { margin-left: auto; flex: none; font-size: 12px; color: var(--muted); }
 .ds-todo .go { font-size: 10px; color: var(--faint, #5d7690); }
+.ds-chart { --xb: 64px; --pt: 26px; flex: 1; min-height: 0; display: flex; gap: 10px; padding: 12px 20px 14px 14px; }
+.ds-chart .y { position: relative; width: 22px; flex: none; }
+.ds-chart .y span { position: absolute; right: 0; transform: translateY(50%); font-size: 11px; color: var(--muted); line-height: 1; }
+.ds-chart .plot { position: relative; flex: 1; min-width: 0; display: flex; gap: 18px; }
+.ds-chart .grid { position: absolute; left: 0; right: 0; height: 0; border-top: 1px dashed rgba(120,160,210,.13); pointer-events: none; }
+.ds-chart .grid.base { border-top: 1px solid rgba(120,160,210,.28); }
+.ds-chart .grp { flex-basis: 0; min-width: 0; display: flex; flex-direction: column; }
+.ds-chart .cols { flex: 1; min-height: 0; display: flex; gap: 6px; }
+.ds-chart .col { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 0; border: 0; background: none; font: inherit; color: inherit; cursor: pointer; }
+.ds-chart .track { flex: 1; min-height: 0; display: flex; align-items: flex-end; justify-content: center; padding-top: var(--pt); }
+.ds-chart .bar { position: relative; width: 100%; max-width: 34px; border-radius: 5px 5px 1px 1px; transition: height .7s cubic-bezier(.2,.8,.2,1), filter .15s, opacity .15s;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--c) 92%, #fff 8%) 0%, color-mix(in srgb, var(--c) 55%, transparent) 55%, color-mix(in srgb, var(--c) 16%, transparent) 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.35); }
+.ds-chart .bar b { position: absolute; left: 50%; bottom: 100%; transform: translate(-50%, -5px); font-size: 12.5px; font-weight: 600; color: var(--title); }
+.ds-chart .lb { height: 40px; flex: none; padding: 8px 0 0; font-size: 11.5px; line-height: 1.3; color: var(--muted); text-align: center; overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ds-chart .lb em { font-style: normal; }
+.ds-chart.tight { --xb: 84px; }
+.ds-chart.tight .lb { position: relative; height: 60px; display: block; overflow: visible; }
+.ds-chart.tight .lb em { position: absolute; right: 50%; top: 6px; white-space: nowrap; transform-origin: right center; transform: rotate(-38deg); }
+.ds-chart .plot:has(.col:hover) .col:not(:hover) .bar { opacity: .45; }
+.ds-chart .col:hover .bar { filter: brightness(1.15); }
+.ds-chart .col:hover .lb { color: var(--title); }
+.ds-chart .gl { height: 24px; flex: none; display: flex; justify-content: center; align-items: flex-end; border-top: 1px solid color-mix(in srgb, var(--c) 45%, transparent); }
+.ds-chart .gl span { font-size: 12px; color: var(--c); }
 </style>
