@@ -22,13 +22,10 @@ const status = computed(() => STATUSES.map((s) => ({ s, n: all.value.filter((d) 
 /* 型号库存：类型从数据动态汇总 */
 const tf = ref<DeviceType | 'all'>('all')
 const typeTabs = computed(() => [...new Set(fleet.models.map((m) => m.type))].map((t) => ({ t, n: all.value.filter((d) => d.type === t).length })))
-/** 柱状图：按类型分组，组内按数量降序 */
-const groups = computed(() => {
-  const order = [...new Set(fleet.models.map((m) => m.type))].filter((t) => tf.value === 'all' || t === tf.value)
-  return order.map((t) => ({ t, items: fleet.models.filter((m) => m.type === t)
-    .map((m) => ({ m, n: all.value.filter((d) => d.modelId === m.id).length })).sort((a, b) => b.n - a.n) }))
-})
-const yMax = computed(() => { const mx = Math.max(1, ...groups.value.flatMap((g) => g.items.map((x) => x.n))); const st = mx <= 5 ? 1 : mx <= 10 ? 2 : 5; return Math.ceil((mx + 0.5) / st) * st })
+/** 柱状图：直接按型号，数量从多到少 */
+const bars = computed(() => fleet.models.filter((m) => tf.value === 'all' || m.type === tf.value)
+  .map((m) => ({ m, n: all.value.filter((d) => d.modelId === m.id).length })).sort((a, b) => b.n - a.n))
+const yMax = computed(() => { const mx = Math.max(1, ...bars.value.map((x) => x.n)); const st = mx <= 5 ? 1 : mx <= 10 ? 2 : 5; return Math.ceil((mx + 0.5) / st) * st })
 const ticks = computed(() => { const st = yMax.value <= 6 ? 1 : yMax.value <= 12 ? 2 : 5; const r = []; for (let v = 0; v <= yMax.value; v += st) r.push(v); return r })
 const grown = ref(false)
 onMounted(() => requestAnimationFrame(() => requestAnimationFrame(() => (grown.value = true))))
@@ -76,20 +73,17 @@ const recent = computed(() => [...all.value].sort((a, b) => (a.commissioned < b.
           <button v-for="x in typeTabs" :key="x.t" type="button" :class="{ on: tf === x.t }" @click="tf = x.t">{{ typeLabel(x.t) }}</button>
         </div>
       </div>
-      <div class="ds-chart" :class="{ tight: groups.reduce((a, g) => a + g.items.length, 0) > 10 }">
+      <div class="ds-chart" :class="{ tight: bars.length > 10 }">
         <div class="y"><span v-for="v in ticks" :key="v" class="mono" :style="{ bottom: `calc(var(--xb) + (100% - var(--xb) - var(--pt)) * ${v / yMax})` }">{{ v }}</span></div>
         <div class="plot">
           <i v-for="v in ticks" :key="v" class="grid" :class="{ base: v === 0 }" :style="{ bottom: `calc(var(--xb) + (100% - var(--xb) - var(--pt)) * ${v / yMax})` }" />
-          <div v-for="g in groups" :key="g.t" class="grp" :style="{ flexGrow: g.items.length, '--c': typeColor(g.t) }">
-            <div class="cols">
-              <a-tooltip v-for="x in g.items" :key="x.m.id" :title="`${x.m.name} · ${x.m.vendor}：${x.n} 台`" :mouse-enter-delay="0.15">
-                <button type="button" class="col" @click="emit('list', { model: x.m.id })">
-                  <div class="track"><div class="bar" :style="{ height: grown ? `${(x.n / yMax) * 100}%` : '0%' }"><b class="mono">{{ x.n }}</b></div></div>
-                  <span class="lb"><em>{{ x.m.name }}</em></span>
-                </button>
-              </a-tooltip>
-            </div>
-            <div class="gl"><span>{{ typeLabel(g.t) }}</span></div>
+          <div class="cols">
+            <a-tooltip v-for="x in bars" :key="x.m.id" :title="`${x.m.name} · ${x.m.vendor}：${x.n} 台`" :mouse-enter-delay="0.15">
+              <button type="button" class="col" @click="emit('list', { model: x.m.id })">
+                <div class="track"><div class="bar" :style="{ height: grown ? `${(x.n / yMax) * 100}%` : '0%' }"><b class="mono">{{ x.n }}</b></div></div>
+                <span class="lb"><em>{{ x.m.name }}</em></span>
+              </button>
+            </a-tooltip>
           </div>
         </div>
       </div>
@@ -157,14 +151,13 @@ const recent = computed(() => [...all.value].sort((a, b) => (a.commissioned < b.
 .ds-todo span { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; }
 .ds-todo small { margin-left: auto; flex: none; font-size: 12px; color: var(--muted); }
 .ds-todo .go { font-size: 10px; color: var(--faint, #5d7690); }
-.ds-chart { --xb: 64px; --pt: 26px; flex: 1; min-height: 0; display: flex; gap: 10px; padding: 12px 20px 14px 14px; }
+.ds-chart { --c: #2ED3E6; --xb: 40px; --pt: 26px; flex: 1; min-height: 0; display: flex; gap: 10px; padding: 12px 20px 14px 14px; }
 .ds-chart .y { position: relative; width: 22px; flex: none; }
 .ds-chart .y span { position: absolute; right: 0; transform: translateY(50%); font-size: 11px; color: var(--muted); line-height: 1; }
 .ds-chart .plot { position: relative; flex: 1; min-width: 0; display: flex; gap: 18px; }
 .ds-chart .grid { position: absolute; left: 0; right: 0; height: 0; border-top: 1px dashed rgba(120,160,210,.13); pointer-events: none; }
 .ds-chart .grid.base { border-top: 1px solid rgba(120,160,210,.28); }
-.ds-chart .grp { flex-basis: 0; min-width: 0; display: flex; flex-direction: column; }
-.ds-chart .cols { flex: 1; min-height: 0; display: flex; gap: 6px; }
+.ds-chart .cols { flex: 1; min-width: 0; display: flex; gap: 8px; }
 .ds-chart .col { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 0; border: 0; background: none; font: inherit; color: inherit; cursor: pointer; }
 .ds-chart .track { flex: 1; min-height: 0; display: flex; align-items: flex-end; justify-content: center; padding-top: var(--pt); }
 .ds-chart .bar { position: relative; width: 100%; max-width: 34px; border-radius: 5px 5px 1px 1px; transition: height .7s cubic-bezier(.2,.8,.2,1), filter .15s, opacity .15s;
@@ -174,12 +167,10 @@ const recent = computed(() => [...all.value].sort((a, b) => (a.commissioned < b.
 .ds-chart .lb { height: 40px; flex: none; padding: 8px 0 0; font-size: 11.5px; line-height: 1.3; color: var(--muted); text-align: center; overflow-wrap: anywhere;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .ds-chart .lb em { font-style: normal; }
-.ds-chart.tight { --xb: 84px; }
+.ds-chart.tight { --xb: 60px; }
 .ds-chart.tight .lb { position: relative; height: 60px; display: block; overflow: visible; }
 .ds-chart.tight .lb em { position: absolute; right: 50%; top: 6px; white-space: nowrap; transform-origin: right center; transform: rotate(-38deg); }
 .ds-chart .plot:has(.col:hover) .col:not(:hover) .bar { opacity: .45; }
 .ds-chart .col:hover .bar { filter: brightness(1.15); }
 .ds-chart .col:hover .lb { color: var(--title); }
-.ds-chart .gl { height: 24px; flex: none; display: flex; justify-content: center; align-items: flex-end; border-top: 1px solid color-mix(in srgb, var(--c) 45%, transparent); }
-.ds-chart .gl span { font-size: 12px; color: var(--c); }
 </style>
