@@ -1,9 +1,10 @@
 <script setup lang="ts">
-/** 设备列表：类型页签 + 状态筛选 + 表格；只展示关键信息，其余进详情查看 */
+/** 设备列表：下拉筛选 + 表格（每页行数按屏幕高度计算，一屏显示完整）；只展示关键信息，其余进详情查看 */
 import { computed, reactive, ref, watch } from 'vue'
 import { Modal, message } from 'ant-design-vue'
 import { PlusOutlined, SearchOutlined, MoreOutlined, DownOutlined, ImportOutlined, ExportOutlined, EnvironmentOutlined } from '@ant-design/icons-vue'
 import AreaManager from './AreaManager.vue'
+import { useFitRows } from '@/components/proto/fitRows'
 import { AREAS, STATUSES, STATUS_META, TYPES, TYPE_META, canTeleop, isOnline, type Device, type DeviceStatus, type DeviceType } from '@/models/device'
 import { fleet, modelOf, removeDevice } from './store'
 
@@ -15,8 +16,13 @@ const f = reactive({ type: undefined as DeviceType | undefined, model: undefined
 /* 从概览跳转过来时带入筛选 */
 watch(() => props.preset?.n, () => { if (props.preset) Object.assign(f, { type: props.preset.type, status: props.preset.status, model: props.preset.model, area: props.preset.area, kw: '' }) }, { immediate: true })
 
-const typeTabs = computed(() => [{ k: 'all', l: '全部', n: fleet.devices.length }, ...TYPES.map((t) => ({ k: t, l: TYPE_META[t].label, n: fleet.devices.filter((d) => d.type === t).length }))])
-const tabKey = computed({ get: () => f.type ?? 'all', set: (v: string) => { f.type = v === 'all' ? undefined : (v as DeviceType); f.model = undefined } })
+const typeOpts = computed(() => TYPES.map((t) => ({ value: t, label: TYPE_META[t].label })))
+const statusOpts = STATUSES.map((s) => ({ value: s, label: STATUS_META[s].label }))
+watch(() => f.type, (t) => { if (f.model && fleet.models.find((m) => m.id === f.model)?.type !== t && t) f.model = undefined })
+const dirty = computed(() => !!(f.type || f.model || f.status || f.area || f.kw))
+const reset = () => Object.assign(f, { type: undefined, model: undefined, status: undefined, area: undefined, kw: '' })
+const host = ref<HTMLElement>()
+const { size: pageSize } = useFitRows(host, 64)
 const modelOpts = computed(() => fleet.models.filter((m) => !f.type || m.type === f.type).map((m) => ({ value: m.id, label: m.name })))
 
 /** 先按类型 / 型号 / 区域 / 关键字过滤，再统计状态（状态条既是统计也是筛选） */
@@ -26,16 +32,15 @@ const scoped = computed(() => {
     (!kw || [d.name, d.sn, d.ip].some((s) => s.toLowerCase().includes(kw))))
 })
 const rows = computed(() => scoped.value.filter((d) => !f.status || d.status === f.status))
-const stat = (s: DeviceStatus) => scoped.value.filter((d) => d.status === s).length
 
 const columns = [
-  { title: '设备', key: 'name', width: 210 },
-  { title: '型号', key: 'model', width: 200 },
-  { title: '状态', key: 'status', width: 150 },
-  { title: '电量', key: 'battery', width: 100, sorter: (a: Device, b: Device) => a.battery - b.battery },
-  { title: '网络地址', key: 'ip', width: 190 },
-  { title: '所属区域', dataIndex: 'area' },
-  { title: '', key: 'op', width: 110, align: 'right' as const },
+  { title: '设备', key: 'name', width: '17%' },
+  { title: '型号', key: 'model', width: '17%' },
+  { title: '状态', key: 'status', width: '14%' },
+  { title: '电量', key: 'battery', width: '9%', sorter: (a: Device, b: Device) => a.battery - b.battery },
+  { title: '网络地址', key: 'ip', width: '17%' },
+  { title: '所属区域', dataIndex: 'area', width: '15%' },
+  { title: '操作', key: 'op', align: 'right' as const },
 ]
 const batColor = (b: number) => (b < 20 ? 'var(--bad)' : b < 40 ? 'var(--warn)' : 'var(--text)')
 
@@ -59,23 +64,18 @@ const onMenu = (key: string, d: Device) => (key === 'edit' ? emit('edit', d) : d
     </div>
   </div>
 
-  <section class="pp-panel dl-main">
-      <a-tabs v-model:active-key="tabKey" class="dl-tabs">
-        <a-tab-pane v-for="t in typeTabs" :key="t.k"><template #tab>{{ t.l }} <span class="dl-n">{{ t.n }}</span></template></a-tab-pane>
-      </a-tabs>
-      <div class="dl-bar">
-        <div class="dl-stat">
-          <button type="button" :class="{ on: !f.status }" @click="f.status = undefined">全部 <b>{{ scoped.length }}</b></button>
-          <button v-for="s in STATUSES" :key="s" type="button" :class="{ on: f.status === s }" @click="f.status = f.status === s ? undefined : s"><a-badge :status="STATUS_META[s].badge" />{{ STATUS_META[s].label }} <b>{{ stat(s) }}</b></button>
-        </div>
-        <div class="dl-q">
-          <a-select v-model:value="f.model" allow-clear placeholder="型号" style="width: 130px" :options="modelOpts" />
-          <a-select v-model:value="f.area" allow-clear placeholder="所属区域" style="width: 150px" :options="AREAS.map((v) => ({ value: v, label: v }))" />
-          <a-input v-model:value="f.kw" allow-clear placeholder="名称 / 序列号 / IP" style="width: 190px"><template #prefix><SearchOutlined class="muted" /></template></a-input>
-        </div>
+  <section ref="host" class="pp-panel dl-main">
+      <div class="pp-filter">
+        <a-input v-model:value="f.kw" allow-clear placeholder="名称 / 序列号 / IP" style="width: 220px"><template #prefix><SearchOutlined /></template></a-input>
+        <a-select v-model:value="f.type" allow-clear placeholder="设备类型" style="width: 130px" :options="typeOpts" />
+        <a-select v-model:value="f.model" allow-clear placeholder="型号" style="width: 140px" :options="modelOpts" show-search option-filter-prop="label" />
+        <a-select v-model:value="f.status" allow-clear placeholder="状态" style="width: 110px" :options="statusOpts" />
+        <a-select v-model:value="f.area" allow-clear placeholder="所属区域" style="width: 160px" :options="AREAS.map((v) => ({ value: v, label: v }))" />
+        <a v-if="dirty" class="reset" @click="reset">重置</a>
+        <span class="sum">共<b>{{ rows.length }}</b>台</span>
       </div>
 
-      <a-table :data-source="rows" :columns="columns" row-key="id" size="middle" :pagination="{ pageSize: 12, showSizeChanger: false, size: 'small' }"
+      <a-table :data-source="rows" :columns="columns" row-key="id" size="middle" :pagination="{ pageSize, showSizeChanger: false, size: 'small', hideOnSinglePage: false }" class="pp-table"
         :custom-row="(r: Device) => ({ onClick: () => emit('open', r), style: 'cursor:pointer' })">
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'name'"><div class="dl-2"><b>{{ record.name }}</b><small class="mono">{{ record.sn }}</small></div></template>
@@ -105,20 +105,8 @@ const onMenu = (key: string, d: Device) => (key === 'edit' ? emit('edit', d) : d
 
 <style scoped>
 .dl-main { min-width: 0; }
-.dl-tabs { padding: 0 16px; }
-.dl-tabs :deep(.ant-tabs-nav) { margin: 0; }
-.dl-n { margin-left: 4px; font-size: 12px; color: var(--muted); font-family: var(--mono); }
-.dl-main :deep(.ant-table-tbody > tr > td) { padding-top: 11px; padding-bottom: 11px; }
-.dl-main :deep(.ant-table-thead > tr > th) { font-size: 12.5px; color: var(--muted); font-weight: 400; }
+.dl-main :deep(.ant-table-tbody > tr > td) { height: 64px; padding-top: 0; padding-bottom: 0; }
 .dl-main :deep(.ant-table-tbody > tr:hover b) { color: #2ED3E6; }
-.dl-bar { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
-.dl-stat { display: flex; gap: 4px; }
-.dl-stat button { display: inline-flex; align-items: center; gap: 4px; height: 30px; padding: 0 12px; border: 1px solid transparent; border-radius: 4px; background: none; color: var(--muted); font: inherit; font-size: 13px; cursor: pointer; }
-.dl-stat button b { color: var(--text); font-weight: 600; font-family: var(--mono); margin-left: 2px; }
-.dl-stat button:hover { color: var(--text); }
-.dl-stat button.on { border-color: rgba(46,211,230,.35); background: rgba(46,211,230,.08); color: var(--title); }
-.dl-stat :deep(.ant-badge-status-dot) { top: -1px; }
-.dl-q { margin-left: auto; display: flex; gap: 8px; }
 .dl-2 { display: flex; flex-direction: column; gap: 1px; line-height: 1.45; }
 .dl-2 b { font-weight: 500; color: var(--title); transition: color .15s; }
 .dl-2 small { font-size: 12px; color: var(--muted); white-space: nowrap; }

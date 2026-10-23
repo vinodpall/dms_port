@@ -85,3 +85,23 @@
 .pp .ant-btn-primary:not(:disabled):hover { filter: brightness(1.1); }
 .pp .ant-card { background: transparent; }
 .pp ::-webkit-scrollbar { width: 8px; height: 8px; } .pp ::-webkit-scrollbar-thumb { background: var(--scroll); border-radius: 4px; } .pp ::-webkit-scrollbar-track { background: transparent; }
+
+/* 列表页筛选条：低对比描边 + 半透明底，悬停/聚焦时亮起 */
+.pp-filter { display: flex; align-items: center; gap: 10px; padding: 14px 20px; border-bottom: 1px solid rgba(var(--glow),.1); flex-wrap: wrap; }
+.pp-filter .ant-select .ant-select-selector,
+.pp-filter .ant-input-affix-wrapper { background: rgba(255,255,255,.035) !important; border-color: rgba(140,175,220,.18) !important; box-shadow: none !important; transition: border-color .15s, background .15s; }
+.pp-filter .ant-select:hover .ant-select-selector,
+.pp-filter .ant-input-affix-wrapper:hover { border-color: rgba(46,211,230,.45) !important; background: rgba(46,211,230,.04) !important; }
+.pp-filter .ant-select-focused .ant-select-selector,
+.pp-filter .ant-input-affix-wrapper-focused { border-color: rgba(46,211,230,.7) !important; }
+.pp-filter .ant-input-affix-wrapper > input.ant-input { background: transparent !important; }
+.pp-filter .ant-select-selection-placeholder, .pp-filter input::placeholder { color: rgba(170,190,215,.5) !important; }
+.pp-filter .ant-select-arrow, .pp-filter .ant-input-prefix { color: rgba(170,190,215,.55); }
+.pp-filter .sum { margin-left: auto; font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+.pp-filter .sum b { color: var(--title); font-family: var(--mono); font-weight: 600; margin: 0 3px; }
+.pp-filter .reset { font-size: 12.5px; }
+/* 列表表格：首尾列留出内边距 */
+.pp-table .ant-table-thead > tr > th:first-child, .pp-table .ant-table-tbody > tr > td:first-child { padding-left: 24px !important; }
+.pp-table .ant-table-thead > tr > th:last-child, .pp-table .ant-table-tbody > tr > td:last-child { padding-right: 20px !important; }
+.pp-table .ant-table-thead > tr > th { font-size: 12.5px; color: var(--muted) !important; font-weight: 400 !important; }
+.pp-table .ant-table-pagination.ant-pagination { margin: 14px 20px !important; }
