@@ -1,12 +1,13 @@
 <script setup lang="ts">
-/** 设备列表：左侧「类型 → 型号」树，右侧状态筛选 + 表格；只展示关键信息，其余进详情查看 */
-import { computed, reactive, watch } from 'vue'
+/** 设备列表：类型页签 + 状态筛选 + 表格；只展示关键信息，其余进详情查看 */
+import { computed, reactive, ref, watch } from 'vue'
 import { Modal, message } from 'ant-design-vue'
-import { PlusOutlined, SearchOutlined, MoreOutlined, DownOutlined, ImportOutlined, ExportOutlined } from '@ant-design/icons-vue'
-import DeviceGlyph from '@/components/proto/DeviceGlyph.vue'
+import { PlusOutlined, SearchOutlined, MoreOutlined, DownOutlined, ImportOutlined, ExportOutlined, EnvironmentOutlined } from '@ant-design/icons-vue'
+import AreaManager from './AreaManager.vue'
 import { AREAS, STATUSES, STATUS_META, TYPES, TYPE_META, canTeleop, isOnline, type Device, type DeviceStatus, type DeviceType } from '@/models/device'
 import { fleet, modelOf, removeDevice } from './store'
 
+const areasOpen = ref(false)
 const props = defineProps<{ preset?: { type?: DeviceType; status?: DeviceStatus; model?: string; area?: string; n: number } | null }>()
 const emit = defineEmits<{ open: [Device]; teleop: [Device]; edit: [Device]; add: [] }>()
 
@@ -28,13 +29,13 @@ const rows = computed(() => scoped.value.filter((d) => !f.status || d.status ===
 const stat = (s: DeviceStatus) => scoped.value.filter((d) => d.status === s).length
 
 const columns = [
-  { title: '设备', key: 'name' },
-  { title: '型号', key: 'model', width: 150 },
-  { title: '状态', key: 'status', width: 110 },
-  { title: '电量', key: 'battery', width: 90, sorter: (a: Device, b: Device) => a.battery - b.battery },
-  { title: '内网 IP', dataIndex: 'ip', width: 130 },
-  { title: '所属区域', dataIndex: 'area', width: 160 },
-  { title: '操作', key: 'op', width: 120, align: 'right' as const },
+  { title: '设备', key: 'name', width: 210 },
+  { title: '型号', key: 'model', width: 200 },
+  { title: '状态', key: 'status', width: 150 },
+  { title: '电量', key: 'battery', width: 100, sorter: (a: Device, b: Device) => a.battery - b.battery },
+  { title: '网络地址', key: 'ip', width: 190 },
+  { title: '所属区域', dataIndex: 'area' },
+  { title: '', key: 'op', width: 110, align: 'right' as const },
 ]
 const batColor = (b: number) => (b < 20 ? 'var(--bad)' : b < 40 ? 'var(--warn)' : 'var(--text)')
 
@@ -50,6 +51,7 @@ const onMenu = (key: string, d: Device) => (key === 'edit' ? emit('edit', d) : d
   <div class="pp-head">
     <div><h2>设备列表</h2><p>共 {{ fleet.devices.length }} 台设备，在线 {{ fleet.devices.filter(isOnline).length }} 台</p></div>
     <div class="r" style="margin-left:auto; display:flex; gap:8px">
+      <a-button @click="areasOpen = true"><EnvironmentOutlined />所属区域</a-button>
       <a-dropdown><a-button>批量 <DownOutlined /></a-button>
         <template #overlay><a-menu><a-menu-item key="i"><ImportOutlined /> 批量导入</a-menu-item><a-menu-item key="e"><ExportOutlined /> 导出列表</a-menu-item></a-menu></template>
       </a-dropdown>
@@ -76,16 +78,14 @@ const onMenu = (key: string, d: Device) => (key === 'edit' ? emit('edit', d) : d
       <a-table :data-source="rows" :columns="columns" row-key="id" size="middle" :pagination="{ pageSize: 12, showSizeChanger: false, size: 'small' }"
         :custom-row="(r: Device) => ({ onClick: () => emit('open', r), style: 'cursor:pointer' })">
         <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'name'">
-            <div class="dl-dev"><DeviceGlyph :type="record.type" :size="26" :color="TYPE_META[record.type as DeviceType].color" /><div><b>{{ record.name }}</b><small class="mono muted">{{ record.sn }}</small></div></div>
-          </template>
-          <template v-else-if="column.key === 'model'">{{ modelOf(record)?.name }}</template>
+          <template v-if="column.key === 'name'"><div class="dl-2"><b>{{ record.name }}</b><small class="mono">{{ record.sn }}</small></div></template>
+          <template v-else-if="column.key === 'model'"><div class="dl-2"><span>{{ modelOf(record)?.name ?? '—' }}</span><small>{{ TYPE_META[record.type as DeviceType]?.label }}<template v-if="modelOf(record)"> · {{ modelOf(record)?.vendor }}</template></small></div></template>
           <template v-else-if="column.key === 'status'">
-            <a-tooltip v-if="record.status === 'offline'" :title="`最后在线：${record.lastSeen}`"><a-badge status="default" text="离线" /></a-tooltip>
-            <a-badge v-else :status="STATUS_META[record.status as DeviceStatus].badge" :text="STATUS_META[record.status as DeviceStatus].label" />
+            <div class="dl-2"><a-badge :status="STATUS_META[record.status as DeviceStatus].badge" :text="STATUS_META[record.status as DeviceStatus].label" /><small v-if="record.status === 'offline'">最后在线 {{ record.lastSeen }}</small></div>
           </template>
-          <template v-else-if="column.key === 'battery'"><span class="mono" :style="{ color: batColor(record.battery) }">{{ isOnline(record) ? record.battery + '%' : '—' }}</span></template>
-          <template v-else-if="column.dataIndex === 'ip'"><span class="mono">{{ record.ip }}</span></template>
+          <template v-else-if="column.key === 'battery'"><span class="mono" :style="{ color: isOnline(record) ? batColor(record.battery) : 'var(--muted)' }">{{ isOnline(record) ? record.battery + '%' : '—' }}</span></template>
+          <template v-else-if="column.key === 'ip'"><div class="dl-2"><span class="mono">{{ record.ip }}</span><small v-if="record.publicIp" class="mono">外网 {{ record.publicIp }}</small></div></template>
+          <template v-else-if="column.dataIndex === 'area'"><span class="dl-area">{{ record.area }}</span></template>
           <template v-else-if="column.key === 'op'">
             <div class="dl-op" @click.stop>
               <a-tooltip v-if="TYPE_META[record.type as DeviceType].teleop" :title="canTeleop(record) ? '' : '设备离线或故障，暂不可遥操作'">
@@ -99,6 +99,7 @@ const onMenu = (key: string, d: Device) => (key === 'edit' ? emit('edit', d) : d
         </template>
       </a-table>
   </section>
+  <AreaManager v-model:open="areasOpen" />
   </div>
 </template>
 
@@ -107,7 +108,9 @@ const onMenu = (key: string, d: Device) => (key === 'edit' ? emit('edit', d) : d
 .dl-tabs { padding: 0 16px; }
 .dl-tabs :deep(.ant-tabs-nav) { margin: 0; }
 .dl-n { margin-left: 4px; font-size: 12px; color: var(--muted); font-family: var(--mono); }
-.dl-main :deep(.ant-table-tbody > tr > td) { padding-top: 10px; padding-bottom: 10px; }
+.dl-main :deep(.ant-table-tbody > tr > td) { padding-top: 11px; padding-bottom: 11px; }
+.dl-main :deep(.ant-table-thead > tr > th) { font-size: 12.5px; color: var(--muted); font-weight: 400; }
+.dl-main :deep(.ant-table-tbody > tr:hover b) { color: #2ED3E6; }
 .dl-bar { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
 .dl-stat { display: flex; gap: 4px; }
 .dl-stat button { display: inline-flex; align-items: center; gap: 4px; height: 30px; padding: 0 12px; border: 1px solid transparent; border-radius: 4px; background: none; color: var(--muted); font: inherit; font-size: 13px; cursor: pointer; }
@@ -116,8 +119,10 @@ const onMenu = (key: string, d: Device) => (key === 'edit' ? emit('edit', d) : d
 .dl-stat button.on { border-color: rgba(46,211,230,.35); background: rgba(46,211,230,.08); color: var(--title); }
 .dl-stat :deep(.ant-badge-status-dot) { top: -1px; }
 .dl-q { margin-left: auto; display: flex; gap: 8px; }
-.dl-dev { display: flex; align-items: center; gap: 10px; }
-.dl-dev b { display: block; font-weight: 500; }
-.dl-dev small { display: block; font-size: 11.5px; line-height: 1.4; }
+.dl-2 { display: flex; flex-direction: column; gap: 1px; line-height: 1.45; }
+.dl-2 b { font-weight: 500; color: var(--title); transition: color .15s; }
+.dl-2 small { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.dl-2 :deep(.ant-badge-status-text) { margin-inline-start: 6px; }
+.dl-area { color: var(--text); }
 .dl-op { display: flex; justify-content: flex-end; align-items: center; }
 </style>

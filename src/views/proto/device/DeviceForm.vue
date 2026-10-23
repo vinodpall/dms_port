@@ -2,6 +2,8 @@
 /** 新增 / 编辑设备 */
 import { computed, reactive, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
+import { SettingOutlined } from '@ant-design/icons-vue'
+import AreaManager from './AreaManager.vue'
 import { AREAS, STATUSES, STATUS_META, type Device, type DeviceStatus } from '@/models/device'
 import { fleet, ipTaken, saveDevice } from './store'
 
@@ -14,6 +16,7 @@ const blank = () => ({
 })
 const f = reactive(blank())
 const formRef = ref()
+const areasOpen = ref(false)
 const editing = computed(() => !!props.device)
 
 watch(() => props.open, (v) => {
@@ -29,7 +32,7 @@ watch(() => props.open, (v) => {
 const modelOptions = computed(() => fleet.models.map((m) => ({ value: m.id, label: `${m.name}（${m.vendor}）` })))
 
 const IP_RE = /^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$/
-/** 相机 IP：支持中英文分号分隔 */
+/** 相机地址：IP 或 rtsp 等流地址，支持中英文分号分隔 */
 const splitCams = (v: string) => v.split(/[;；]/).map((x) => x.trim()).filter(Boolean)
 const rules = {
   modelId: [{ required: true, message: '请选择型号' }],
@@ -41,10 +44,6 @@ const rules = {
     if (ipTaken(v, props.device?.id)) throw new Error('该 IP 已被其他设备占用')
   } }],
   publicIp: [{ validator: async (_: unknown, v: string) => { if (v && !IP_RE.test(v)) throw new Error('IP 格式不正确') } }],
-  cams: [{ validator: async (_: unknown, v: string) => {
-    const bad = splitCams(v || '').find((x) => !IP_RE.test(x))
-    if (bad) throw new Error(`「${bad}」不是有效的 IP`)
-  } }],
 }
 
 async function submit() {
@@ -75,11 +74,13 @@ async function submit() {
         <a-col :span="12"><a-form-item label="内网 IP" name="ip"><a-input v-model:value="f.ip" placeholder="如：10.20.1.15" /></a-form-item></a-col>
         <a-col :span="12"><a-form-item label="外网 IP" name="publicIp"><a-input v-model:value="f.publicIp" placeholder="选填" /></a-form-item></a-col>
       </a-row>
-      <a-form-item label="相机 IP" name="cams" extra="多个相机 IP 请用英文分号 ; 分隔">
-        <a-input v-model:value="f.cams" placeholder="如：10.20.1.101; 10.20.1.102" />
+      <a-form-item label="相机地址" name="cams" extra="填写 IP 或 rtsp 流地址，多个用分号 ; 分隔">
+        <a-input v-model:value="f.cams" placeholder="如：10.20.1.101; rtsp://10.20.1.102/live" />
       </a-form-item>
       <a-row :gutter="16">
-        <a-col :span="12"><a-form-item label="所属区域"><a-select v-model:value="f.area" :options="AREAS.map((v) => ({ value: v, label: v }))" /></a-form-item></a-col>
+        <a-col :span="12"><a-form-item label="所属区域">
+          <div class="df-area"><a-select v-model:value="f.area" placeholder="选择区域" :options="AREAS.map((v) => ({ value: v, label: v }))" /><a-tooltip title="管理区域"><a-button @click="areasOpen = true"><SettingOutlined /></a-button></a-tooltip></div>
+        </a-form-item></a-col>
         <a-col :span="12"><a-form-item label="状态">
           <a-radio-group v-model:value="f.status" button-style="solid" class="df-st"><a-radio-button v-for="s in STATUSES" :key="s" :value="s">{{ STATUS_META[s].label }}</a-radio-button></a-radio-group>
         </a-form-item></a-col>
@@ -87,8 +88,10 @@ async function submit() {
       <a-form-item label="备注" style="margin-bottom: 0"><a-textarea v-model:value="f.remark" :rows="2" placeholder="选填" /></a-form-item>
     </a-form>
   </a-modal>
+  <AreaManager v-model:open="areasOpen" />
 </template>
 
 <style scoped>
+.df-area { display: flex; gap: 8px; } .df-area > :first-child { flex: 1; min-width: 0; }
 .df-st { display: flex; } .df-st :deep(.ant-radio-button-wrapper) { flex: 1; text-align: center; }
 </style>

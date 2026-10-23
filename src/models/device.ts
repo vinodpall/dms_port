@@ -46,7 +46,7 @@ export interface Device {
   battery: number          // 0-100
   ip: string              // 内网 IP
   publicIp?: string        // 外网 IP
-  cameraIps?: string[]     // 相机 IP
+  cameraIps?: string[]     // 相机地址（IP 或 rtsp 等流地址）
   area: string
   firmware: string
   commissioned: string
@@ -78,4 +78,5 @@ export const isOnline = (d: Device) => d.status !== 'offline'
 /** 可遥操作：类型支持且设备在线、无故障 */
 export const canTeleop = (d: Device) => typeMeta(d.type).teleop && d.status === 'online'
 
-export const AREAS = ['A 区 · 室内训练场', 'B 区 · 越野场地', 'C 区 · 室外道路', 'D 区 · 停机坪']
+/** 所属区域（响应式，可在「所属区域」中增删改） */
+export const AREAS = reactive<string[]>(['A 区 · 室内训练场', 'B 区 · 越野场地', 'C 区 · 室外道路', 'D 区 · 停机坪'])

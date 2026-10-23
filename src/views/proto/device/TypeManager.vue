@@ -2,9 +2,9 @@
 /** 设备类型管理：查看全部类型，新增 / 编辑 / 删除（有型号引用的类型不能删除） */
 import { reactive, ref, watch } from 'vue'
 import { Modal, message } from 'ant-design-vue'
-import { PlusOutlined, LeftOutlined } from '@ant-design/icons-vue'
+import { PlusOutlined, LeftOutlined, CloseOutlined } from '@ant-design/icons-vue'
 import DeviceGlyph from '@/components/proto/DeviceGlyph.vue'
-import ImagePick from '@/components/proto/ImagePick.vue'
+import { fitImage } from '@/components/proto/imageFit'
 import { TYPES, TYPE_META, type DeviceType, type GlyphKey } from '@/models/device'
 import { removeType, saveType, typeDeviceCount, typeModelCount } from './store'
 
@@ -18,6 +18,16 @@ const mode = ref<'list' | 'edit'>('list')
 const editId = ref<DeviceType | null>(null)
 const f = reactive({ label: '', icon: 'generic' as GlyphKey, img: undefined as string | undefined, color: COLORS[0], teleop: false })
 const formRef = ref()
+/* 自定义图标：与内置图标同排，选中后优先使用 */
+const upInput = ref<HTMLInputElement>()
+const upBusy = ref(false)
+async function pickIcon(e: Event) {
+  const file = (e.target as HTMLInputElement).files?.[0]; (e.target as HTMLInputElement).value = ''
+  if (!file) return
+  if (!file.type.startsWith('image/')) return message.warning('请选择图片文件')
+  upBusy.value = true
+  try { f.img = await fitImage(file, 128) } catch { message.error('图片读取失败') } finally { upBusy.value = false }
+}
 watch(() => props.open, (v) => { if (v) mode.value = 'list' })
 
 const edit = (t?: DeviceType) => {
@@ -62,16 +72,23 @@ const del = (t: DeviceType) => Modal.confirm({ title: `删除类型「${TYPE_MET
 
     <a-form v-else ref="formRef" :model="f" :rules="rules" layout="vertical" style="margin-top: 12px">
       <a-form-item label="类型名称" name="label"><a-input v-model:value="f.label" placeholder="如：机械臂" :maxlength="12" /></a-form-item>
-      <a-form-item label="图标">
+      <a-form-item label="图标" extra="也可点击「上传」使用自定义图标，建议正方形透明底">
         <div class="tm-icons">
           <button v-for="x in ICONS" :key="x.k" type="button" :class="{ on: !f.img && f.icon === x.k }" @click="f.icon = x.k; f.img = undefined"><DeviceGlyph :type="x.k" :size="28" :color="f.color" /><span>{{ x.l }}</span></button>
+          <button type="button" class="up" :class="{ on: !!f.img }" title="上传自定义图标" @click="upInput?.click()">
+            <template v-if="f.img"><img :src="f.img" alt="" /><span>自定义</span><i class="rm" title="移除" @click.stop="f.img = undefined"><CloseOutlined /></i></template>
+            <template v-else><PlusOutlined class="plus" /><span>{{ upBusy ? '处理中' : '上传' }}</span></template>
+          </button>
+          <input ref="upInput" type="file" accept="image/png,image/webp,image/jpeg,image/svg+xml" hidden @change="pickIcon" />
         </div>
-        <div class="tm-up"><span class="muted">或上传自定义小图标</span><ImagePick v-model:value="f.img" :size="56" :max="128" hint="建议正方形透明底，自动裁边" /></div>
       </a-form-item>
       <a-form-item label="颜色">
         <div class="tm-colors"><button v-for="c in COLORS" :key="c" type="button" :class="{ on: f.color === c }" :style="{ background: c }" @click="f.color = c" /></div>
       </a-form-item>
-      <a-form-item label="支持遥操作" extra="开启后，该类型的设备在列表和详情中显示「遥操作」入口"><a-switch v-model:checked="f.teleop" /></a-form-item>
+      <div class="tm-switch">
+        <div><b>支持遥操作</b><small class="muted">开启后，该类型的设备在列表和详情中显示「遥操作」入口</small></div>
+        <a-switch v-model:checked="f.teleop" />
+      </div>
       <div class="tm-foot"><a-button @click="mode = 'list'">取消</a-button><a-button type="primary" @click="submit">{{ editId ? '保存' : '添加' }}</a-button></div>
     </a-form>
   </a-modal>
@@ -86,12 +103,19 @@ const del = (t: DeviceType) => Modal.confirm({ title: `删除类型「${TYPE_MET
 .tm-list .n { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; } .tm-list .n b { font-weight: 500; } .tm-list .n small { font-size: 12px; }
 .tm-list .op { display: flex; }
 .tm-add { margin-top: 12px; border-style: dashed; }
-.tm-icons { display: flex; gap: 10px; }
-.tm-icons button { width: 72px; padding: 8px 0 6px; display: flex; flex-direction: column; align-items: center; gap: 4px; border: 1px solid var(--line); border-radius: 8px; background: rgba(10,24,42,.35); font: inherit; font-size: 12px; color: var(--muted); cursor: pointer; }
+.tm-icons { display: flex; gap: 10px; margin-bottom: 6px; }
+.tm-icons button { position: relative; flex: 1; min-width: 0; height: 64px; justify-content: center; padding: 8px 0 6px; display: flex; flex-direction: column; align-items: center; gap: 4px; border: 1px solid var(--line); border-radius: 8px; background: rgba(10,24,42,.35); font: inherit; font-size: 12px; color: var(--muted); cursor: pointer; }
 .tm-icons button.on { border-color: #2ED3E6; color: #2ED3E6; background: rgba(46,211,230,.08); }
-.tm-up { display: flex; align-items: center; gap: 12px; margin-top: 12px; font-size: 12.5px; }
+.tm-icons button:not(.on):hover { border-color: rgba(46,211,230,.45); color: var(--text); }
+.tm-icons .up { border-style: dashed; border-color: rgba(46,211,230,.35); }
+.tm-icons .up .plus { font-size: 18px; line-height: 28px; }
+.tm-icons .up img { width: 28px; height: 28px; object-fit: contain; }
+.tm-icons .rm { position: absolute; top: -7px; right: -7px; width: 18px; height: 18px; display: grid; place-items: center; border-radius: 50%; background: #3a4c66; color: #fff; font-size: 9px; font-style: normal; }
+.tm-icons .rm:hover { background: var(--bad); }
+.tm-switch { display: flex; align-items: center; gap: 16px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; background: rgba(10,24,42,.3); }
+.tm-switch > div { flex: 1; display: flex; flex-direction: column; gap: 2px; } .tm-switch b { font-weight: 500; } .tm-switch small { font-size: 12px; }
 .tm-colors { display: flex; gap: 10px; }
 .tm-colors button { width: 26px; height: 26px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; box-shadow: inset 0 0 0 2px rgba(10,24,42,.6); }
 .tm-colors button.on { border-color: #fff; }
-.tm-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+.tm-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px; }
 </style>

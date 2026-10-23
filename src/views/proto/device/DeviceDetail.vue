@@ -117,7 +117,7 @@ function del() {
             <a-descriptions-item label="型号">{{ m.name }}（{{ m.vendor }}）</a-descriptions-item>
             <a-descriptions-item label="内网 IP"><span class="mono">{{ d.ip }}</span></a-descriptions-item>
             <a-descriptions-item label="外网 IP"><span class="mono">{{ d.publicIp || '—' }}</span></a-descriptions-item>
-            <a-descriptions-item label="相机 IP"><span class="mono">{{ d.cameraIps?.length ? d.cameraIps.join('; ') : '—' }}</span></a-descriptions-item>
+            <a-descriptions-item label="相机地址"><span class="mono">{{ d.cameraIps?.length ? d.cameraIps.join('; ') : '—' }}</span></a-descriptions-item>
             <a-descriptions-item label="所属区域">{{ d.area }}</a-descriptions-item>
             <a-descriptions-item label="通信协议">{{ m.protocol }}</a-descriptions-item>
             <a-descriptions-item label="固件版本"><span class="mono">{{ d.firmware }}</span></a-descriptions-item>
