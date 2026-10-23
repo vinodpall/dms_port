@@ -133,7 +133,7 @@ const recent = computed(() => [...all.value].sort((a, b) => (a.commissioned < b.
 .ds-cards .card { display: grid; grid-template-columns: 44px 1fr auto; grid-template-rows: auto auto; gap: 10px 12px; align-items: center; padding: 14px 16px; border: 1px solid var(--line); border-radius: 8px; background: rgba(10,24,42,.35); font: inherit; color: var(--text); text-align: left; cursor: pointer; transition: border-color .15s, background .15s; }
 .ds-cards .card:hover { border-color: rgba(46,211,230,.45); background: rgba(46,211,230,.05); }
 .ds-cards .ic { width: 44px; height: 44px; border-radius: 10px; display: grid; place-items: center; background: color-mix(in srgb, var(--c) 12%, transparent); }
-.ds-cards .ic.pic { background: rgba(46,211,230,.06); padding: 3px; } .ds-cards .ic img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.ds-cards .ic.pic { background: rgba(46,211,230,.06); padding: 3px; overflow: hidden; } .ds-cards .ic img { display: block; width: 100%; height: 100%; min-width: 0; min-height: 0; object-fit: contain; }
 .ds-cards .info { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .ds-cards .info b { font-size: 14px; font-weight: 600; color: var(--title); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ds-cards .info span { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
