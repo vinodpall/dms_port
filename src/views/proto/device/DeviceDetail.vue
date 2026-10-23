@@ -105,9 +105,12 @@ function del() {
           <a-descriptions :column="3" size="small" class="dd-desc">
             <a-descriptions-item label="序列号"><span class="mono">{{ d.sn }}</span></a-descriptions-item>
             <a-descriptions-item label="型号">{{ m.name }}（{{ m.vendor }}）</a-descriptions-item>
-            <a-descriptions-item label="IP 地址"><span class="mono">{{ d.ip }}</span></a-descriptions-item>
+            <a-descriptions-item label="内网 IP"><span class="mono">{{ d.ip }}</span></a-descriptions-item>
+            <a-descriptions-item label="外网 IP"><span class="mono">{{ d.publicIp || '—' }}</span></a-descriptions-item>
+            <a-descriptions-item label="相机 IP"><span class="mono">{{ d.cameraIps?.length ? d.cameraIps.join('; ') : '—' }}</span></a-descriptions-item>
+            <a-descriptions-item label="电压范围"><span class="mono">{{ d.voltMin != null && d.voltMax != null ? `${d.voltMin} – ${d.voltMax} V` : '—' }}</span></a-descriptions-item>
+            <a-descriptions-item label="尺寸"><span class="mono">{{ d.size ? `${d.size} mm` : '—' }}</span></a-descriptions-item>
             <a-descriptions-item label="所属区域">{{ d.area }}</a-descriptions-item>
-            <a-descriptions-item label="负责人">{{ d.owner }}</a-descriptions-item>
             <a-descriptions-item label="通信协议">{{ m.protocol }}</a-descriptions-item>
             <a-descriptions-item label="固件版本"><span class="mono">{{ d.firmware }}</span></a-descriptions-item>
             <a-descriptions-item label="入场日期"><span class="mono">{{ d.commissioned }}</span></a-descriptions-item>

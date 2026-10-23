@@ -35,9 +35,13 @@ export interface Device {
   modelId: string
   status: DeviceStatus
   battery: number          // 0-100
-  ip: string
+  ip: string              // 内网 IP
+  publicIp?: string        // 外网 IP
+  cameraIps?: string[]     // 相机 IP
+  voltMin?: number         // 最小电压 V
+  voltMax?: number         // 最大电压 V
+  size?: string            // 尺寸 长×宽×高 mm
   area: string
-  owner: string
   firmware: string
   commissioned: string
   lastSeen: string
@@ -68,4 +72,3 @@ export const isOnline = (d: Device) => d.status !== 'offline'
 export const canTeleop = (d: Device) => TYPE_META[d.type].teleop && d.status !== 'offline' && d.status !== 'fault'
 
 export const AREAS = ['A 区 · 室内训练场', 'B 区 · 越野场地', 'C 区 · 室外道路', 'D 区 · 停机坪']
-export const OWNERS = ['周工', '赵工', '张杰', '李敏']

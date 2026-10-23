@@ -94,7 +94,7 @@ const recent = computed(() => [...all.value].sort((a, b) => (a.commissioned < b.
         <div class="pp-panel-h"><h3>最近入库</h3></div>
         <ul class="ds-todo">
           <li v-for="d in recent" :key="d.id" @click="emit('open', d)">
-            <DeviceGlyph :type="d.type" :size="20" :color="typeColor(d.type)" /><b>{{ d.name }}</b><span class="muted">{{ modelOf(d)?.name }} · {{ d.owner }}</span><small class="mono muted">{{ d.commissioned }}</small>
+            <DeviceGlyph :type="d.type" :size="20" :color="typeColor(d.type)" /><b>{{ d.name }}</b><span class="muted">{{ modelOf(d)?.name }} · {{ d.area }}</span><small class="mono muted">{{ d.commissioned }}</small>
           </li>
         </ul>
       </section>

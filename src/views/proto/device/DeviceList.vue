@@ -32,7 +32,7 @@ const columns = [
   { title: '型号', key: 'model', width: 150 },
   { title: '状态', key: 'status', width: 110 },
   { title: '电量', key: 'battery', width: 90, sorter: (a: Device, b: Device) => a.battery - b.battery },
-  { title: 'IP 地址', dataIndex: 'ip', width: 130 },
+  { title: '内网 IP', dataIndex: 'ip', width: 130 },
   { title: '所属区域', dataIndex: 'area', width: 160 },
   { title: '操作', key: 'op', width: 120, align: 'right' as const },
 ]

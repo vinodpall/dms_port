@@ -1,5 +1,5 @@
 import type { Device, DeviceModel, DeviceStatus, DeviceType } from '@/models/device'
-import { AREAS, OWNERS } from '@/models/device'
+import { AREAS } from '@/models/device'
 
 const M = (id: string, type: DeviceType, name: string, vendor: string, protocol: DeviceModel['protocol'], cameras: string[], spec: DeviceModel['spec']): DeviceModel => ({ id, type, name, vendor, protocol, cameras, spec })
 
@@ -26,6 +26,13 @@ const CODE: Record<DeviceType, string> = { quadruped: 'QD', ugv: 'UG', uav: 'UA'
 const NAME: Record<DeviceType, string> = { quadruped: '机器狗', ugv: '无人车', uav: '无人机', humanoid: '人形' }
 const AREA: Record<DeviceType, number[]> = { quadruped: [0, 1], ugv: [2, 1], uav: [3], humanoid: [0] }
 const CYCLE: DeviceStatus[] = ['working', 'idle', 'working', 'charging', 'idle', 'offline', 'working', 'idle', 'fault', 'working', 'idle']
+const VOLT: Record<DeviceType, [number, number]> = { quadruped: [42, 58.8], ugv: [22, 29.4], uav: [44.4, 52.8], humanoid: [43.2, 54.6] }
+const SIZE: Record<string, string> = {
+  'qd-b2': '1098×450×645', 'qd-go2': '700×310×400', 'qd-x30': '1000×470×760', 'qd-lite3': '610×370×450', 'qd-spot': '1100×500×840',
+  'ug-scout': '930×699×349', 'ug-hunter': '820×640×310', 'ug-bunker': '660×584×281',
+  'ua-m350': '810×670×430', 'ua-m30t': '470×585×215', 'ua-m3e': '347×283×108', 'ua-m4t': '307×388×149', 'ua-x500': '410×410×300',
+  'hm-walker': '560×370×1720', 'hm-h1': '570×220×1800',
+}
 const GAITS = ['行走', '小跑', '爬楼']
 
 let seed = 11
@@ -51,7 +58,10 @@ export const DEVICES: Device[] = MODELS.flatMap((m, mi) =>
       battery: off ? 0 : status === 'charging' ? 30 + Math.round(rnd() * 40) : 25 + Math.round(rnd() * 74),
       ip: `10.20.${['quadruped', 'ugv', 'uav', 'humanoid'].indexOf(t) + 1}.${10 + n}`,
       area: AREAS[ai],
-      owner: OWNERS[(n + mi) % OWNERS.length],
+      publicIp: n % 3 === 0 ? `112.64.${20 + mi}.${100 + n}` : undefined,
+      cameraIps: m.cameras.map((_, ci) => `10.20.${['quadruped', 'ugv', 'uav', 'humanoid'].indexOf(t) + 1}.${100 + n * 4 + ci}`),
+      voltMin: VOLT[t][0], voltMax: VOLT[t][1],
+      size: SIZE[m.id],
       firmware: n % 4 === 1 && mi % 3 !== 2 ? `v${2 + (mi % 2)}.${(mi * 3) % 9}.${mi % 4}` : `v${2 + (mi % 2)}.${(mi * 3) % 9 + 1}.${(mi * 2) % 5}`,
       commissioned: `2025-${String(1 + ((n * 5 + mi) % 12)).padStart(2, '0')}-${String(3 + ((n * 7) % 25)).padStart(2, '0')}`,
       lastSeen: off ? `${2 + n} 小时前` : '刚刚',
