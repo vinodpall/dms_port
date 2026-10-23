@@ -11,8 +11,8 @@ import { ROUTE_SET, GRID_RECT, routeAt, routeLen, toReal, toLngLat, fromLngLat, 
  * 栅格模式支持滚轮缩放、拖拽平移；坐标系 160×100（见 geo.ts）
  */
 export interface MapPt { mx: number; my: number; st?: 'done' | 'cur' | 'todo' | 'bad' }
-const props = withDefaults(defineProps<{ seed?: number; mode?: 'grid' | 'cloud' | 'sat' | 'blank'; zones?: boolean; shape?: number | null; pts?: MapPt[]; progress?: number; draw?: number | null; robot?: { x: number; y: number; yaw: number } | null; edit?: boolean; sel?: number; labels?: boolean; arrow?: { x: number; y: number; yaw: number } | null; pick?: boolean; ghost?: number[]; live?: boolean; controls?: boolean; center?: [number, number] }>(),
-  { seed: 11, mode: 'grid', zones: true, shape: null, pts: () => [], progress: 0, draw: null, robot: null, edit: false, sel: -1, labels: true, arrow: null, pick: false, ghost: () => [], live: false, controls: true, center: undefined })
+const props = withDefaults(defineProps<{ seed?: number; mode?: 'grid' | 'cloud' | 'sat' | 'blank'; zones?: boolean; shape?: number | null; pts?: MapPt[]; progress?: number; draw?: number | null; robot?: { x: number; y: number; yaw: number } | null; edit?: boolean; sel?: number; labels?: boolean; arrow?: { x: number; y: number; yaw: number } | null; pick?: boolean; ghost?: number[]; live?: boolean; controls?: boolean; center?: [number, number]; cloudBar?: boolean }>(),
+  { seed: 11, mode: 'grid', zones: true, shape: null, pts: () => [], progress: 0, draw: null, robot: null, edit: false, sel: -1, labels: true, arrow: null, pick: false, ghost: () => [], live: false, controls: true, center: undefined, cloudBar: true })
 const emit = defineEmits<{ pick: [x: number, y: number] }>()
 const uid = Math.random().toString(36).slice(2, 7)
 const AREAS = [{ x: 82, y: 17, t: '中心庭院' }, { x: 97, y: 52, t: '东楼' }, { x: 70, y: 86, t: '南侧连廊' }, { x: 116, y: 80, t: '东侧通道' }]
@@ -90,7 +90,7 @@ const onSatPick = (lng: number, lat: number) => { const p = fromLngLat(lng, lat,
 
 <template>
   <div class="bm-wrap">
-  <PointCloudView v-if="mode === 'cloud'" :route="cloudRoute" :done="draw === null ? progress : 1" :pts="cloudPts" :robot="cloudRobot" :live="live" />
+  <PointCloudView v-if="mode === 'cloud'" :route="cloudRoute" :done="draw === null ? progress : 1" :pts="cloudPts" :robot="cloudRobot" :live="live" :toolbar="cloudBar" />
   <SatMap v-else-if="mode === 'sat'" :center="satCenter" :route="satRoute" :done="satDone" :ghost="satGhost" :pts="satPts" :robot="satRobot" :arrow="satArrow" :pick="pick" @pick="onSatPick" />
   <template v-else>
   <svg ref="svgEl" class="bm" :class="{ pick, pan: controls && zoomed }" :viewBox="viewBox" preserveAspectRatio="xMidYMid meet" @click="onClick" @wheel="onWheel" @pointerdown="onDown" @pointermove="onMove" @pointerup="onUp" @pointercancel="onUp">

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 /** 首页：对齐 robot_web Home.vue 三栏结构 —— 左 视频/任务统计 · 中 地图/实时警情 · 右 状态/控制/任务下发 */
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
-import { AimOutlined, ExpandOutlined, PauseOutlined, CaretRightOutlined, SendOutlined, AudioOutlined, AudioMutedOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons-vue'
+import { AimOutlined, ExpandOutlined, CompressOutlined, ReloadOutlined, PauseOutlined, CaretRightOutlined, SendOutlined, AudioOutlined, AudioMutedOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons-vue'
 import BizMap from './BizMap.vue'
 import WebRtcVideo from '@/components/viz/WebRtcVideo.vue'
 import CamShot from './CamShot.vue'
@@ -30,7 +30,7 @@ const doneN = computed(() => (run.value ? pts.value.filter((p, i) => (runRoute.v
 const mapPts = computed(() => pts.value.map((p, i) => ({ mx: p.mx, my: p.my, st: (i < doneN.value ? 'done' : i === doneN.value ? 'cur' : 'todo') as 'done' | 'cur' | 'todo' })))
 
 /* 地图 */
-const mapMode = ref<'cloud' | 'grid' | 'sat'>(isIns.value ? 'sat' : 'grid')
+const mapMode = ref<'cloud' | 'grid' | 'sat'>(isIns.value ? 'sat' : 'cloud')
 
 /* 实时警情 */
 const alarms = computed(() => db.alarms.filter((a) => a.robot === curId.value).slice(0, 6))
@@ -81,8 +81,16 @@ watch(curId, () => {
 }, { immediate: true })
 const seed = computed(() => myMaps.value.find((m) => m.name === (rt.value.navMap || navSel.value))?.seed ?? 11)
 const streams = computed(() => streamsOf(robot.value.id))
-const camRgb = ref<{ full: () => void } | null>(null)
-const camIr = ref<{ full: () => void } | null>(null)
+/* 视频：画面内操作（码流切换 / 重连 / 全屏），对齐 robot_web video-action-group */
+const cams = computed(() => [{ k: 'rgb', t: '可见光', url: streams.value.rgb }, { k: 'ir', t: '红外', url: streams.value.ir }])
+const camBox: Record<string, HTMLDivElement | null> = {}
+const camRef: Record<string, { reconnect: () => void } | null> = {}
+const sub = reactive<Record<string, boolean>>({ rgb: false, ir: false })
+const toggleSub = (k: string) => { sub[k] = !sub[k]; camRef[k]?.reconnect(); message.success(`已切换到${sub[k] ? '子码流' : '主码流'}`) }
+const fs = ref('')
+const toggleFull = (k: string) => { if (document.fullscreenElement) document.exitFullscreen(); else camBox[k]?.requestFullscreen?.() }
+const onFs = () => { const el = document.fullscreenElement; fs.value = Object.keys(camBox).find((k) => camBox[k] === el) ?? '' }
+document.addEventListener('fullscreenchange', onFs); onBeforeUnmount(() => document.removeEventListener('fullscreenchange', onFs))
 const mapBox = ref<HTMLDivElement>()
 const fullMap = () => { const el = mapBox.value; if (!el) return; document.fullscreenElement ? document.exitFullscreen() : el.requestFullscreen?.() }
 const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt.value.nav || r.map === rt.value.navMap))
@@ -92,13 +100,16 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
   <div class="hm">
     <!-- ============ 左 ============ -->
     <div class="hm-col">
-      <div class="pp-panel hm-cam">
-        <div class="pp-panel-h"><h3>可见光视频</h3><a-tooltip title="全屏"><a-button type="text" size="small" class="r" :disabled="!on" @click="camRgb?.full()"><ExpandOutlined /></a-button></a-tooltip></div>
-        <div class="hm-box"><WebRtcVideo v-if="on" ref="camRgb" :url="streams.rgb" label="可见光" /><div v-else class="hm-empty">设备离线 · 暂无视频流</div></div>
-      </div>
-      <div class="pp-panel hm-cam">
-        <div class="pp-panel-h"><h3>红外视频</h3><a-tooltip title="全屏"><a-button type="text" size="small" class="r" :disabled="!on" @click="camIr?.full()"><ExpandOutlined /></a-button></a-tooltip></div>
-        <div class="hm-box"><WebRtcVideo v-if="on" ref="camIr" :url="streams.ir" label="红外" /><div v-else class="hm-empty">设备离线 · 暂无视频流</div></div>
+      <div v-for="c in cams" :key="c.k" class="pp-panel hm-cam">
+        <div :ref="(el) => (camBox[c.k] = el as HTMLDivElement)" class="hm-box">
+          <WebRtcVideo v-if="on" :ref="(el) => (camRef[c.k] = el as any)" :url="c.url" :label="`${c.t}${sub[c.k] ? ' · 子码流' : ''}`" />
+          <div v-else class="hm-empty">{{ c.t }} · 设备离线</div>
+          <div class="hm-vact">
+            <a-tooltip :title="`切换到${sub[c.k] ? '主码流' : '子码流'}`"><button type="button" class="tx" :disabled="!on" @click="toggleSub(c.k)">{{ sub[c.k] ? '子' : '主' }}</button></a-tooltip>
+            <a-tooltip title="手动重连"><button type="button" :disabled="!on" @click="camRef[c.k]?.reconnect()"><ReloadOutlined /></button></a-tooltip>
+            <a-tooltip :title="fs === c.k ? '退出全屏' : '全屏'"><button type="button" @click="toggleFull(c.k)"><CompressOutlined v-if="fs === c.k" /><ExpandOutlined v-else /></button></a-tooltip>
+          </div>
+        </div>
       </div>
       <div class="pp-panel hm-grow">
         <div class="pp-panel-h"><h3>任务统计</h3><a-tag v-if="run" :color="rt.pause ? 'orange' : 'cyan'" class="r">{{ rt.pause ? '已暂停' : run.kind }}</a-tag></div>
@@ -128,7 +139,7 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
           </span>
         </div>
         <div ref="mapBox" class="hm-box">
-          <BizMap v-if="on" :seed="seed" :mode="mapMode" :zones="mapMode === 'grid'" :shape="runRoute?.shape ?? null" :pts="mapPts" :progress="runRoute && run ? run.progress : 0" :robot="hasNav ? rt.pose : null" />
+          <BizMap v-if="on" :seed="seed" :mode="mapMode" :zones="mapMode === 'grid'" :shape="runRoute?.shape ?? null" :pts="mapPts" :progress="runRoute && run ? run.progress : 0" :robot="hasNav ? rt.pose : null" :cloud-bar="false" />
           <div v-else class="hm-empty">设备离线</div>
           <div v-if="on && !hasNav" class="bz-ov">未开启定位 · 可在右侧「任务下发」中开启</div>
         </div>
@@ -234,12 +245,17 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
 </template>
 
 <style scoped>
-.hm { display: grid; grid-template-columns: 300px minmax(0, 1fr) 330px; gap: 14px; height: calc(100vh - 104px); min-height: 720px; }
+.hm { display: grid; grid-template-columns: clamp(340px, 22vw, 430px) minmax(0, 1fr) 330px; gap: 14px; height: calc(100vh - 104px); min-height: 720px; }
 .hm-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; min-height: 0; }
 .hm-col .r { margin-left: auto; display: flex; align-items: center; gap: 4px; }
 .hm-col .sub { margin-left: 8px; font-size: 12px; }
 .hm-grow { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-.hm-cam { flex: none; display: flex; flex-direction: column; } .hm-cam .hm-box { aspect-ratio: 16 / 9; flex: none; }
+.hm-cam { flex: none; display: flex; flex-direction: column; } .hm-cam .hm-box { aspect-ratio: 16 / 9; flex: none; margin: 0; border: 0; }
+.hm-cam .hm-box:fullscreen { aspect-ratio: auto; }
+.hm-vact { position: absolute; right: 8px; bottom: 8px; z-index: 2; display: flex; gap: 4px; }
+.hm-vact button { width: 26px; height: 26px; display: grid; place-items: center; padding: 0; font: inherit; font-size: 13px; color: #E6F7FB; cursor: pointer; background: rgba(8,18,32,.62); border: 1px solid rgba(46,211,230,.28); border-radius: 4px; }
+.hm-vact button.tx { font-size: 12px; font-weight: 600; }
+.hm-vact button:hover:not(:disabled) { color: #fff; border-color: var(--cyan); background: rgba(8,18,32,.85); } .hm-vact button:disabled { cursor: not-allowed; opacity: .45; }
 .hm-box { position: relative; flex: 1; min-height: 0; margin: 10px; overflow: hidden; border: 1px solid rgba(46,211,230,.16); border-radius: 4px; background: #0C1728; }
 .hm-empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--faint); font-size: 13px; } .hm-empty.sm { position: static; flex: 1; padding: 28px 0; }
 .hm-task { flex: 1; display: flex; flex-direction: column; gap: 12px; padding: 12px 14px; }
