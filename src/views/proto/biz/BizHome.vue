@@ -2,7 +2,7 @@
 /** 首页：对齐 robot_web Home.vue 三栏结构 —— 左 视频/任务统计 · 中 地图/实时警情 · 右 状态/控制/任务下发 */
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
-import { AimOutlined, ExpandOutlined, CompressOutlined, ReloadOutlined, PauseOutlined, CaretRightOutlined, SendOutlined, AudioOutlined, AudioMutedOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons-vue'
+import { AimOutlined, ExpandOutlined, CompressOutlined, ReloadOutlined, PauseOutlined, CaretRightOutlined, SendOutlined, AudioOutlined, AudioMutedOutlined, LeftOutlined, RightOutlined, BellOutlined } from '@ant-design/icons-vue'
 import MapSlot from './MapSlot.vue'
 import WebRtcVideo from '@/components/viz/WebRtcVideo.vue'
 import CamShot from './CamShot.vue'
@@ -109,7 +109,7 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
         <div class="pp-panel-h"><h3>实时视频</h3></div>
         <div class="hm-vlist">
         <div v-for="c in cams" :key="c.k" :ref="(el) => (camBox[c.k] = el as HTMLDivElement)" class="hm-box hm-vbox">
-          <WebRtcVideo v-if="on" :ref="(el) => (camRef[c.k] = el as any)" :url="c.url" :label="`${c.t}${sub[c.k] ? ' · 子码流' : ''}`" />
+          <WebRtcVideo v-if="on" :ref="(el) => (camRef[c.k] = el as any)" :url="c.url" :hud="false" />
           <div v-else class="hm-empty">{{ c.t }} · 设备离线</div>
           <div class="hm-vact">
             <a-tooltip :title="`切换到${sub[c.k] ? '主码流' : '子码流'}`"><button type="button" class="tx" :disabled="!on" @click="toggleSub(c.k)">{{ sub[c.k] ? '子' : '主' }}</button></a-tooltip>
@@ -161,7 +161,7 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
             <template v-else-if="column.key === 'state'"><a-badge :status="record.state === '待处理' ? 'error' : 'default'" :text="record.state" /></template>
             <template v-else-if="column.key === 'pic'"><a v-if="record.src === '可见光' || record.src === '红外'" @click="pic = record">查看</a><span v-else class="muted">—</span></template>
           </template>
-          <template #emptyText><div class="hm-empty sm">暂无警情</div></template>
+          <template #emptyText><div class="hm-none"><BellOutlined /><span>暂无警情</span></div></template>
         </a-table>
       </div>
     </div>
@@ -239,9 +239,8 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
       <div class="pp-panel hm-send-p" :class="{ 'hm-grow': !isIns }">
         <div class="pp-panel-h"><h3>任务下发</h3><span class="muted sub">{{ locText }}</span></div>
         <div class="hm-send">
-          <div v-if="!isIns" class="ln loc"><a-select v-model:value="navSel" size="small" :disabled="hasNav" :placeholder="gridMaps.length ? '选择地图' : '暂无地图'" :options="gridMaps.map((m) => ({ value: m.name, label: m.name }))" />
+          <div class="ln loc"><a-select v-model:value="navSel" size="small" :disabled="hasNav" :placeholder="gridMaps.length ? '选择地图' : '暂无地图'" :options="gridMaps.map((m) => ({ value: m.name, label: m.name }))" />
             <span class="tg"><button type="button" :class="{ on: rt.nav }" :disabled="!on || rt.ins || rt.msf" @click="toggleNav(navSel ?? '')">导航</button><button type="button" :class="{ on: rt.ins }" :disabled="!on || rt.nav || rt.msf" @click="toggleIns">INS</button><button type="button" :class="{ on: rt.msf }" :disabled="!on || rt.nav || rt.ins" @click="toggleMsf(navSel ?? '', isIns ? '卫星定位' : '融合定位')">MSF</button></span></div>
-          <div v-else class="ln loc ins"><label>定位</label><span class="tg"><button type="button" :class="{ on: rt.ins }" :disabled="!on || rt.msf" @click="toggleIns">INS</button><button type="button" :class="{ on: rt.msf }" :disabled="!on || rt.ins" @click="toggleMsf('', '卫星定位')">MSF</button></span></div>
           <div class="ln"><label>循迹任务</label><a-select v-model:value="rSel" size="small" placeholder="选择路线" :options="navRoutes.map((r) => ({ value: r.id, label: r.name }))" /><a-button size="small" type="primary" :disabled="!on || !!run" @click="openLaunch('循迹任务', { route: rSel })"><SendOutlined />下发</a-button></div>
           <div class="ln"><label>发布点任务</label><a-select v-model:value="pSel" size="small" placeholder="选择任务组" :options="pubGroups.map((g) => ({ value: g.id, label: g.name }))" /><a-button size="small" type="primary" :disabled="!on || !!run" @click="openLaunch('发布点任务', { group: pSel })"><SendOutlined />下发</a-button></div>
           <div class="ln"><label>多任务组</label><a-select v-model:value="mSel" size="small" placeholder="选择多任务组" :options="myMulti.map((m) => ({ value: m.id, label: m.name }))" /><a-button size="small" type="primary" :disabled="!on || !!run" @click="openLaunch('多任务组', { multi: mSel })"><SendOutlined />下发</a-button></div>
@@ -257,7 +256,7 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
 </template>
 
 <style scoped>
-.hm { display: grid; grid-template-columns: clamp(340px, 22vw, 430px) minmax(0, 1fr) 330px; gap: 14px; height: calc(100vh - 108px); min-height: 720px; }
+.hm { display: grid; grid-template-columns: clamp(340px, 22vw, 430px) minmax(0, 1fr) 330px; gap: 14px; height: calc(100vh - 108px - var(--off, 0px)); min-height: 660px; }
 .hm-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; min-height: 0; }
 .hm-col .r { margin-left: auto; display: flex; align-items: center; gap: 4px; }
 .hm-col .sub { margin-left: 8px; font-size: 12px; }
@@ -265,7 +264,8 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
 .hm-cam { flex: none; display: flex; flex-direction: column; } .hm-vlist { display: flex; flex-direction: column; gap: 8px; padding: 10px; }
 .hm-cam .hm-box { aspect-ratio: 16 / 9; flex: none; margin: 0; }
 .hm-cam .hm-box:fullscreen { aspect-ratio: auto; }
-.hm-vact { position: absolute; right: 8px; bottom: 8px; z-index: 2; display: flex; gap: 4px; }
+.hm-vact { position: absolute; right: 8px; bottom: 8px; z-index: 2; display: flex; gap: 4px; opacity: 0; transition: opacity .18s; }
+.hm-vbox:hover .hm-vact, .hm-vbox:fullscreen .hm-vact { opacity: 1; }
 .hm-vact button { width: 26px; height: 26px; display: grid; place-items: center; padding: 0; font: inherit; font-size: 13px; color: #E6F7FB; cursor: pointer; background: rgba(8,18,32,.62); border: 1px solid rgba(46,211,230,.28); border-radius: 4px; }
 .hm-vact button.tx { font-size: 12px; font-weight: 600; }
 .hm-vact button:hover:not(:disabled) { color: #fff; border-color: var(--cyan); background: rgba(8,18,32,.85); } .hm-vact button:disabled { cursor: not-allowed; opacity: .45; }
@@ -284,6 +284,11 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
 .hm-alarm { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
 .hm-alarm :deep(.ant-table-wrapper) { flex: 1; min-height: 0; padding: 0 10px 8px; }
 .hm-alarm .more { font-size: 12px; }
+.hm-alarm :deep(.ant-table), .hm-alarm :deep(.ant-table-container), .hm-alarm :deep(.ant-spin-nested-loading), .hm-alarm :deep(.ant-spin-container) { height: 100%; }
+.hm-alarm :deep(.ant-table-container) { display: flex; flex-direction: column; } .hm-alarm :deep(.ant-table-body) { flex: 1; }
+.hm-alarm :deep(.ant-table-placeholder td) { border-bottom: 0 !important; background: transparent !important; }
+.hm-alarm :deep(.ant-table-placeholder:hover td) { background: transparent !important; }
+.hm-none { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 120px; color: var(--faint); font-size: 12.5px; } .hm-none .anticon { font-size: 22px; opacity: .55; }
 .hm-type { display: inline-flex; align-items: center; gap: 6px; } .hm-type i { width: 6px; height: 6px; border-radius: 50%; }
 .hm-right { overflow: auto; }
 .hm-st.big { flex: 1 0 auto; display: flex; flex-direction: column; }

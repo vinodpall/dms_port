@@ -56,7 +56,7 @@ const estop = () => message.error(`${robot.value.name} 已触发软件急停`)
       <a-button danger size="small" class="bv-stop" :disabled="!robot.online" @click="estop"><StopOutlined />急停</a-button>
     </template>
 
-    <a-spin :spinning="switching" tip="机器人切换中...">
+    <div :style="{ '--off': !robot.online && tab !== 'log' ? '52px' : '0px' }"><a-spin :spinning="switching" tip="机器人切换中...">
       <a-alert v-if="!robot.online && tab !== 'log'" class="bv-off" type="warning" show-icon banner :message="`${robot.name}（${robot.id}）当前离线，无法下发控制指令与任务，仅可查看数据`" />
       <BizHome v-if="tab === 'home'" :key="curId" @go="go" />
       <template v-else-if="page">
@@ -67,7 +67,7 @@ const estop = () => message.error(`${robot.value.name} 已触发软件急停`)
         <BizRecords v-else-if="cur === 'rec'" :key="curId" />
         <BizLogs v-else :key="curId" />
       </template>
-    </a-spin>
+    </a-spin></div>
     <TaskLaunch @go="go" />
     <!-- 模块内唯一地图实例：挂到当前激活的 MapSlot -->
     <div class="bv-park"><Teleport :to="activeSlot?.el ?? 'body'" :disabled="!activeSlot"><BizMap v-bind="activeSlot?.attrs ?? {}" /></Teleport></div>

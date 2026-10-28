@@ -46,7 +46,7 @@
 .bz-form .ant-form-item { margin-bottom: 14px; }
 .bz-tbar { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; } .bz-tbar .sp { flex: 1; }
 /* 一屏布局：去掉页头后，tabs 以下区域占满剩余高度 */
-.bz-fit { height: calc(100vh - 168px); min-height: 640px; align-items: stretch !important; }
+.bz-fit { height: calc(100vh - 168px - var(--off, 0px)); min-height: 600px; align-items: stretch !important; }
 .bz-fit > .pp-panel, .bz-fit > .bz-col { min-height: 0; }
 .bz-fit .bz-fill { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .bz-fit .bz-fill > .bz-canvas { flex: 1; min-height: 0; aspect-ratio: auto; }

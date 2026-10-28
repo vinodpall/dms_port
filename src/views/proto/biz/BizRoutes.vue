@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { message, Modal } from 'ant-design-vue'
 import {
   PlayCircleOutlined, StopOutlined, PlusOutlined, DeleteOutlined, AimOutlined, EditOutlined, UndoOutlined, SaveOutlined, InfoCircleOutlined,
-  ScissorOutlined, HighlightOutlined, RedoOutlined, NodeIndexOutlined, CameraOutlined, EyeOutlined,
+  ScissorOutlined, HighlightOutlined, RedoOutlined, NodeIndexOutlined, CameraOutlined,
 } from '@ant-design/icons-vue'
 import MapSlot from './MapSlot.vue'
 import WebRtcVideo from '@/components/viz/WebRtcVideo.vue'
@@ -12,7 +12,7 @@ import { TASK_TYPES, PRESETS, GAITS, GROUNDS, OBS_MODES, PROMPTS, type TaskPoint
 import { routeLen, toReal, UNIT } from './geo'
 import {
   rt, isDog, isIns, hasNav, myMaps, myRoutes, myGroups, db, curId, routeById, shortName, lastRoute,
-  startTrackRec, stopTrackRec, openLaunch, stopRun, newPointFromPose, savePoint, gotoPoint, gotoStart, startDist, gaitName,
+  startTrackRec, stopTrackRec, openLaunch, stopRun, newPointFromPose, savePoint, gotoPoint,  gaitName,
 } from './store'
 
 const props = defineProps<{ sub: string }>()
@@ -43,7 +43,7 @@ const mapSeed = (name?: string) => myMaps.value.find((m) => m.name === name)?.se
 const pickRoute = (id: string) => { sel.value = id; editing.value = false }
 /* 地图：任务管理不显示卫星图，仅点云 / 栅格 */
 const mode = ref<'grid' | 'cloud'>('grid')
-const previewOpen = ref(false)
+watch(mode, (m) => { if (m !== 'grid') editing.value = false })
 /* 任务启停 */
 const running = computed(() => !!group.value && rt.value.run?.group === group.value.id)
 const toggleRun = () => {
@@ -148,12 +148,10 @@ const pose = computed(() => ({ x: toReal(rt.value.pose.x, rt.value.pose.y).x.toF
     <div class="pp-panel bz-fill">
       <div class="pp-panel-h">
         <h3>{{ recording && !route ? '路线录制' : pubSel ? pubSel.name : route ? shortName(route) : '地图' }}</h3>
-        <span v-if="route && sub === 'route'" class="muted rt-meta">{{ lenM(route.shape) }} m · 距起点 <b class="mono" :style="{ color: startDist(route) < 2 ? '#45E3A8' : '#FFC15C' }">{{ startDist(route).toFixed(1) }} m</b></span>
         <span class="bz-panel-tools">
           <template v-if="route && sub === 'route'">
-            <a-button size="small" :disabled="!!rt.run" @click="gotoStart(route)"><AimOutlined />前往起点</a-button>
             <a-button size="small" :disabled="route.smooth" @click="smooth"><NodeIndexOutlined />{{ route.smooth ? '已平滑' : '轨迹平滑' }}</a-button>
-            <a-button size="small" :type="editing ? 'primary' : 'default'" :disabled="!!rt.run" @click="editing = !editing"><EditOutlined />路线编辑</a-button>
+            <a-tooltip :title="mode !== 'grid' ? '请切换到栅格地图后编辑' : ''"><a-button size="small" :type="editing ? 'primary' : 'default'" :disabled="!!rt.run || mode !== 'grid'" @click="editing = !editing"><EditOutlined />{{ editing ? '退出编辑' : '路线编辑' }}</a-button></a-tooltip>
             <a-tooltip title="删除路线"><a-button size="small" danger :disabled="rt.run?.route === route.id" @click="delRoute"><DeleteOutlined /></a-button></a-tooltip>
           </template>
         </span></div>
@@ -165,8 +163,8 @@ const pose = computed(() => ({ x: toReal(rt.value.pose.x, rt.value.pose.y).x.toF
         <span class="sp" /><a-button size="small"><UndoOutlined />撤销</a-button><a-button size="small"><RedoOutlined />重置</a-button><a-button size="small" type="primary" @click="saveEdit"><SaveOutlined />保存上传</a-button>
       </div>
       <div class="bz-canvas">
-        <MapSlot v-if="recording && !route" :seed="mapSeed(rt.trackRec!.map)" :mode="mode" :zones="false" :shape="rt.trackRec!.shape" :draw="rt.trackRec!.f" :robot="rt.pose" :cloud-bar="false" />
-        <MapSlot v-else :seed="mapSeed(route?.map ?? pubSel?.map)" :mode="mode" :zones="mode === 'grid' && !isIns" :shape="sub === 'route' ? route?.shape ?? null : null" :pts="mapPts" :sel="selPt" :robot="rt.pose" :edit="editing" :cloud-bar="false" />
+        <MapSlot v-if="recording && !route" :seed="mapSeed(rt.trackRec!.map)" :mode="mode" :zones="false" :shape="rt.trackRec!.shape" :draw="rt.trackRec!.f" :robot="rt.pose" :light="mode === 'grid'" :cloud-bar="false" />
+        <MapSlot v-else :seed="mapSeed(route?.map ?? pubSel?.map)" :mode="mode" :zones="mode === 'grid' && !isIns" :shape="sub === 'route' ? route?.shape ?? null : null" :pts="mapPts" :sel="selPt" :robot="rt.pose" :edit="editing" :light="mode === 'grid'" :cloud-bar="false" />
         <a-radio-group v-model:value="mode" size="small" class="rt-mode"><a-radio-button value="cloud">点云</a-radio-button><a-radio-button value="grid">栅格</a-radio-button></a-radio-group>
         <div v-if="recording" class="bz-ov red"><i class="dot" />录制中 {{ mmss(rt.trackRec!.t0) }} · 遥控机器人沿巡检路径行走，到达终点后点击「完成录制」</div>
         <div v-else-if="editing" class="bz-ov tip">{{ et.tool === 'seg' ? '在路线上点击两个节点选取路段，可删除或重绘该段' : '按住鼠标在地图上绘制新的路线段' }}</div>
@@ -185,7 +183,6 @@ const pose = computed(() => ({ x: toReal(rt.value.pose.x, rt.value.pose.y).x.toF
       <div class="rt-acts">
         <a-button size="small" type="primary" :disabled="!group" @click="openPoint()"><PlusOutlined />新增任务点</a-button>
         <a-button size="small" :type="running ? 'primary' : 'default'" :danger="running" :disabled="!group" @click="toggleRun"><template v-if="running"><StopOutlined />停止任务</template><template v-else><PlayCircleOutlined />启动任务</template></a-button>
-        <a-button size="small" :disabled="!group && !route" @click="previewOpen = true"><EyeOutlined />路线预览</a-button>
       </div>
       <ul class="rt-pts rt-scroll">
         <li v-for="(p, i) in group?.points ?? []" :key="p.id" :class="{ on: i === selPt }" @click="selPt = i">
@@ -198,12 +195,6 @@ const pose = computed(() => ({ x: toReal(rt.value.pose.x, rt.value.pose.y).x.toF
       <div class="rt-pose"><a-badge :status="hasNav ? (rt.locOk ? 'success' : 'processing') : 'default'" />实时位姿 <b class="mono">{{ pose.x }}, {{ pose.y }}, {{ pose.yaw }}°</b></div>
     </div>
   </div>
-
-  <!-- 弹窗：路线预览 -->
-  <a-modal v-model:open="previewOpen" :title="`路线预览 · ${pubSel ? pubSel.name : shortName(route)}${group && !pubSel ? ' / ' + group.name : ''}`" :footer="null" :width="900">
-    <div class="bz-canvas" style="margin:12px 0 0;aspect-ratio:16/9"><MapSlot v-if="previewOpen" :seed="mapSeed(route?.map ?? pubSel?.map)" :mode="mode" :zones="false" :shape="sub === 'route' ? route?.shape ?? null : null" :pts="mapPts" :cloud-bar="false" /></div>
-    <div class="muted" style="font-size:12px;margin-top:8px">{{ sub === 'route' && route ? `轨迹长度 ${lenM(route.shape)} m · ` : '' }}{{ group?.points.length ?? 0 }} 个任务点</div>
-  </a-modal>
 
   <!-- 弹窗：录制路线 -->
   <a-modal v-model:open="recOpen" title="录制路线" :width="440" ok-text="开始录制" @ok="okRec">

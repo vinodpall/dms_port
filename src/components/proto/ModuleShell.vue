@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { AppstoreOutlined, LogoutOutlined, BellOutlined, QuestionCircleOutlined } from '@ant-design/icons-vue'
+import { AppstoreOutlined, LogoutOutlined, BellOutlined, QuestionCircleOutlined, MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons-vue'
 import BrandMark from '@/components/BrandMark.vue'
 import { PLATFORM } from '@/constants'
 import { useClock } from '@/composables/entry'
@@ -25,6 +25,9 @@ const groups = computed(() => {
   }
   return out
 })
+/** 侧栏收缩（仅图标 + 悬浮提示），记忆在本地 */
+const collapsed = ref(localStorage.getItem('pp-side-collapsed') === '1')
+watch(collapsed, (v) => { localStorage.setItem('pp-side-collapsed', v ? '1' : '0'); setTimeout(() => window.dispatchEvent(new Event('resize')), 220) })
 const logout = () => { session.logout(); router.replace({ name: 'login' }) }
 </script>
 
@@ -52,8 +55,8 @@ const logout = () => { session.logout(); router.replace({ name: 'login' }) }
       </div>
     </header>
     <div class="pp-body">
-      <aside v-if="menu.length" class="pp-side">
-        <a-menu mode="inline" :selected-keys="selected" class="pp-menu" @click="(e: any) => emit('update:active', String(e.key))">
+      <aside v-if="menu.length" class="pp-side" :class="{ folded: collapsed }">
+        <a-menu mode="inline" :inline-collapsed="collapsed" :selected-keys="selected" class="pp-menu" @click="(e: any) => emit('update:active', String(e.key))">
           <template v-for="(g, gi) in groups" :key="gi">
             <a-menu-item-group v-if="g.g" :title="g.g">
               <a-menu-item v-for="m in g.items" :key="m.key"><template #icon><component :is="m.icon" /></template>{{ m.label }}<span v-if="m.badge" class="pp-mbadge" :class="{ soft: m.soft }">{{ m.badge }}</span></a-menu-item>
@@ -63,7 +66,7 @@ const logout = () => { session.logout(); router.replace({ name: 'login' }) }
             </template>
           </template>
         </a-menu>
-        <div class="pp-side-foot"><i class="dot" /> 系统运行正常</div>
+        <a-tooltip :title="collapsed ? '展开菜单' : ''" placement="right"><button type="button" class="pp-side-foot pp-fold" @click="collapsed = !collapsed"><MenuUnfoldOutlined v-if="collapsed" /><template v-else><MenuFoldOutlined /><span>收起菜单</span></template></button></a-tooltip>
       </aside>
       <main class="pp-main" :class="{ flush }"><slot /></main>
     </div>

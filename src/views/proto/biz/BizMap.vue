@@ -11,8 +11,8 @@ import { ROUTE_SET, GRID_RECT, routeAt, routeLen, toReal, toLngLat, fromLngLat, 
  * 栅格模式支持滚轮缩放、拖拽平移；坐标系 160×100（见 geo.ts）
  */
 export interface MapPt { mx: number; my: number; st?: 'done' | 'cur' | 'todo' | 'bad' }
-const props = withDefaults(defineProps<{ seed?: number; mode?: 'grid' | 'cloud' | 'sat' | 'blank'; zones?: boolean; shape?: number | null; pts?: MapPt[]; progress?: number; draw?: number | null; robot?: { x: number; y: number; yaw: number } | null; edit?: boolean; sel?: number; labels?: boolean; arrow?: { x: number; y: number; yaw: number } | null; pick?: boolean; ghost?: number[]; live?: boolean; controls?: boolean; center?: [number, number]; cloudBar?: boolean }>(),
-  { seed: 11, mode: 'grid', zones: true, shape: null, pts: () => [], progress: 0, draw: null, robot: null, edit: false, sel: -1, labels: true, arrow: null, pick: false, ghost: () => [], live: false, controls: true, center: undefined, cloudBar: true })
+const props = withDefaults(defineProps<{ seed?: number; mode?: 'grid' | 'cloud' | 'sat' | 'blank'; zones?: boolean; shape?: number | null; pts?: MapPt[]; progress?: number; draw?: number | null; robot?: { x: number; y: number; yaw: number } | null; edit?: boolean; sel?: number; labels?: boolean; arrow?: { x: number; y: number; yaw: number } | null; pick?: boolean; ghost?: number[]; live?: boolean; controls?: boolean; light?: boolean; center?: [number, number]; cloudBar?: boolean }>(),
+  { seed: 11, mode: 'grid', zones: true, shape: null, pts: () => [], progress: 0, draw: null, robot: null, edit: false, sel: -1, labels: true, arrow: null, pick: false, ghost: () => [], live: false, controls: true, light: false, center: undefined, cloudBar: true })
 /** 点云 / 卫星图首次使用后保活（单例地图在各页面间复用，不重复创建） */
 const used = reactive({ cloud: false, sat: false })
 watchEffect(() => { if (props.mode === 'cloud') used.cloud = true; if (props.mode === 'sat') used.sat = true })
@@ -113,8 +113,8 @@ const onSatPick = (lng: number, lat: number) => { const p = fromLngLat(lng, lat,
     </defs>
 
     <!-- 底图 -->
-    <rect x="-200" y="-200" width="560" height="500" fill="#101f33" />
-    <rect x="-200" y="-200" width="560" height="500" :fill="`url(#g-${uid})`" />
+    <rect x="-200" y="-200" width="560" height="500" :fill="light && mode === 'grid' ? '#ffffff' : '#101f33'" />
+    <rect v-if="!(light && mode === 'grid')" x="-200" y="-200" width="560" height="500" :fill="`url(#g-${uid})`" />
     <template v-if="mode === 'grid'">
       <clipPath v-if="live" :id="`lv-${uid}`"><circle :cx="robot?.x ?? 80" :cy="robot?.y ?? 50" :r="liveR" /></clipPath>
       <image v-if="gridUrl" :clip-path="live ? `url(#lv-${uid})` : undefined" :href="gridUrl" :x="GRID_RECT.x" :y="GRID_RECT.y" :width="GRID_RECT.w" :height="GRID_RECT.h" preserveAspectRatio="none" class="bm-img" />

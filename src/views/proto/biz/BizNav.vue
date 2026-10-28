@@ -294,13 +294,15 @@ const delRoute = (id: string) => del('路线及其任务组', () => { db.routes.
 .nv-sw button.on { color: #0B1C2E; background: var(--cyan); border-color: var(--cyan); } .nv-sw button.on small { color: #0B1C2E; }
 .nv-ops { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; } .nv-ops :deep(.ant-btn) { padding: 0 4px; }
 .nv-org { margin-top: 10px; }
-.nv-left { overflow: auto; }
+.nv-left { overflow: hidden; }
+.nv-left > .bz-sec { padding: 10px 14px; } .nv-left .bz-sec h4 { margin-bottom: 8px; } .nv-left .nv-field { margin-bottom: 8px; }
+.nv-left .nv-sw button { padding: 5px 0; gap: 0; } .nv-left .nv-ops { gap: 6px; } .nv-left .nv-org { margin-top: 6px; }
 .nv-list { flex: none; }
 .nv-blank { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--faint); font-size: 13px; } .nv-blank .anticon { font-size: 34px; opacity: .5; }
 .nv-left { display: flex; flex-direction: column; } .nv-left > .bz-sec:last-child { flex: 1; display: flex; flex-direction: column; }
-.nv-st { flex: 1; display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: 1fr; gap: 8px; }
-.nv-st > div { display: flex; flex-direction: column; justify-content: center; gap: 4px; min-width: 0; padding: 8px 12px; background: rgba(46,211,230,.05); border: 1px solid rgba(46,211,230,.12); border-radius: 4px; } .nv-st > div.w { grid-column: span 2; }
-.nv-st small { font-size: 11.5px; color: var(--muted); } .nv-st b { font-size: 15px; font-weight: 600; color: #fff; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; } .nv-st em { font-style: normal; font-size: 11px; color: var(--muted); margin-left: 3px; } .nv-st :deep(.ant-badge-status-text) { font-size: 13px; }
+.nv-st { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; align-content: start; }
+.nv-st > div { display: flex; flex-direction: column; justify-content: center; gap: 1px; min-width: 0; padding: 5px 10px; background: rgba(46,211,230,.05); border: 1px solid rgba(46,211,230,.12); border-radius: 4px; } .nv-st > div.w { grid-column: span 2; }
+.nv-st small { font-size: 11.5px; color: var(--muted); } .nv-st b { font-size: 13.5px; font-weight: 600; color: #fff; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; } .nv-st em { font-style: normal; font-size: 11px; color: var(--muted); margin-left: 3px; } .nv-st :deep(.ant-badge-status-text) { font-size: 13px; }
 .nv-edit { display: flex; } .nv-edit > .pp-panel, .nv-file > .pp-panel { flex: 1; } .nv-file { display: flex; }
 .nv-tools .sz { display: flex; flex-direction: column; align-items: center; padding: 4px 0; font-size: 11px; color: var(--muted); } .nv-tools button.save { color: var(--cyan); }
 .nv-zp { position: absolute; z-index: 2; right: 10px; top: 10px; width: 200px; display: flex; flex-direction: column; gap: 8px; padding: 10px; background: rgba(13,28,47,.92); border: 1px solid var(--line-strong); border-radius: 6px; }
