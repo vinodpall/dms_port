@@ -78,6 +78,7 @@ const estop = () => message.error(`${robot.value.name} 已触发软件急停`)
 .bv-off { margin-bottom: 14px; }
 .bv-park { display: none; }
 .bv-rb { display: flex; align-items: center; height: 30px; padding-left: 10px; margin-right: 8px; background: rgba(46,211,230,.06); border: 1px solid var(--line-strong); border-radius: 7px; }
+.bv-rb:hover { border-color: rgba(46,211,230,.6); }
 .bv-rb > i { width: 7px; height: 7px; border-radius: 50%; }
 .bv-rb :deep(.ant-select) { width: 196px; } .bv-rb :deep(.ant-select-selection-item) { font-weight: 500; color: #fff; }
 .bv-stop { margin-right: 10px; }

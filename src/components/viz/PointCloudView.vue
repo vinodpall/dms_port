@@ -16,7 +16,7 @@ import { MAP_FILES } from '@/config/media'
 
 /** 显示设置（模块内共享） */
 const cfg = reactive({ density: 'sparse' as 'sparse' | 'fine', scheme: 'blue' as 'blue' | 'rainbow' })
-export interface CloudPt { x: number; y: number; st?: 'done' | 'cur' | 'todo' | 'bad' }
+export interface CloudPt { x: number; y: number; st?: 'done' | 'cur' | 'todo' | 'bad'; name?: string }
 const props = withDefaults(defineProps<{
   src?: string
   /** 路线（机器人坐标 m） */
@@ -29,9 +29,11 @@ const props = withDefaults(defineProps<{
   /** 实时建图：点云逐步累积 */
   live?: boolean
   toolbar?: boolean
+  /** 机器人标签（机器狗 / 无人车） */
+  robotLabel?: string
   /** 初始视角 */
   view?: '3d' | 'top'
-}>(), { src: MAP_FILES.pcd, route: null, done: 0, pts: () => [], robot: null, live: false, toolbar: true, view: '3d' })
+}>(), { src: MAP_FILES.pcd, route: null, done: 0, pts: () => [], robot: null, live: false, toolbar: true, view: '3d', robotLabel: '机器狗' })
 
 const host = ref<HTMLDivElement>()
 const state = ref<'loading' | 'ok' | 'error'>('loading')
@@ -125,7 +127,8 @@ function line(pts: [number, number][], color: number, width: number, z: number, 
   const l = new Line2(g, m); l.computeLineDistances(); l.renderOrder = 5
   return l
 }
-const label = (text: string, cls: string) => { const el = document.createElement('div'); el.className = `pcv-lb ${cls}`; el.textContent = text; return new CSS2DObject(el) }
+/** 标注样式对齐 robot_web ThreePointCloudPreview：白圈靶心 + 半透明圆角文字标签 */
+const label = (text: string, cls: string) => { const el = document.createElement('div'); el.className = `pcv-lb ${cls}`; el.innerHTML = `<i></i>${text ? `<span>${text}</span>` : ''}`; return new CSS2DObject(el) }
 
 function drawOverlay() {
   for (const o of [...overlay.children]) { overlay.remove(o); o.traverse((x) => { const a = x as THREE.Mesh; a.geometry?.dispose?.(); if (x instanceof CSS2DObject) x.element.remove() }) }
@@ -133,30 +136,22 @@ function drawOverlay() {
   const z = groundZ + 0.25
   const r = props.route
   if (r && r.length > 1) {
-    overlay.add(line(r, 0x2bff6d, 2, z, true))
-    if (props.done > 0) {
-      // 截取已完成部分
-      const L = r.slice(1).reduce((s, p, i) => s + Math.hypot(p[0] - r[i][0], p[1] - r[i][1]), 0)
-      let d = props.done * L; const out: [number, number][] = [r[0]]
-      for (let i = 1; i < r.length && d > 0; i++) {
-        const l = Math.hypot(r[i][0] - r[i - 1][0], r[i][1] - r[i - 1][1])
-        if (d >= l) { out.push(r[i]); d -= l } else { const t = d / l; out.push([r[i - 1][0] + (r[i][0] - r[i - 1][0]) * t, r[i - 1][1] + (r[i][1] - r[i - 1][1]) * t]); d = 0 }
-      }
-      if (out.length > 1) overlay.add(line(out, 0x2bff6d, 4, z + 0.02))
-    }
+    overlay.add(line(r, 0x2bff6d, 2, z))
     const s = label('起点', 'start'); s.position.set(r[0][0], r[0][1], z); overlay.add(s)
   }
-  props.pts.forEach((p, i) => { const o = label(String(i + 1), `pt ${p.st ?? 'todo'}`); o.position.set(p.x, p.y, z); overlay.add(o) })
+  props.pts.forEach((p, i) => { const o = label(p.name ?? `任务点${i + 1}`, 'pt'); o.position.set(p.x, p.y, z); overlay.add(o) })
   if (props.robot) {
     robotObj = new THREE.Group()
-    const cone = new THREE.Mesh(new THREE.ConeGeometry(0.9, 2.4, 3), new THREE.MeshBasicMaterial({ color: 0x7ff3ff, depthTest: false }))
-    cone.rotation.z = -Math.PI / 2; cone.scale.set(1, 1, 0.35); cone.renderOrder = 7
-    const ring = new THREE.Mesh(new THREE.RingGeometry(1.6, 2.1, 40), new THREE.MeshBasicMaterial({ color: 0x7ff3ff, transparent: true, opacity: 0.45, depthTest: false, side: THREE.DoubleSide }))
-    ring.name = 'pulse'; ring.renderOrder = 6
-    robotObj.add(ring, cone)
+    const geo = new THREE.ConeGeometry(0.9, 2.6, 3); geo.rotateZ(-Math.PI / 2); geo.translate(-1.3, 0, 0)
+    const cone = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xff00ff, depthTest: false }))
+    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: 0xffb6ff, transparent: true, opacity: 0.95, depthTest: false }))
+    cone.renderOrder = 7; edges.renderOrder = 8
+    const lb = label(props.robotLabel, 'rb'); lb.position.set(0, 0, 1.2)
+    robotObj.add(cone, edges)
     robotObj.position.set(props.robot.x, props.robot.y, z + 0.1)
     robotObj.rotation.z = props.robot.yaw
     overlay.add(robotObj)
+    lb.position.set(props.robot.x, props.robot.y, z + 1.2); overlay.add(lb)
   } else robotObj = null
 }
 
@@ -171,7 +166,7 @@ function resize() {
 function loop(t: number) {
   raf = requestAnimationFrame(loop)
   controls.update()
-  if (robotObj) { const p = robotObj.getObjectByName('pulse'); if (p) { const s = 0.85 + 0.3 * (0.5 + 0.5 * Math.sin(t / 450)); p.scale.set(s, s, s) } }
+  void t
   if (props.live && points && cloud.value) {
     liveT = (liveT + 0.0025) % 1.15
     const shown = Math.floor(cloud.value.count * Math.min(1, liveT))
@@ -258,10 +253,11 @@ onBeforeUnmount(() => {
 .pcv-info { position: absolute; left: 10px; bottom: 8px; display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--muted, #B6CADC); z-index: 2; pointer-events: none; }
 .pcv-info .ramp { width: 54px; height: 6px; border-radius: 5px; background: linear-gradient(90deg, #0000ff, #00ffff, #00ff00, #ffff00, #ff0000); } .pcv-info .ramp.blue { background: linear-gradient(90deg, hsl(212,90%,48%), hsl(176,90%,66%)); }
 .pcv-info small { color: var(--faint, #8EA6BE); margin-left: 6px; }
-.pcv :deep(.pcv-lb) { font: 600 10.5px var(--mono, monospace); pointer-events: none; }
-.pcv :deep(.pcv-lb.start) { padding: 1px 5px; color: #FFC15C; background: rgba(13,28,49,.8); border: 1px solid #FFC15C; border-radius: 7px; font-family: inherit; transform: translateY(-14px); }
-.pcv :deep(.pcv-lb.pt) { width: 18px; height: 18px; display: grid; place-items: center; color: #FFD08A; background: #14253B; border: 1.5px solid #FFC15C; border-radius: 50%; }
-.pcv :deep(.pcv-lb.pt.done) { color: #0B1C2E; background: #26C6DA; border-color: #7FF3FF; }
-.pcv :deep(.pcv-lb.pt.bad) { color: #fff; background: #FF7A7A; border-color: #FFB0B0; }
-.pcv :deep(.pcv-lb.pt.cur) { border-color: #fff; }
+.pcv :deep(.pcv-lb) { position: relative; width: 0; height: 0; pointer-events: none; font: bold 11px Arial, sans-serif; }
+.pcv :deep(.pcv-lb i) { position: absolute; left: -7px; top: -7px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: inset 0 0 0 3px #fff, inset 0 0 0 10px #ffd21f; }
+.pcv :deep(.pcv-lb span) { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); padding: 1px 6px; white-space: nowrap; color: #FFD800; background: rgba(5,15,35,.5); border: 1.5px solid rgba(255,216,0,.55); border-radius: 6px; text-shadow: 0 0 2px rgba(5,15,35,.9); }
+.pcv :deep(.pcv-lb.start i) { box-shadow: inset 0 0 0 3px #fff, inset 0 0 0 10px #ff4c4c; }
+.pcv :deep(.pcv-lb.start span) { color: #ff6767; border-color: rgba(255,84,84,.7); }
+.pcv :deep(.pcv-lb.rb i) { display: none; }
+.pcv :deep(.pcv-lb.rb span) { bottom: 0; color: #FF88FF; border-color: rgba(255,150,255,.55); }
 </style>

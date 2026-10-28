@@ -1,7 +1,7 @@
 /** 机器人业务原型 · 运行时状态（模拟 robot_web 的 cmdStatus / taskExecution 等），所有页面围绕当前机器人 */
 import { computed, reactive, ref } from 'vue'
 import { message, Modal } from 'ant-design-vue'
-import { ROBOTS, BAGS, MAPS, ROUTES, GROUPS, MULTI, SCHEDULES, RECORDS, ROUNDS, ALARMS, INS_ORIGINS, GAITS, newPid, type TaskGroup, type BizRoute, type TaskPoint } from '@/mock/biz'
+import { ROBOTS, BAGS, MAPS, ROUTES, PUBS, GROUPS, MULTI, SCHEDULES, RECORDS, ROUNDS, ALARMS, INS_ORIGINS, GAITS, newPid, type TaskGroup, type BizRoute, type TaskPoint } from '@/mock/biz'
 import { routeAt, nearestF, toReal, toFrame, dist } from './geo'
 import { pad } from '@/utils'
 
@@ -15,7 +15,7 @@ export interface Rt {
 }
 const now = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}` }
 
-export const db = reactive({ bags: BAGS, maps: MAPS, routes: ROUTES, groups: GROUPS, multi: MULTI, schedules: SCHEDULES, records: RECORDS, rounds: ROUNDS, alarms: ALARMS })
+export const db = reactive({ bags: BAGS, maps: MAPS, routes: ROUTES, pubs: PUBS, groups: GROUPS, multi: MULTI, schedules: SCHEDULES, records: RECORDS, rounds: ROUNDS, alarms: ALARMS })
 const base = (): Rt => ({ nav: false, ins: false, msf: false, msfMode: '融合定位', gps: false, navMap: '', pause: false, navStop: false, locOk: false, insOrigin: null, bagRec: null, slam: false, job: null, trackRec: null, run: null, standing: true, pose: { x: 18, y: 76, yaw: -60 }, speed: 0.8, obsMode: '停障模式' })
 export const rts = reactive<Record<string, Rt>>(Object.fromEntries(ROBOTS.map((r) => [r.id, { ...base(), insOrigin: INS_ORIGINS[r.id] ?? null }])))
 // 初始场景：DOG-001 导航中并在执行循迹任务；DOG-002 资料齐备待开导航；DOG-003 仅录包；CAR-001 INS 已初始化未开启

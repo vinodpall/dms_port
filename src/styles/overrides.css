@@ -64,7 +64,7 @@ body { font-family: var(--font-sans); }
 [data-theme="dark"] .ant-input-affix-wrapper > .ant-input, [data-theme="dark"] .ant-input-number .ant-input-number-input { background: transparent !important; }
 [data-theme="dark"] .ant-input-sm, [data-theme="dark"] .ant-input-affix-wrapper-sm, [data-theme="dark"] .ant-input-number-sm, [data-theme="dark"] .ant-picker-small, [data-theme="dark"] .ant-select-sm .ant-select-selector { border-radius: 6px !important; }
 [data-theme="dark"] .ant-input:hover, [data-theme="dark"] .ant-input-affix-wrapper:hover, [data-theme="dark"] .ant-input-number:hover, [data-theme="dark"] .ant-picker:hover,
-[data-theme="dark"] .ant-select:not(.ant-select-disabled):hover .ant-select-selector { border-color: var(--c-bd-h) !important; }
+[data-theme="dark"] .ant-select:not(.ant-select-disabled):not(.ant-select-borderless):hover .ant-select-selector { border-color: var(--c-bd-h) !important; }
 [data-theme="dark"] .ant-input:focus, [data-theme="dark"] .ant-input-affix-wrapper-focused, [data-theme="dark"] .ant-input-number-focused, [data-theme="dark"] .ant-picker-focused,
 [data-theme="dark"] .ant-select-focused:not(.ant-select-borderless) .ant-select-selector { border-color: #2ED3E6 !important; box-shadow: 0 0 0 3px rgba(46,211,230,.14) !important; }
 [data-theme="dark"] .ant-select-disabled .ant-select-selector, [data-theme="dark"] .ant-input[disabled], [data-theme="dark"] .ant-input-number-disabled { background: rgba(255,255,255,.025) !important; border-color: rgba(140,175,220,.12) !important; color: rgba(182,202,220,.45) !important; }

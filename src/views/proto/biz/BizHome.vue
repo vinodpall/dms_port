@@ -30,7 +30,7 @@ const run = computed(() => rt.value.run)
 const runRoute = computed(() => routeById(run.value?.route)); const runGroup = computed(() => groupById(run.value?.group))
 const pts = computed(() => runGroup.value?.points ?? [])
 const doneN = computed(() => (run.value ? pts.value.filter((p, i) => (runRoute.value ? p.f : i / Math.max(1, pts.value.length - 1)) < run.value!.progress - 0.01).length : 0))
-const mapPts = computed(() => pts.value.map((p, i) => ({ mx: p.mx, my: p.my, st: (i < doneN.value ? 'done' : i === doneN.value ? 'cur' : 'todo') as 'done' | 'cur' | 'todo' })))
+const mapPts = computed(() => pts.value.map((p, i) => ({ mx: p.mx, my: p.my, name: p.desc, st: (i < doneN.value ? 'done' : i === doneN.value ? 'cur' : 'todo') as 'done' | 'cur' | 'todo' })))
 
 /* 地图 */
 const mapMode = ref<'cloud' | 'grid' | 'sat'>('cloud')

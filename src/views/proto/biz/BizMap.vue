@@ -5,12 +5,13 @@ import PointCloudView from '@/components/viz/PointCloudView.vue'
 import SatMap from '@/components/viz/SatMap.vue'
 import { loadGridImage, RAW_GRID } from '@/components/viz/gridmap'
 import { MAP_FILES } from '@/config/media'
+import { isIns } from './store'
 import { ROUTE_SET, GRID_RECT, routeAt, routeLen, toReal, toLngLat, fromLngLat, yawToReal, SAT_CENTER, type P } from './geo'
 /**
  * 巡检地图：栅格（真实 PGM）/ 点云（three.js 三维）/ 卫星（高德在线卫星图）底图 + 功能区 + 路线 + 任务点 + 机器人位姿。
  * 栅格模式支持滚轮缩放、拖拽平移；坐标系 160×100（见 geo.ts）
  */
-export interface MapPt { mx: number; my: number; st?: 'done' | 'cur' | 'todo' | 'bad' }
+export interface MapPt { mx: number; my: number; st?: 'done' | 'cur' | 'todo' | 'bad'; name?: string }
 const props = withDefaults(defineProps<{ seed?: number; mode?: 'grid' | 'cloud' | 'sat' | 'blank'; zones?: boolean; shape?: number | null; pts?: MapPt[]; progress?: number; draw?: number | null; robot?: { x: number; y: number; yaw: number } | null; edit?: boolean; sel?: number; labels?: boolean; arrow?: { x: number; y: number; yaw: number } | null; pick?: boolean; ghost?: number[]; live?: boolean; controls?: boolean; light?: boolean; center?: [number, number]; cloudBar?: boolean }>(),
   { seed: 11, mode: 'grid', zones: true, shape: null, pts: () => [], progress: 0, draw: null, robot: null, edit: false, sel: -1, labels: true, arrow: null, pick: false, ghost: () => [], live: false, controls: true, light: false, center: undefined, cloudBar: true })
 /** 点云 / 卫星图首次使用后保活（单例地图在各页面间复用，不重复创建） */
@@ -82,7 +83,7 @@ const onClick = (e: MouseEvent) => {
 /* ---------- 点云 / 卫星叠加 ---------- */
 const real = (p: P): [number, number] => { const r = toReal(p[0], p[1]); return [r.x, r.y] }
 const cloudRoute = computed(() => (route.value ? route.value.map(real) : props.shape !== null && props.draw !== null ? partialPts(props.shape, Math.max(0.001, props.draw)).map(real) : null))
-const cloudPts = computed(() => props.pts.map((p) => { const r = toReal(p.mx, p.my); return { x: r.x, y: r.y, st: p.st } }))
+const cloudPts = computed(() => props.pts.map((p) => { const r = toReal(p.mx, p.my); return { x: r.x, y: r.y, st: p.st, name: p.name } }))
 const cloudRobot = computed(() => (props.robot ? { ...toReal(props.robot.x, props.robot.y), yaw: yawToReal(props.robot.yaw) } : null))
 const ll = (p: P) => toLngLat(p[0], p[1], satC.value)
 const satCenter = computed<[number, number]>(() => [satC.value.lng, satC.value.lat])
@@ -98,7 +99,7 @@ const onSatPick = (lng: number, lat: number) => { const p = fromLngLat(lng, lat,
 
 <template>
   <div class="bm-wrap">
-  <PointCloudView v-if="used.cloud" v-show="mode === 'cloud'" :route="cloudRoute" :done="draw === null ? progress : 1" :pts="cloudPts" :robot="cloudRobot" :live="live" :toolbar="cloudBar" />
+  <PointCloudView v-if="used.cloud" v-show="mode === 'cloud'" :route="cloudRoute" :done="draw === null ? progress : 1" :pts="cloudPts" :robot="cloudRobot" :robot-label="isIns ? '无人车' : '机器狗'" :live="live" :toolbar="cloudBar" />
   <SatMap v-if="used.sat" v-show="mode === 'sat'" :center="satCenter" :route="satRoute" :done="satDone" :ghost="satGhost" :pts="satPts" :robot="satRobot" :arrow="satArrow" :pick="pick" @pick="onSatPick" />
   <template v-if="mode === 'grid' || mode === 'blank'">
   <svg ref="svgEl" class="bm" :class="{ pick, pan: controls && zoomed }" :viewBox="viewBox" preserveAspectRatio="xMidYMid meet" @click="onClick" @wheel="onWheel" @pointerdown="onDown" @pointermove="onMove" @pointerup="onUp" @pointercancel="onUp">

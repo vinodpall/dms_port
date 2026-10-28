@@ -94,16 +94,22 @@ const mkFree = (seed: number, n: number): TaskPoint[] => {
   return Array.from({ length: n }, (_, i) => { const [mx, my] = spots[i % spots.length]; const real = toReal(mx, my)
     return { id: pid++, type: TASK_TYPES[Math.floor(r() * 4)].cn, multi: false, x: real.x, y: real.y, z: 0, angle: Math.round(r() * 360 - 180), mx, my, f: 0, preset: PRESETS[i % 8], extra: '', desc: ['消防栓 F-0' + (i + 1), '灭火器箱', '应急灯', '烟感探头'][i % 4], gait: 1, ground: 1, nostop: false, obs: '停障模式', always: true } })
 }
+/** 发布点任务：不依赖录制轨迹，直接在地图上布点（与循迹路线同级，下设任务组） */
+export interface PubTask { id: string; name: string; robot: string; map: string; created: string }
+export const PUBS: PubTask[] = [
+  { id: 'PB-01', name: '消防设施点检', robot: 'DOG-001', map: '综合楼一层', created: '2026-10-15 09:20' },
+  { id: 'PB-02', name: '停车场定点巡查', robot: 'CAR-001', map: '室外园区', created: '2026-10-11 14:05' },
+]
 export const GROUPS: TaskGroup[] = [
   { id: 'G-01', name: '日常巡检', robot: 'DOG-001', kind: '循迹', route: 'RT-01', map: '综合楼一层', points: mkPts(5, 0, 9) },
   { id: 'G-02', name: '夜间重点', robot: 'DOG-001', kind: '循迹', route: 'RT-01', map: '综合楼一层', points: mkPts(9, 0, 4) },
   { id: 'G-03', name: '机房巡查', robot: 'DOG-001', kind: '循迹', route: 'RT-02', map: '综合楼一层', points: mkPts(8, 1, 6) },
   { id: 'G-04', name: '回桩', robot: 'DOG-001', kind: '循迹', route: 'RT-03', map: '综合楼一层', points: [] },
-  { id: 'G-05', name: '消防设施点检', robot: 'DOG-001', kind: '发布点', map: '综合楼一层', points: mkFree(12, 6) },
+  { id: 'G-05', name: '日常点检', robot: 'DOG-001', kind: '发布点', route: 'PB-01', map: '综合楼一层', points: mkFree(12, 6) },
   { id: 'G-06', name: '温湿度巡检', robot: 'DOG-002', kind: '循迹', route: 'RT-05', map: '地下管廊', points: mkPts(15, 6, 8) },
   { id: 'G-07', name: '外围安防', robot: 'CAR-001', kind: '循迹', route: 'RT-06', map: '', points: mkPts(21, 4, 8) },
   { id: 'G-08', name: '道路巡查', robot: 'CAR-001', kind: '循迹', route: 'RT-07', map: '', points: mkPts(25, 5, 5) },
-  { id: 'G-10', name: '停车场定点巡查', robot: 'CAR-001', kind: '发布点', map: '室外园区', points: mkFree(33, 5) },
+  { id: 'G-10', name: '夜间巡查', robot: 'CAR-001', kind: '发布点', route: 'PB-02', map: '室外园区', points: mkFree(33, 5) },
   { id: 'G-09', name: '外围安防', robot: 'CAR-002', kind: '循迹', route: 'RT-08', map: '', points: mkPts(29, 4, 6) },
 ]
 export interface MultiStep { startMode: '导航' | 'INS' | 'MSF'; mode: '循迹模式' | '发布点模式'; map: string; route: string; group: string; circle: number; obs: string; gait: number; ground: number; origin: boolean }

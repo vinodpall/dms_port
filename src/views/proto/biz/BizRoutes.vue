@@ -28,17 +28,28 @@ const byMap = computed(() => {
   return out
 })
 const pubGroups = computed(() => myGroups.value.filter((g) => g.kind === '发布点'))
-/** 发布点任务：按地图归类，地图下再分任务组（与循迹路线 → 任务组 一致） */
-const pubMaps = computed(() => { const s = new Set<string>(myMaps.value.filter((m) => m.grid).map((m) => m.name)); pubGroups.value.forEach((g) => s.add(g.map || 'INS 坐标系')); return [...s] })
-const sel = ref('') // 路线 id 或 'M:'+发布点地图
+/** 发布点任务：与循迹路线同级（无需录制轨迹），其下再分任务组 */
+const myPubs = computed(() => db.pubs.filter((p) => p.robot === curId.value))
+const sel = ref('') // 路线 id 或 'P:'+发布点任务 id
 watch([curId, myRoutes, pubGroups, sub], () => {
-  if (sub.value === 'pub') { if (!pubMaps.value.some((m) => 'M:' + m === sel.value)) sel.value = pubMaps.value[0] ? 'M:' + pubMaps.value[0] : '' }
+  if (sub.value === 'pub') { if (!myPubs.value.some((m) => 'P:' + m.id === sel.value)) sel.value = myPubs.value[0] ? 'P:' + myPubs.value[0].id : '' }
   else if (!myRoutes.value.some((r) => r.id === sel.value)) sel.value = myRoutes.value[0]?.id ?? ''
 }, { immediate: true })
 watch(lastRoute, (v) => { if (v) sel.value = v })
 const route = computed(() => routeById(sel.value))
-const pubSel = computed(() => (sel.value.startsWith('M:') ? { name: sel.value.slice(2), map: sel.value.slice(2) } : undefined))
-const pubOf = (m: string) => pubGroups.value.filter((g) => (g.map || 'INS 坐标系') === m)
+const pubSel = computed(() => (sel.value.startsWith('P:') ? myPubs.value.find((p) => 'P:' + p.id === sel.value) : undefined))
+const pubOf = (id: string) => pubGroups.value.filter((g) => g.route === id)
+const pbOpen = ref(false); const pb = reactive({ name: '', map: '' })
+const openPub = () => { pb.name = ''; pb.map = rt.value.navMap || gridMaps.value[0]?.name || ''; pbOpen.value = true }
+const okPub = () => {
+  if (!pb.name.trim()) return message.error('请输入发布点任务名称')
+  if (myPubs.value.some((p) => p.name === pb.name.trim())) return message.error('名称已存在')
+  const id = `PB-${String(db.pubs.length + 1).padStart(2, '0')}${Math.floor(Math.random() * 9)}`
+  db.pubs.push({ id, name: pb.name.trim(), robot: curId.value, map: isIns.value ? '' : pb.map, created: new Date().toISOString().slice(0, 16).replace('T', ' ') })
+  sel.value = 'P:' + id; pbOpen.value = false; message.success('发布点任务已创建，请新增任务组并添加任务点')
+}
+const delPub = () => { const p = pubSel.value!; Modal.confirm({ title: '删除发布点任务', content: `删除「${p.name}」将同时删除其下 ${pubOf(p.id).length} 个任务组，确定删除吗？`, okButtonProps: { danger: true }, onOk: () => {
+  db.pubs.splice(db.pubs.findIndex((x) => x.id === p.id), 1); for (let i = db.groups.length - 1; i >= 0; i--) if (db.groups[i].route === p.id) db.groups.splice(i, 1); message.success('已删除') } }) }
 const groupsOf = (id: string) => myGroups.value.filter((g) => g.route === id)
 const ptsOf = (id: string) => groupsOf(id).reduce((a, g) => a + g.points.length, 0)
 const lenM = (shape: number) => (routeLen(shape) * UNIT).toFixed(1)
@@ -54,7 +65,7 @@ const toggleRun = () => {
   if (running.value) return stopRun()
   if (rt.value.run) return message.error('机器人正在执行其他任务')
   if (!group.value.points.length) return message.error('任务组暂无任务点')
-  openLaunch(pubSel.value ? '发布点任务' : '循迹任务', { route: group.value.route, group: group.value.id })
+  openLaunch(pubSel.value ? '发布点任务' : '循迹任务', { route: pubSel.value ? undefined : group.value.route, group: group.value.id })
 }
 
 /* ---------- 录制路线 ---------- */
@@ -77,7 +88,7 @@ const delRoute = () => { const r = route.value!; Modal.confirm({ title: '删除�
 
 /* ---------- 任务组 ---------- */
 const gid = ref('')
-const groups = computed<TaskGroup[]>(() => (pubSel.value ? pubOf(pubSel.value.map) : route.value ? groupsOf(route.value.id) : []))
+const groups = computed<TaskGroup[]>(() => (pubSel.value ? pubOf(pubSel.value.id) : route.value ? groupsOf(route.value.id) : []))
 watch([sel, groups], () => { if (!groups.value.some((g) => g.id === gid.value)) gid.value = groups.value[0]?.id ?? '' }, { immediate: true })
 const group = computed(() => groups.value.find((g) => g.id === gid.value))
 const gOpen = ref(false); const gf = reactive({ name: '', kind: '循迹' as '循迹' | '发布点', map: '' })
@@ -86,7 +97,7 @@ const okGroup = () => {
   if (!gf.name.trim()) return message.error('请输入任务组名称')
   const id = `G-${String(db.groups.length + 1).padStart(2, '0')}${Math.floor(Math.random() * 9)}`
   if (gf.kind === '循迹') { if (groups.value.some((g) => g.name === gf.name.trim())) return message.error('任务组名称已存在'); db.groups.push({ id, name: gf.name.trim(), robot: curId.value, kind: '循迹', route: route.value!.id, map: route.value!.map, points: [] }); gid.value = id }
-  else { db.groups.push({ id, name: gf.name.trim(), robot: curId.value, kind: '发布点', map: gf.map, points: [] }); gid.value = id }
+  else { db.groups.push({ id, name: gf.name.trim(), robot: curId.value, kind: '发布点', route: pubSel.value?.id, map: gf.map, points: [] }); gid.value = id }
   
   gOpen.value = false; message.success('任务组已创建，请添加任务点')
 }
@@ -95,7 +106,7 @@ const delGroup = () => { const g = group.value!; Modal.confirm({ title: '删除�
 /* ---------- 任务点 ---------- */
 const selPt = ref(-1)
 watch(gid, () => { selPt.value = -1 })
-const mapPts = computed(() => (group.value?.points ?? []).map((p) => ({ mx: p.mx, my: p.my, st: 'todo' as const })))
+const mapPts = computed(() => (group.value?.points ?? []).map((p) => ({ mx: p.mx, my: p.my, name: p.desc, st: 'todo' as const })))
 const blank = (): TaskPoint => ({ id: 0, type: '可见光拍照', multi: false, x: 0, y: 0, z: 0, angle: 0, mx: 0, my: 0, f: 0, preset: '', extra: '', desc: '', gait: 1, ground: 1, nostop: false, obs: '停障模式', always: true })
 const pOpen = ref(false); const editId = ref(0); const pf = reactive<TaskPoint>(blank())
 const typeOpts = computed(() => TASK_TYPES.filter((t) => t.single === !pf.multi).map((t) => ({ value: t.cn, label: t.cn })))
@@ -135,13 +146,14 @@ const pose = computed(() => ({ x: toReal(rt.value.pose.x, rt.value.pose.y).x.toF
         </div>
       </template>
       <template v-else>
-        <div class="pp-panel-h"><h3>发布点任务</h3><span class="muted" style="font-size:12px;margin-left:6px">{{ pubMaps.length }} 张地图</span></div>
+        <div class="pp-panel-h"><h3>发布点任务</h3>
+          <span class="bz-panel-tools"><a-button size="small" type="primary" @click="openPub">新增发布点任务</a-button></span></div>
         <div class="bz-items rt-scroll">
-          <button v-for="m in pubMaps" :key="m" type="button" class="bz-item" :class="{ on: 'M:' + m === sel }" @click="pickRoute('M:' + m)">
-            <span class="b"><b>{{ m }}</b><small>{{ pubOf(m).length }} 个任务组 · {{ pubOf(m).reduce((a, g) => a + g.points.length, 0) }} 个任务点</small></span>
-            <a-tag v-if="pubOf(m).some((g) => rt.run?.group === g.id)" color="cyan" class="tg">执行中</a-tag>
+          <button v-for="m in myPubs" :key="m.id" type="button" class="bz-item" :class="{ on: 'P:' + m.id === sel }" @click="pickRoute('P:' + m.id)">
+            <span class="b"><b>{{ m.name }}</b><small>{{ m.map || 'INS 坐标系' }} · {{ pubOf(m.id).length }} 个任务组 · {{ pubOf(m.id).reduce((a, g) => a + g.points.length, 0) }} 个点</small></span>
+            <a-tag v-if="pubOf(m.id).some((g) => rt.run?.group === g.id)" color="cyan" class="tg">执行中</a-tag>
           </button>
-          <div v-if="!pubMaps.length" class="bz-empty">暂无地图<br /><span style="font-size:12px">请先在导航管理中建图</span></div>
+          <div v-if="!myPubs.length" class="bz-empty">暂无发布点任务<br /><span style="font-size:12px">点击「新增发布点任务」创建</span></div>
         </div>
       </template>
     </div>
@@ -151,8 +163,9 @@ const pose = computed(() => ({ x: toReal(rt.value.pose.x, rt.value.pose.y).x.toF
       <div class="pp-panel-h">
         <h3>{{ recording && !route ? '路线录制' : pubSel ? pubSel.name : route ? shortName(route) : '地图' }}</h3>
         <span class="bz-panel-tools">
+          <a-tooltip v-if="pubSel" title="删除发布点任务"><a-button size="small" danger :disabled="pubOf(pubSel.id).some((g) => rt.run?.group === g.id)" @click="delPub"><DeleteOutlined /></a-button></a-tooltip>
           <template v-if="route && sub === 'route'">
-            <a-button size="small" :disabled="route.smooth" @click="smooth">{{ route.smooth ? '已平滑' : '轨迹平滑' }}</a-button>
+            <a-button size="small" @click="smooth">轨迹平滑</a-button>
             <a-tooltip :title="mode !== 'grid' ? '请切换到栅格地图后编辑' : ''"><a-button size="small" :type="editing ? 'primary' : 'default'" :disabled="!!rt.run || mode !== 'grid'" @click="editing = !editing">{{ editing ? '退出编辑' : '路线编辑' }}</a-button></a-tooltip>
             <a-tooltip title="删除路线"><a-button size="small" danger :disabled="rt.run?.route === route.id" @click="delRoute"><DeleteOutlined /></a-button></a-tooltip>
           </template>
@@ -195,6 +208,14 @@ const pose = computed(() => ({ x: toReal(rt.value.pose.x, rt.value.pose.y).x.toF
     </div>
   </div>
 
+  <!-- 弹窗：新增发布点任务 -->
+  <a-modal v-model:open="pbOpen" title="新增发布点任务" :width="420" @ok="okPub">
+    <a-form layout="vertical" class="bz-form" style="margin-top:12px">
+      <a-form-item label="任务名称"><a-input v-model:value="pb.name" placeholder="请输入发布点任务名称" :maxlength="30" /></a-form-item>
+      <a-form-item v-if="!isIns" label="所属地图"><a-select v-model:value="pb.map" :options="gridMaps.map((m) => ({ value: m.name, label: m.name }))" /></a-form-item>
+    </a-form>
+  </a-modal>
+
   <!-- 弹窗：录制路线 -->
   <a-modal v-model:open="recOpen" title="录制路线" :width="440" ok-text="开始录制" @ok="okRec">
     <a-form layout="vertical" class="bz-form" style="margin-top:12px">
@@ -205,10 +226,10 @@ const pose = computed(() => ({ x: toReal(rt.value.pose.x, rt.value.pose.y).x.toF
   </a-modal>
 
   <!-- 弹窗：新建任务组 -->
-  <a-modal v-model:open="gOpen" :title="gf.kind === '循迹' ? '新建任务组' : '新建发布点任务组'" :width="420" @ok="okGroup">
+  <a-modal v-model:open="gOpen"  title="新建任务组" :width="420" @ok="okGroup">
     <a-form layout="vertical" class="bz-form" style="margin-top:12px">
       <a-form-item v-if="gf.kind === '循迹'" label="所属路线"><a-input :value="route?.name" disabled /></a-form-item>
-      <a-form-item v-else label="所属地图"><a-select v-model:value="gf.map" :options="gridMaps.map((m) => ({ value: m.name, label: m.name }))" /></a-form-item>
+      <a-form-item v-else label="所属发布点任务"><a-input :value="pubSel?.name" disabled /></a-form-item>
       <a-form-item label="任务组名称"><a-input v-model:value="gf.name" placeholder="如：日常巡检" :maxlength="20" /></a-form-item>
     </a-form>
   </a-modal>

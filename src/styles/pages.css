@@ -118,7 +118,7 @@
 .pp-side.folded .pp-menu .ant-menu-item { padding-inline: calc(50% - 8px) !important; }
 .pp-side.folded .pp-menu .ant-menu-item-group-title { height: 1px; padding: 0; margin: 8px 6px; overflow: hidden; font-size: 0; background: var(--line); }
 .pp-side.folded .pp-mbadge { display: none; }
-.pp-fold { width: 100%; font: inherit; cursor: pointer; background: none; border: 0; border-top: 1px solid var(--line); transition: color .15s, background .15s; }
+.pp-fold { width: 100%; white-space: nowrap; overflow: hidden; font: inherit; cursor: pointer; background: none; border: 0; border-top: 1px solid var(--line); transition: color .15s, background .15s; }
 .pp-fold .anticon { font-size: 15px; }
 .pp-fold:hover { color: var(--cyan); background: rgba(var(--glow),.06); }
 .pp-side.folded .pp-fold { justify-content: center; padding-inline: 0; }

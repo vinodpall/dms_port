@@ -50,3 +50,6 @@
 .bz-fit > .pp-panel, .bz-fit > .bz-col { min-height: 0; }
 .bz-fit .bz-fill { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .bz-fit .bz-fill > .bz-canvas { flex: 1; min-height: 0; aspect-ratio: auto; }
+
+.bt-center .ant-table-thead > tr > th, .bt-center .ant-table-tbody > tr > td { text-align: center !important; }
+.bt-center .ant-table-tbody > tr > td > * { justify-content: center; }
