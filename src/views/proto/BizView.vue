@@ -12,8 +12,10 @@ import BizRecords from './biz/BizRecords.vue'
 import BizAlarms from './biz/BizAlarms.vue'
 import BizLogs from './biz/BizLogs.vue'
 import TaskLaunch from './biz/TaskLaunch.vue'
+import BizMap from './biz/BizMap.vue'
+import { activeSlot } from './biz/mapHost'
 import { ROBOTS, LOC_META } from '@/mock/biz'
-import { robot, rts, switching, curId, isIns, selectRobot, steps, curStep } from './biz/store'
+import { robot, rts, switching, curId, isIns, selectRobot } from './biz/store'
 
 document.title = '机器人业务管理 · 具身智能训练场'
 const MENU = [
@@ -25,9 +27,9 @@ const MENU = [
 const PAGES = computed<Record<string, { t: string; d: string; tabs: { k: string; t: string }[] }>>(() => ({
   nav: {
     t: '导航管理', d: isIns.value ? 'INS 机器人使用 GPS 坐标，完成 INS 初始化并开启定位后即可录制路线' : '录包建图 → 生成栅格地图 → 开启导航定位，为录制路线做准备',
-    tabs: isIns.value ? [{ k: 'loc', t: 'INS 定位' }, { k: 'file', t: '文件管理' }] : [{ k: 'loc', t: '导航定位' }, { k: 'build', t: '录包建图' }, { k: 'edit', t: '地图编辑' }, { k: 'file', t: '文件管理' }],
+    tabs: isIns.value ? [{ k: 'loc', t: '导航定位' }, { k: 'build', t: '录包建图' }, { k: 'file', t: '文件管理' }] : [{ k: 'loc', t: '导航定位' }, { k: 'build', t: '录包建图' }, { k: 'edit', t: '地图编辑' }, { k: 'file', t: '文件管理' }],
   },
-  task: { t: '任务管理', d: '录制循迹路线、在路线上配置任务点，并编排多任务组与定时任务；任务从首页「任务下发」或路线列表下发', tabs: [{ k: 'route', t: '循迹路线' }, { k: 'points', t: '任务点' }, { k: 'multi', t: '多任务组' }, { k: 'sched', t: '定时任务' }] },
+  task: { t: '任务管理', d: '录制循迹路线、在路线上配置任务点，并编排多任务组与定时任务；任务从首页「任务下发」或路线列表下发', tabs: [{ k: 'route', t: '循迹路线' }, { k: 'pub', t: '发布点任务' }, { k: 'multi', t: '多任务组' }, { k: 'sched', t: '定时任务' }] },
   log: { t: '日志管理', d: '巡检结果、告警处置与业务操作记录', tabs: [{ k: 'rec', t: '巡检记录' }, { k: 'alarm', t: '告警记录' }, { k: 'op', t: '操作日志' }] },
 }))
 const tab = ref('home')
@@ -38,7 +40,6 @@ watch(tab, () => { sub.value = next; next = '' })
 const page = computed(() => PAGES.value[tab.value])
 const cur = computed({ get: () => (page.value?.tabs.some((x) => x.k === sub.value) ? sub.value : page.value?.tabs[0].k ?? ''), set: (v) => { sub.value = v } })
 watch(curId, () => { if (!page.value?.tabs.some((x) => x.k === sub.value)) sub.value = '' })
-const flow = computed(() => (tab.value === 'nav' || tab.value === 'task') && robot.value.online)
 
 const state = (id: string) => { const r = ROBOTS.find((x) => x.id === id)!; return !r.online ? { t: '离线', c: '#8EA6BE' } : rts[id].run ? { t: '任务中', c: '#26C6DA' } : { t: '在线', c: '#45E3A8' } }
 const estop = () => message.error(`${robot.value.name} 已触发软件急停`)
@@ -60,16 +61,9 @@ const estop = () => message.error(`${robot.value.name} 已触发软件急停`)
       <a-alert v-if="!robot.online && tab !== 'log'" class="bv-off" type="warning" show-icon banner :message="`${robot.name}（${robot.id}）当前离线，无法下发控制指令与任务，仅可查看数据`" />
       <BizHome v-if="tab === 'home'" :key="curId" @go="go" />
       <template v-else-if="page">
-        <div class="pp-head"><div><h2>{{ page.t }}</h2><p>{{ page.d }}</p></div></div>
-        <div v-if="flow" class="bv-flow">
-          <template v-for="(s, i) in steps" :key="s.k">
-            <a-tooltip :title="s.tip"><button type="button" :class="{ done: s.done, now: i === curStep }" @click="go(s.tab, s.sub)"><i>{{ s.done ? '✓' : i + 1 }}</i><span>{{ s.t }}</span><small>{{ s.d }}</small></button></a-tooltip>
-            <em v-if="i < steps.length - 1" />
-          </template>
-        </div>
         <a-tabs v-model:activeKey="cur" class="bv-tabs"><a-tab-pane v-for="x in page.tabs" :key="x.k" :tab="x.t" /></a-tabs>
         <BizNav v-if="tab === 'nav'" v-model:sub="cur" @go="go" />
-        <BizRoutes v-else-if="tab === 'task' && (cur === 'route' || cur === 'points')" v-model:sub="cur" @go="go" />
+        <BizRoutes v-else-if="tab === 'task' && (cur === 'route' || cur === 'pub')" v-model:sub="cur" @go="go" />
         <BizTasks v-else-if="tab === 'task'" :sub="cur" />
         <BizRecords v-else-if="cur === 'rec'" :key="curId" />
         <BizAlarms v-else-if="cur === 'alarm'" />
@@ -77,11 +71,14 @@ const estop = () => message.error(`${robot.value.name} 已触发软件急停`)
       </template>
     </a-spin>
     <TaskLaunch @go="go" />
+    <!-- 模块内唯一地图实例：挂到当前激活的 MapSlot -->
+    <div class="bv-park"><Teleport :to="activeSlot?.el ?? 'body'" :disabled="!activeSlot"><BizMap v-bind="activeSlot?.attrs ?? {}" /></Teleport></div>
   </ModuleShell>
 </template>
 
 <style scoped>
 .bv-off { margin-bottom: 14px; }
+.bv-park { display: none; }
 .bv-rb { display: flex; align-items: center; height: 30px; padding-left: 10px; margin-right: 8px; background: rgba(46,211,230,.06); border: 1px solid var(--line-strong); border-radius: 4px; }
 .bv-rb > i { width: 7px; height: 7px; border-radius: 50%; }
 .bv-rb :deep(.ant-select) { width: 196px; } .bv-rb :deep(.ant-select-selection-item) { font-weight: 500; color: #fff; }

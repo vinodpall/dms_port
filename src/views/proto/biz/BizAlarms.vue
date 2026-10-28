@@ -3,7 +3,7 @@ import { computed, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { ExportOutlined, PlusOutlined, EnvironmentOutlined } from '@ant-design/icons-vue'
 import CamShot from './CamShot.vue'
-import BizMap from './BizMap.vue'
+import MapSlot from './MapSlot.vue'
 import { ALARM_TYPES, ROBOTS, PROMPTS, SENSORS, alarmColor as color, type BizAlarm } from '@/mock/biz'
 import { db, curId, robot } from './store'
 
@@ -113,7 +113,7 @@ const fall = reactive({ on: true, roll: 45, pitch: 45 })
         <a-descriptions-item label="所属任务">{{ cur.task }}</a-descriptions-item>
         <a-descriptions-item label="位置"><EnvironmentOutlined /> {{ cur.lnglat ?? cur.coord }}</a-descriptions-item>
       </a-descriptions>
-      <div class="al-loc"><BizMap :seed="11" :mode="cur.lnglat ? 'sat' : 'grid'" :zones="false" :robot="{ x: 40 + (cur.seed % 7) * 12, y: 30 + (cur.seed % 3) * 20, yaw: 0 }" /></div>
+      <div class="al-loc"><MapSlot :seed="11" :mode="cur.lnglat ? 'sat' : 'grid'" :zones="false" :robot="{ x: 40 + (cur.seed % 7) * 12, y: 30 + (cur.seed % 3) * 20, yaw: 0 }" /></div>
       <template v-if="cur.state === '待处理' && mode === 'view'">
         <h4 style="margin:18px 0 10px">处理告警</h4>
         <a-form layout="vertical">

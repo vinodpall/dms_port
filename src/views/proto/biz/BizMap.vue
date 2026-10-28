@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watchEffect } from 'vue'
 import { PlusOutlined, MinusOutlined, CompressOutlined } from '@ant-design/icons-vue'
 import PointCloudView from '@/components/viz/PointCloudView.vue'
 import SatMap from '@/components/viz/SatMap.vue'
@@ -13,6 +13,9 @@ import { ROUTE_SET, GRID_RECT, routeAt, routeLen, toReal, toLngLat, fromLngLat, 
 export interface MapPt { mx: number; my: number; st?: 'done' | 'cur' | 'todo' | 'bad' }
 const props = withDefaults(defineProps<{ seed?: number; mode?: 'grid' | 'cloud' | 'sat' | 'blank'; zones?: boolean; shape?: number | null; pts?: MapPt[]; progress?: number; draw?: number | null; robot?: { x: number; y: number; yaw: number } | null; edit?: boolean; sel?: number; labels?: boolean; arrow?: { x: number; y: number; yaw: number } | null; pick?: boolean; ghost?: number[]; live?: boolean; controls?: boolean; center?: [number, number]; cloudBar?: boolean }>(),
   { seed: 11, mode: 'grid', zones: true, shape: null, pts: () => [], progress: 0, draw: null, robot: null, edit: false, sel: -1, labels: true, arrow: null, pick: false, ghost: () => [], live: false, controls: true, center: undefined, cloudBar: true })
+/** 点云 / 卫星图首次使用后保活（单例地图在各页面间复用，不重复创建） */
+const used = reactive({ cloud: false, sat: false })
+watchEffect(() => { if (props.mode === 'cloud') used.cloud = true; if (props.mode === 'sat') used.sat = true })
 const emit = defineEmits<{ pick: [x: number, y: number] }>()
 const uid = Math.random().toString(36).slice(2, 7)
 const AREAS = [{ x: 82, y: 17, t: '中心庭院' }, { x: 97, y: 52, t: '东楼' }, { x: 70, y: 86, t: '南侧连廊' }, { x: 116, y: 80, t: '东侧通道' }]
@@ -90,9 +93,9 @@ const onSatPick = (lng: number, lat: number) => { const p = fromLngLat(lng, lat,
 
 <template>
   <div class="bm-wrap">
-  <PointCloudView v-if="mode === 'cloud'" :route="cloudRoute" :done="draw === null ? progress : 1" :pts="cloudPts" :robot="cloudRobot" :live="live" :toolbar="cloudBar" />
-  <SatMap v-else-if="mode === 'sat'" :center="satCenter" :route="satRoute" :done="satDone" :ghost="satGhost" :pts="satPts" :robot="satRobot" :arrow="satArrow" :pick="pick" @pick="onSatPick" />
-  <template v-else>
+  <PointCloudView v-if="used.cloud" v-show="mode === 'cloud'" :route="cloudRoute" :done="draw === null ? progress : 1" :pts="cloudPts" :robot="cloudRobot" :live="live" :toolbar="cloudBar" />
+  <SatMap v-if="used.sat" v-show="mode === 'sat'" :center="satCenter" :route="satRoute" :done="satDone" :ghost="satGhost" :pts="satPts" :robot="satRobot" :arrow="satArrow" :pick="pick" @pick="onSatPick" />
+  <template v-if="mode === 'grid' || mode === 'blank'">
   <svg ref="svgEl" class="bm" :class="{ pick, pan: controls && zoomed }" :viewBox="viewBox" preserveAspectRatio="xMidYMid meet" @click="onClick" @wheel="onWheel" @pointerdown="onDown" @pointermove="onMove" @pointerup="onUp" @pointercancel="onUp">
     <defs>
       <pattern :id="`g-${uid}`" width="4" height="4" patternUnits="userSpaceOnUse"><path d="M4 0H0V4" fill="none" stroke="rgba(46,211,230,.07)" stroke-width=".2" /></pattern>
@@ -155,14 +158,15 @@ const onSatPick = (lng: number, lat: number) => { const p = fromLngLat(lng, lat,
 
 <style scoped>
 .bm-wrap { position: relative; width: 100%; height: 100%; }
+.bm-wrap > :deep(.pcv), .bm-wrap > :deep(.sat) { position: absolute; inset: 0; }
 .bm { display: block; width: 100%; height: 100%; touch-action: none; } .bm.pan { cursor: grab; } .bm.pick { cursor: crosshair; }
 .bm-img { image-rendering: pixelated; }
 .bm-ctl { position: absolute; right: 8px; bottom: 8px; display: flex; flex-direction: column; gap: 2px; padding: 3px; background: rgba(13,28,49,.78); border: 1px solid rgba(46,211,230,.2); border-radius: 6px; }
-.bm-ctl button { width: 24px; height: 24px; display: grid; place-items: center; font-size: 12px; color: var(--muted); background: none; border: 0; border-radius: 4px; cursor: pointer; }
+.bm-ctl button { width: 24px; height: 24px; display: grid; place-items: center; font-size: 12px; color: var(--muted, #B6CADC); background: none; border: 0; border-radius: 4px; cursor: pointer; }
 .bm-ctl button:hover:not(:disabled) { color: #fff; background: rgba(46,211,230,.12); } .bm-ctl button:disabled { opacity: .35; cursor: default; }
 .bm-tag { font-size: 2.4px; fill: #FFC15C; text-anchor: middle; }
 .bm-room { font-size: 2.8px; fill: rgba(158,195,214,.5); text-anchor: middle; dominant-baseline: middle; letter-spacing: .2px; }
-.bm-pt { font: 600 2.2px var(--mono); text-anchor: middle; }
+.bm-pt { font: 600 2.2px var(--mono, monospace); text-anchor: middle; }
 .bm-pulse { transform-box: fill-box; transform-origin: center; animation: bm-pulse 2.8s ease-in-out infinite; }
 @keyframes bm-pulse { 0%, 100% { opacity: .9; transform: scale(.85); } 50% { opacity: .35; transform: scale(1.15); } }
 </style>

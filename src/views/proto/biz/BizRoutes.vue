@@ -3,21 +3,21 @@ import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { message, Modal } from 'ant-design-vue'
 import {
   PlayCircleOutlined, StopOutlined, PlusOutlined, DeleteOutlined, AimOutlined, EditOutlined, UndoOutlined, SaveOutlined, InfoCircleOutlined,
-  ScissorOutlined, HighlightOutlined, RedoOutlined, NodeIndexOutlined, CameraOutlined, EnvironmentOutlined,
+  ScissorOutlined, HighlightOutlined, RedoOutlined, NodeIndexOutlined, CameraOutlined, EyeOutlined,
 } from '@ant-design/icons-vue'
-import BizMap from './BizMap.vue'
+import MapSlot from './MapSlot.vue'
 import WebRtcVideo from '@/components/viz/WebRtcVideo.vue'
 import { streamsOf } from '@/config/media'
 import { TASK_TYPES, PRESETS, GAITS, GROUNDS, OBS_MODES, PROMPTS, type TaskPoint, type TaskGroup } from '@/mock/biz'
 import { routeLen, toReal, UNIT } from './geo'
 import {
   rt, isDog, isIns, hasNav, myMaps, myRoutes, myGroups, db, curId, routeById, shortName, lastRoute,
-  startTrackRec, stopTrackRec, openLaunch, newPointFromPose, savePoint, gotoPoint, gotoStart, startDist, gaitName,
+  startTrackRec, stopTrackRec, openLaunch, stopRun, newPointFromPose, savePoint, gotoPoint, gotoStart, startDist, gaitName,
 } from './store'
 
 const props = defineProps<{ sub: string }>()
 const emit = defineEmits<{ 'update:sub': [string]; go: [tab: string, sub?: string] }>()
-const sub = computed({ get: () => (props.sub === 'points' ? 'points' : 'route'), set: (v) => emit('update:sub', v) })
+const sub = computed(() => (props.sub === 'pub' ? 'pub' : 'route'))
 const ts = ref(Date.now()); const tm = setInterval(() => { ts.value = Date.now() }, 1000); onBeforeUnmount(() => clearInterval(tm))
 const mmss = (t0: number) => { const s = Math.max(0, Math.round((ts.value - t0) / 1000)); return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}` }
 
@@ -29,7 +29,10 @@ const byMap = computed(() => {
 })
 const pubGroups = computed(() => myGroups.value.filter((g) => g.kind === '发布点'))
 const sel = ref('') // 路线 id 或 'G:'+发布点任务组 id
-watch([curId, myRoutes], () => { if (!myRoutes.value.some((r) => r.id === sel.value) && !pubGroups.value.some((g) => 'G:' + g.id === sel.value)) sel.value = myRoutes.value[0]?.id ?? '' }, { immediate: true })
+watch([curId, myRoutes, pubGroups, sub], () => {
+  if (sub.value === 'pub') { if (!pubGroups.value.some((g) => 'G:' + g.id === sel.value)) sel.value = pubGroups.value[0] ? 'G:' + pubGroups.value[0].id : '' }
+  else if (!myRoutes.value.some((r) => r.id === sel.value)) sel.value = myRoutes.value[0]?.id ?? ''
+}, { immediate: true })
 watch(lastRoute, (v) => { if (v) sel.value = v })
 const route = computed(() => routeById(sel.value))
 const pubSel = computed(() => (sel.value.startsWith('G:') ? pubGroups.value.find((g) => 'G:' + g.id === sel.value) : undefined))
@@ -37,7 +40,19 @@ const groupsOf = (id: string) => myGroups.value.filter((g) => g.route === id)
 const ptsOf = (id: string) => groupsOf(id).reduce((a, g) => a + g.points.length, 0)
 const lenM = (shape: number) => (routeLen(shape) * UNIT).toFixed(1)
 const mapSeed = (name?: string) => myMaps.value.find((m) => m.name === name)?.seed ?? 11
-const pickRoute = (id: string) => { sel.value = id; if (sub.value === 'route' && id.startsWith('G:')) sub.value = 'points' }
+const pickRoute = (id: string) => { sel.value = id; editing.value = false }
+/* 地图：任务管理不显示卫星图，仅点云 / 栅格 */
+const mode = ref<'grid' | 'cloud'>('grid')
+const previewOpen = ref(false)
+/* 任务启停 */
+const running = computed(() => !!group.value && rt.value.run?.group === group.value.id)
+const toggleRun = () => {
+  if (!group.value) return
+  if (running.value) return stopRun()
+  if (rt.value.run) return message.error('机器人正在执行其他任务')
+  if (!group.value.points.length) return message.error('任务组暂无任务点')
+  openLaunch(pubSel.value ? '发布点任务' : '循迹任务', { route: group.value.route, group: group.value.id })
+}
 
 /* ---------- 录制路线 ---------- */
 const recOpen = ref(false); const rec = reactive({ map: '', name: '' })
@@ -48,6 +63,7 @@ const openRec = () => {
   rec.map = rt.value.navMap || gridMaps.value[0]?.name || ''; rec.name = ''; recOpen.value = true
 }
 const okRec = () => { startTrackRec(rec.map, rec.name.trim()); if (rt.value.trackRec) { recOpen.value = false; sel.value = '' } }
+const recording = computed(() => !!rt.value.trackRec && sub.value === 'route')
 
 /* ---------- 路线编辑 ---------- */
 const editing = ref(false); const et = reactive({ tool: 'seg', line: '曲线', step: 0.2, z: 0 })
@@ -68,14 +84,15 @@ const okGroup = () => {
   const id = `G-${String(db.groups.length + 1).padStart(2, '0')}${Math.floor(Math.random() * 9)}`
   if (gf.kind === '循迹') { if (groups.value.some((g) => g.name === gf.name.trim())) return message.error('任务组名称已存在'); db.groups.push({ id, name: gf.name.trim(), robot: curId.value, kind: '循迹', route: route.value!.id, map: route.value!.map, points: [] }); gid.value = id }
   else { db.groups.push({ id, name: gf.name.trim(), robot: curId.value, kind: '发布点', map: gf.map, points: [] }); sel.value = 'G:' + id }
+  
   gOpen.value = false; message.success('任务组已创建，请添加任务点')
 }
-const delGroup = () => { const g = group.value!; Modal.confirm({ title: '删除任务组', content: `确定删除任务组「${g.name}」及其 ${g.points.length} 个任务点吗？`, okButtonProps: { danger: true }, onOk: () => { db.groups.splice(db.groups.findIndex((x) => x.id === g.id), 1); if (pubSel.value === undefined && sel.value.startsWith('G:')) sel.value = myRoutes.value[0]?.id ?? ''; message.success('已删除') } }) }
+const delGroup = () => { const g = group.value!; Modal.confirm({ title: pubSel.value ? '删除发布点任务' : '删除任务组', content: `确定删除任务组「${g.name}」及其 ${g.points.length} 个任务点吗？`, okButtonProps: { danger: true }, onOk: () => { db.groups.splice(db.groups.findIndex((x) => x.id === g.id), 1);  message.success('已删除') } }) }
 
 /* ---------- 任务点 ---------- */
 const selPt = ref(-1)
 watch(gid, () => { selPt.value = -1 })
-const mapPts = computed(() => (group.value?.points ?? []).map((p, i) => ({ mx: p.mx, my: p.my, st: (i === selPt.value ? 'cur' : 'todo') as 'cur' | 'todo' })))
+const mapPts = computed(() => (group.value?.points ?? []).map((p) => ({ mx: p.mx, my: p.my, st: 'todo' as const })))
 const blank = (): TaskPoint => ({ id: 0, type: '可见光拍照', multi: false, x: 0, y: 0, z: 0, angle: 0, mx: 0, my: 0, f: 0, preset: '', extra: '', desc: '', gait: 1, ground: 1, nostop: false, obs: '停障模式', always: true })
 const pOpen = ref(false); const editId = ref(0); const pf = reactive<TaskPoint>(blank())
 const typeOpts = computed(() => TASK_TYPES.filter((t) => t.single === !pf.multi).map((t) => ({ value: t.cn, label: t.cn })))
@@ -93,64 +110,54 @@ const presetOpen = ref(false); const presetSel = ref('预置点1')
 const PTZ = ['↖', '↑', '↗', '←', '⟳', '→', '↙', '↓', '↘']
 const pose = computed(() => ({ x: toReal(rt.value.pose.x, rt.value.pose.y).x.toFixed(2), y: toReal(rt.value.pose.x, rt.value.pose.y).y.toFixed(2), yaw: rt.value.pose.yaw }))
 
-const cols = computed(() => [
-  { title: '序号', key: 'i', width: 56 }, { title: '任务类型', dataIndex: 'type', width: 120 },
-  { title: 'X', dataIndex: 'x', width: 72 }, { title: 'Y', dataIndex: 'y', width: 72 }, { title: 'Z', dataIndex: 'z', width: 48 }, { title: '角度', key: 'angle', width: 64 },
-  { title: '预置点', key: 'preset', width: 84 }, { title: '描述', dataIndex: 'desc', ellipsis: true },
-  ...(isDog.value ? [{ title: '步态', key: 'gait', width: 92 }] : []), { title: '避障', dataIndex: 'obs', width: 84 },
-  { title: '到点不停', key: 'nostop', width: 76 }, { title: '常检', key: 'always', width: 56 }, { title: '操作', key: 'op', width: 140 },
-])
 </script>
 
 <template>
-
-  <div class="bz-2">
-    <!-- 左：路线列表 -->
-    <div class="pp-panel">
-      <div class="pp-panel-h"><h3>路线</h3><span class="muted" style="font-size:12px;margin-left:6px">{{ myRoutes.length }} 条</span>
-        <span class="bz-panel-tools"><a-button v-if="!rt.trackRec" size="small" type="primary" @click="openRec"><PlayCircleOutlined />录制路线</a-button><a-button v-else size="small" danger @click="stopTrackRec"><StopOutlined />完成录制</a-button></span></div>
-      <div v-if="rt.trackRec" style="padding:12px 12px 0"><div class="bz-status on" style="margin:0"><i class="dot" /><span>录制中 · <b>{{ rt.trackRec.name }}</b></span><span class="mono">{{ mmss(rt.trackRec.t0) }}</span></div></div>
-      <div class="bz-items">
-        <template v-for="g in byMap" :key="g.map">
-          <div class="bz-grp">{{ g.map }}</div>
-          <button v-for="r in g.list" :key="r.id" type="button" class="bz-item" :class="{ on: r.id === sel }" @click="pickRoute(r.id)">
-            <span class="b"><b>{{ shortName(r) }}</b><small>{{ lenM(r.shape) }} m · {{ groupsOf(r.id).length }} 个任务组 · {{ ptsOf(r.id) }} 个任务点</small></span>
-            <a-tag v-if="rt.run?.route === r.id" color="cyan" class="tg">执行中</a-tag>
-          </button>
-        </template>
-        <template v-if="!isIns && sub === 'points'">
-          <div class="bz-grp" style="display:flex;align-items:center">发布点任务组<a style="margin-left:auto;font-size:12px;letter-spacing:0" @click="openGroup('发布点')"><PlusOutlined /> 新建</a></div>
+  <div class="bz-3 bz-fit rt-wrap">
+    <!-- 左：循迹路线 / 发布点任务 列表 -->
+    <div class="pp-panel rt-col">
+      <template v-if="sub === 'route'">
+        <div class="pp-panel-h"><h3>循迹路线</h3><span class="muted" style="font-size:12px;margin-left:6px">{{ myRoutes.length }} 条</span>
+          <span class="bz-panel-tools"><a-button v-if="!rt.trackRec" size="small" type="primary" @click="openRec"><PlayCircleOutlined />录制路线</a-button><a-button v-else size="small" danger @click="stopTrackRec"><StopOutlined />完成录制</a-button></span></div>
+        <div v-if="rt.trackRec" style="padding:10px 10px 0"><div class="bz-status on" style="margin:0"><i class="dot" /><span>录制中 · <b>{{ rt.trackRec.name }}</b></span><span class="mono">{{ mmss(rt.trackRec.t0) }}</span></div></div>
+        <div class="bz-items rt-scroll">
+          <template v-for="g in byMap" :key="g.map">
+            <div class="bz-grp">{{ g.map }}</div>
+            <button v-for="r in g.list" :key="r.id" type="button" class="bz-item" :class="{ on: r.id === sel }" @click="pickRoute(r.id)">
+              <span class="b"><b>{{ shortName(r) }}</b><small>{{ lenM(r.shape) }} m · {{ groupsOf(r.id).length }} 个任务组 · {{ ptsOf(r.id) }} 个点</small></span>
+              <a-tag v-if="rt.run?.route === r.id" color="cyan" class="tg">执行中</a-tag>
+            </button>
+          </template>
+          <div v-if="!myRoutes.length && !rt.trackRec" class="bz-empty">暂无路线<br /><span style="font-size:12px">{{ hasNav ? '点击「录制路线」开始' : '请先开启定位' }}</span></div>
+        </div>
+      </template>
+      <template v-else>
+        <div class="pp-panel-h"><h3>发布点任务</h3><span class="muted" style="font-size:12px;margin-left:6px">{{ pubGroups.length }} 个</span>
+          <span class="bz-panel-tools"><a-button size="small" type="primary" @click="openGroup('发布点')"><PlusOutlined />新增</a-button></span></div>
+        <div class="bz-items rt-scroll">
           <button v-for="g in pubGroups" :key="g.id" type="button" class="bz-item" :class="{ on: 'G:' + g.id === sel }" @click="pickRoute('G:' + g.id)">
-            <span class="b"><b>{{ g.name }}</b><small>{{ g.map }} · {{ g.points.length }} 个任务点</small></span>
+            <span class="b"><b>{{ g.name }}</b><small>{{ g.map || 'INS 坐标系' }} · {{ g.points.length }} 个任务点</small></span>
+            <a-tag v-if="rt.run?.group === g.id" color="cyan" class="tg">执行中</a-tag>
           </button>
-          <div v-if="!pubGroups.length" class="muted" style="padding:6px 14px;font-size:12px">暂无发布点任务组</div>
-        </template>
-        <div v-if="!myRoutes.length && !rt.trackRec" class="bz-empty">暂无路线<br /><span style="font-size:12px">{{ hasNav ? '点击「录制路线」开始' : isIns ? '请先开启 INS 定位' : '请先开启导航定位' }}</span></div>
-      </div>
+          <div v-if="!pubGroups.length" class="bz-empty">暂无发布点任务<br /><span style="font-size:12px">点击「新增」后直接在地图上添加任务点</span></div>
+        </div>
+      </template>
     </div>
 
-    <!-- 右：录制中 -->
-    <div v-if="rt.trackRec && !route && !pubSel" class="pp-panel">
-      <div class="pp-panel-h"><h3>路线录制</h3><span class="muted" style="font-size:12px;margin-left:6px">{{ rt.trackRec.map || 'INS 坐标系' }}</span></div>
-      <div class="bz-canvas"><BizMap :seed="mapSeed(rt.trackRec.map)" :mode="isIns ? 'sat' : 'grid'" :zones="false" :shape="rt.trackRec.shape" :draw="rt.trackRec.f" :robot="rt.pose" />
-        <div class="bz-ov red"><i class="dot" />录制中 {{ mmss(rt.trackRec.t0) }} · 请遥控机器人沿巡检路径行走，到达终点后点击「完成录制」</div></div>
-    </div>
-
-    <!-- 右：循迹路线 -->
-    <div v-else-if="sub === 'route' && route" class="pp-panel">
-      <div class="pp-panel-h"><h3>{{ route.name }}</h3>
+    <!-- 中：地图 -->
+    <div class="pp-panel bz-fill">
+      <div class="pp-panel-h">
+        <h3>{{ recording && !route ? '路线录制' : pubSel ? pubSel.name : route ? shortName(route) : '地图' }}</h3>
+        <span v-if="route && sub === 'route'" class="muted rt-meta">{{ lenM(route.shape) }} m · 距起点 <b class="mono" :style="{ color: startDist(route) < 2 ? '#45E3A8' : '#FFC15C' }">{{ startDist(route).toFixed(1) }} m</b></span>
         <span class="bz-panel-tools">
-          <a-button size="small" :disabled="!!rt.run" @click="gotoStart(route)"><AimOutlined />前往起点</a-button>
-          <a-button size="small" :disabled="route.smooth" @click="smooth"><NodeIndexOutlined />{{ route.smooth ? '已平滑' : '轨迹平滑' }}</a-button>
-          <a-button size="small" :type="editing ? 'primary' : 'default'" :disabled="!!rt.run" @click="editing = !editing"><EditOutlined />路线编辑</a-button>
-          <a-button size="small" danger :disabled="rt.run?.route === route.id" @click="delRoute"><DeleteOutlined /></a-button>
+          <template v-if="route && sub === 'route'">
+            <a-button size="small" :disabled="!!rt.run" @click="gotoStart(route)"><AimOutlined />前往起点</a-button>
+            <a-button size="small" :disabled="route.smooth" @click="smooth"><NodeIndexOutlined />{{ route.smooth ? '已平滑' : '轨迹平滑' }}</a-button>
+            <a-button size="small" :type="editing ? 'primary' : 'default'" :disabled="!!rt.run" @click="editing = !editing"><EditOutlined />路线编辑</a-button>
+            <a-tooltip title="删除路线"><a-button size="small" danger :disabled="rt.run?.route === route.id" @click="delRoute"><DeleteOutlined /></a-button></a-tooltip>
+          </template>
         </span></div>
-      <div class="bz-bar">
-        <span>所属地图 <b>{{ route.map || 'INS 坐标系' }}</b></span><span>长度 <b class="mono">{{ lenM(route.shape) }} m</b></span>
-        <span>任务组 <b>{{ groupsOf(route.id).length }}</b></span><span>任务点 <b>{{ ptsOf(route.id) }}</b></span><span>创建 <b class="mono">{{ route.created }}</b></span>
-        <span class="sp" /><span>距起点 <b class="mono" :style="{ color: startDist(route) < 2 ? '#45E3A8' : '#FFC15C' }">{{ startDist(route).toFixed(1) }} m</b></span>
-      </div>
-      <div v-if="editing" class="bz-bar">
+      <div v-if="editing && route" class="bz-bar">
         <a-radio-group v-model:value="et.tool" size="small" button-style="solid"><a-radio-button value="seg"><ScissorOutlined /> 选段</a-radio-button><a-radio-button value="draw"><HighlightOutlined /> 绘制</a-radio-button></a-radio-group>
         <a-radio-group v-model:value="et.line" size="small"><a-radio-button value="直线">直线</a-radio-button><a-radio-button value="曲线">曲线</a-radio-button></a-radio-group>
         <span>步长 <a-input-number v-model:value="et.step" size="small" :min="0.05" :max="1" :step="0.05" style="width:72px" /> m</span>
@@ -158,56 +165,45 @@ const cols = computed(() => [
         <span class="sp" /><a-button size="small"><UndoOutlined />撤销</a-button><a-button size="small"><RedoOutlined />重置</a-button><a-button size="small" type="primary" @click="saveEdit"><SaveOutlined />保存上传</a-button>
       </div>
       <div class="bz-canvas">
-        <BizMap :seed="mapSeed(route.map)" :mode="isIns ? 'sat' : 'grid'" :zones="!isIns" :shape="route.shape" :pts="groupsOf(route.id).flatMap((g) => g.points.map((p) => ({ mx: p.mx, my: p.my })))" :robot="rt.pose" :edit="editing" />
-        <div v-if="editing" class="bz-ov tip">{{ et.tool === 'seg' ? '在路线上点击两个节点选取路段，可删除或重绘该段' : '按住鼠标在地图上绘制新的路线段' }}</div>
+        <MapSlot v-if="recording && !route" :seed="mapSeed(rt.trackRec!.map)" :mode="mode" :zones="false" :shape="rt.trackRec!.shape" :draw="rt.trackRec!.f" :robot="rt.pose" :cloud-bar="false" />
+        <MapSlot v-else :seed="mapSeed(route?.map ?? pubSel?.map)" :mode="mode" :zones="mode === 'grid' && !isIns" :shape="sub === 'route' ? route?.shape ?? null : null" :pts="mapPts" :sel="selPt" :robot="rt.pose" :edit="editing" :cloud-bar="false" />
+        <a-radio-group v-model:value="mode" size="small" class="rt-mode"><a-radio-button value="cloud">点云</a-radio-button><a-radio-button value="grid">栅格</a-radio-button></a-radio-group>
+        <div v-if="recording" class="bz-ov red"><i class="dot" />录制中 {{ mmss(rt.trackRec!.t0) }} · 遥控机器人沿巡检路径行走，到达终点后点击「完成录制」</div>
+        <div v-else-if="editing" class="bz-ov tip">{{ et.tool === 'seg' ? '在路线上点击两个节点选取路段，可删除或重绘该段' : '按住鼠标在地图上绘制新的路线段' }}</div>
+        <div v-else-if="sub === 'route' && !route" class="bz-ov tip">{{ myRoutes.length ? '请选择左侧路线' : '暂无路线，请先录制循迹路线' }}</div>
       </div>
-      <div class="pp-panel-h" style="border-top:1px solid var(--line)"><h3>任务组</h3><a-button size="small" style="margin-left:auto" @click="sub = 'points'">配置任务点 →</a-button></div>
-      <a-table size="small" :pagination="false" :data-source="groupsOf(route.id)" row-key="id" :columns="[{ title: '任务组', dataIndex: 'name' }, { title: '任务点数', key: 'n', width: 120 }, { title: '任务类型', key: 't' }, { title: '操作', key: 'op', width: 140 }]">
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'n'">{{ record.points.length }}</template>
-          <template v-else-if="column.key === 't'"><span class="muted">{{ [...new Set(record.points.map((p: TaskPoint) => p.type))].join('、') || '—' }}</span></template>
-          <template v-else-if="column.key === 'op'"><span class="bz-ops"><a @click="gid = record.id; sub = 'points'">任务点</a><a @click="openLaunch(record.kind === '发布点' ? '发布点任务' : '循迹任务', { route: record.route, group: record.id })">下发</a></span></template>
-        </template>
-        <template #emptyText><div class="bz-empty" style="padding:16px">暂无任务组<br /><a-button size="small" @click="sub = 'points'">去创建</a-button></div></template>
-      </a-table>
     </div>
 
-    <!-- 右：任务点配置 -->
-    <div v-else-if="sub === 'points' && (route || pubSel)" class="pp-panel">
-      <div class="pp-panel-h"><h3>{{ pubSel ? '发布点任务组' : shortName(route) }}</h3>
-        <a-select v-if="!pubSel" v-model:value="gid" size="small" style="width:160px;margin-left:12px" placeholder="选择任务组" :options="groups.map((g) => ({ value: g.id, label: `${g.name}（${g.points.length}）` }))" />
-        <span v-else class="muted" style="font-size:12px;margin-left:8px">{{ pubSel.name }} · {{ pubSel.map }}</span>
+    <!-- 右：任务组 + 任务点列表 -->
+    <div class="pp-panel rt-col">
+      <div class="pp-panel-h"><h3>{{ pubSel ? '任务点' : '任务组' }}</h3>
+        <a-select v-if="!pubSel" v-model:value="gid" size="small" class="rt-gsel" :disabled="!route" :placeholder="route ? '暂无任务组' : '请选择路线'" :options="groups.map((g) => ({ value: g.id, label: `${g.name}（${g.points.length}）` }))" />
         <span class="bz-panel-tools">
-          <a-button v-if="!pubSel" size="small" @click="openGroup('循迹')"><PlusOutlined />新建任务组</a-button>
-          <a-button size="small" danger :disabled="!group" @click="delGroup"><DeleteOutlined />删除任务组</a-button>
+          <a-tooltip v-if="!pubSel" title="新增任务组"><a-button size="small" :disabled="!route" @click="openGroup('循迹')"><PlusOutlined /></a-button></a-tooltip>
+          <a-tooltip :title="pubSel ? '删除发布点任务' : '删除任务组'"><a-button size="small" danger :disabled="!group || running" @click="delGroup"><DeleteOutlined /></a-button></a-tooltip>
         </span></div>
-      <div class="bz-bar">
-        <span><a-badge :status="hasNav ? (rt.locOk ? 'success' : 'processing') : 'default'" />实时位姿</span>
-        <span>X <b class="mono">{{ pose.x }}</b></span><span>Y <b class="mono">{{ pose.y }}</b></span><span>Z <b class="mono">0.00</b></span><span>角度 <b class="mono">{{ pose.yaw }}°</b></span>
-        <span v-if="!hasNav" style="color:#FFC15C">未开启定位，添加任务点需手动输入坐标</span>
-        <span class="sp" /><a-button size="small" type="primary" :disabled="!group" @click="openPoint()"><EnvironmentOutlined />在当前位置添加任务点</a-button>
+      <div class="rt-acts">
+        <a-button size="small" type="primary" :disabled="!group" @click="openPoint()"><PlusOutlined />新增任务点</a-button>
+        <a-button size="small" :type="running ? 'primary' : 'default'" :danger="running" :disabled="!group" @click="toggleRun"><template v-if="running"><StopOutlined />停止任务</template><template v-else><PlayCircleOutlined />启动任务</template></a-button>
+        <a-button size="small" :disabled="!group && !route" @click="previewOpen = true"><EyeOutlined />路线预览</a-button>
       </div>
-      <div class="bz-canvas" style="aspect-ratio:16/7.6">
-        <BizMap :seed="mapSeed(route?.map ?? pubSel?.map)" :mode="isIns ? 'sat' : 'grid'" :zones="false" :shape="route?.shape ?? null" :pts="mapPts" :sel="selPt" :robot="rt.pose" />
-        <div class="bz-legend"><span><i style="border-color:#2ED3E6;background:#4DD0E133;border-radius:50%" />任务点</span><span><i style="border-color:#FFC15C;border-radius:50%" />选中</span></div>
-      </div>
-      <a-table size="small" :pagination="false" :data-source="group?.points ?? []" row-key="id" :columns="cols" :scroll="{ x: 1100, y: 320 }"
-        :custom-row="(r: any, i: any) => ({ onClick: () => (selPt = i), style: 'cursor:pointer' })" :row-class-name="(_r: any, i: any) => (i === selPt ? 'bz-row-on' : '')">
-        <template #bodyCell="{ column, record, index }">
-          <template v-if="column.key === 'i'"><span class="mono">{{ index + 1 }}</span></template>
-          <template v-else-if="column.key === 'angle'"><span class="mono">{{ record.angle }}°</span></template>
-          <template v-else-if="column.key === 'preset'">{{ record.preset || '—' }}</template>
-          <template v-else-if="column.key === 'gait'">{{ gaitName(record.gait) }}</template>
-          <template v-else-if="column.key === 'nostop'">{{ record.nostop ? '是' : '否' }}</template>
-          <template v-else-if="column.key === 'always'">{{ record.always ? '是' : '否' }}</template>
-          <template v-else-if="column.key === 'op'"><span class="bz-ops" @click.stop><a @click="openPoint(record)">编辑</a><a @click="gotoPoint(record)">到点</a><a class="d" @click="delPoint(record)">删除</a></span></template>
-        </template>
-        <template #emptyText><div class="bz-empty" style="padding:16px">{{ group ? '暂无任务点，移动机器人到巡检位置后点击「在当前位置添加任务点」' : '请先新建任务组' }}</div></template>
-      </a-table>
+      <ul class="rt-pts rt-scroll">
+        <li v-for="(p, i) in group?.points ?? []" :key="p.id" :class="{ on: i === selPt }" @click="selPt = i">
+          <i class="mono">{{ i + 1 }}</i>
+          <div><b :title="p.desc">{{ p.desc }}</b><small>{{ p.type }} · <span class="mono">{{ p.x }}, {{ p.y }}, {{ p.angle }}°</span></small></div>
+          <span class="bz-ops" @click.stop><a @click="openPoint(p)">编辑</a><a @click="gotoPoint(p)">到点</a><a class="d" @click="delPoint(p)">删除</a></span>
+        </li>
+        <li v-if="!(group?.points.length)" class="empty">{{ group ? '暂无任务点，点击「新增任务点」' : pubSel || route ? '请先新增任务组' : '请先选择' + (sub === 'pub' ? '发布点任务' : '路线') }}</li>
+      </ul>
+      <div class="rt-pose"><a-badge :status="hasNav ? (rt.locOk ? 'success' : 'processing') : 'default'" />实时位姿 <b class="mono">{{ pose.x }}, {{ pose.y }}, {{ pose.yaw }}°</b></div>
     </div>
-
-    <div v-else class="pp-panel"><div class="bz-empty" style="padding:120px 16px">{{ myRoutes.length ? '请选择左侧路线' : '暂无路线，请先录制循迹路线' }}<br /><a-button v-if="!myRoutes.length && !rt.trackRec" type="primary" size="small" @click="openRec"><PlayCircleOutlined />录制路线</a-button></div></div>
   </div>
+
+  <!-- 弹窗：路线预览 -->
+  <a-modal v-model:open="previewOpen" :title="`路线预览 · ${pubSel ? pubSel.name : shortName(route)}${group && !pubSel ? ' / ' + group.name : ''}`" :footer="null" :width="900">
+    <div class="bz-canvas" style="margin:12px 0 0;aspect-ratio:16/9"><MapSlot v-if="previewOpen" :seed="mapSeed(route?.map ?? pubSel?.map)" :mode="mode" :zones="false" :shape="sub === 'route' ? route?.shape ?? null : null" :pts="mapPts" :cloud-bar="false" /></div>
+    <div class="muted" style="font-size:12px;margin-top:8px">{{ sub === 'route' && route ? `轨迹长度 ${lenM(route.shape)} m · ` : '' }}{{ group?.points.length ?? 0 }} 个任务点</div>
+  </a-modal>
 
   <!-- 弹窗：录制路线 -->
   <a-modal v-model:open="recOpen" title="录制路线" :width="440" ok-text="开始录制" @ok="okRec">
@@ -270,6 +266,21 @@ const cols = computed(() => [
 </template>
 
 <style scoped>
+.rt-wrap { grid-template-columns: 260px minmax(0, 1fr) 360px; }
+.rt-col { display: flex; flex-direction: column; min-height: 0; }
+.rt-scroll { flex: 1; min-height: 0; overflow: auto; }
+.rt-mode { position: absolute; z-index: 2; right: 10px; top: 10px; }
+.bz-fill > .pp-panel-h h3 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rt-meta { margin-left: 10px; font-size: 12px; white-space: nowrap; }
+.rt-gsel { flex: 1; min-width: 0; margin-left: 10px; }
+.rt-acts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 10px 12px; border-bottom: 1px solid var(--line); } .rt-acts :deep(.ant-btn) { padding: 0 4px; }
+.rt-pts { list-style: none; margin: 0; padding: 4px 8px; }
+.rt-pts li { display: flex; align-items: center; gap: 10px; padding: 8px 6px; border-bottom: 1px dashed var(--line); cursor: pointer; border-radius: 4px; }
+.rt-pts li:hover { background: rgba(46,211,230,.05); } .rt-pts li.on { background: var(--accent-soft); }
+.rt-pts li > i { width: 22px; height: 22px; flex: none; display: grid; place-items: center; font-size: 11px; font-style: normal; color: #FFD08A; border: 1.5px solid #FFC15C; border-radius: 50%; }
+.rt-pts li > div { flex: 1; min-width: 0; } .rt-pts b { display: block; font-size: 13px; font-weight: 500; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; } .rt-pts small { display: block; font-size: 11.5px; color: var(--muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.rt-pts li.empty { justify-content: center; padding: 40px 0; color: var(--faint); font-size: 12.5px; border: 0; cursor: default; }
+.rt-pose { padding: 8px 14px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); } .rt-pose b { margin-left: 6px; font-weight: 500; color: var(--text); }
 .rp-preset { display: grid; grid-template-columns: 1fr 170px; gap: 14px; margin-top: 12px; }
 .rp-cam { aspect-ratio: 16 / 9; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; } .rp-cam :deep(svg) { width: 100%; height: 100%; display: block; }
 .rp-ptz { display: flex; flex-direction: column; gap: 10px; }

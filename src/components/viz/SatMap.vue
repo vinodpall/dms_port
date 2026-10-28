@@ -45,6 +45,10 @@ function draw() {
   map.add(layer)
 }
 
+/** 图层切换：标准图层 / 卫星图 */
+const base = ref<'std' | 'sat'>('sat')
+const layersOf = (b: 'std' | 'sat') => (b === 'std' ? [new A.TileLayer({ detectRetina: true })] : [new A.TileLayer.Satellite({ detectRetina: true }), new A.TileLayer.RoadNet({ detectRetina: true, opacity: 0.7 })])
+watch(base, (b) => map?.setLayers(layersOf(b)))
 const locate = () => { if (map && props.robot) map.setCenter(props.robot.lnglat, false, 300) }
 defineExpose({ locate })
 
@@ -54,7 +58,7 @@ onMounted(async () => {
     if (!el.value) return
     map = new A.Map(el.value, {
       zoom: props.zoom, zooms: [3, 20], center: props.center, viewMode: '2D',
-      layers: [new A.TileLayer.Satellite({ detectRetina: true }), new A.TileLayer.RoadNet({ detectRetina: true, opacity: 0.7 })],
+      layers: layersOf(base.value),
       logoEnable: false, copyrightEnable: false, showLabel: true,
     })
     map.addControl(new A.Scale({ position: 'RB' }))
@@ -75,6 +79,7 @@ onBeforeUnmount(() => { map?.destroy(); map = null })
 <template>
   <div class="sat">
     <div ref="el" class="sat-map" />
+    <div v-if="state === 'ok'" class="sat-tb" @click.stop><button type="button" :class="{ on: base === 'std' }" @click="base = 'std'">标准图层</button><button type="button" :class="{ on: base === 'sat' }" @click="base = 'sat'">卫星图</button></div>
     <div v-if="state !== 'ok'" class="sat-st"><template v-if="state === 'loading'"><a-spin size="small" /><span>卫星地图加载中…</span></template><span v-else>卫星地图加载失败：{{ err }}</span></div>
   </div>
 </template>
@@ -82,6 +87,9 @@ onBeforeUnmount(() => { map?.destroy(); map = null })
 <style scoped>
 .sat { position: relative; width: 100%; height: 100%; min-height: 120px; background: #132034; overflow: hidden; }
 .sat-map { position: absolute; inset: 0; }
+.sat-tb { position: absolute; left: 10px; top: 10px; z-index: 5; display: flex; gap: 2px; padding: 3px; background: rgba(13,28,49,.82); border: 1px solid rgba(46,211,230,.25); border-radius: 6px; }
+.sat-tb button { height: 24px; padding: 0 10px; font: inherit; font-size: 12px; color: var(--muted, #B6CADC); background: none; border: 0; border-radius: 4px; cursor: pointer; }
+.sat-tb button:hover { color: #fff; } .sat-tb button.on { color: #0B2D3D; background: #26C6DA; }
 .sat-st { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--muted, #B6CADC); font-size: 13px; }
 .sat :deep(.amap-scalecontrol) { background: rgba(13,28,49,.6) !important; color: #F3F8FC; }
 .sat :deep(.sm-pt) { width: 20px; height: 20px; display: grid; place-items: center; font: 600 11px var(--mono, monospace); color: #FFD08A; background: #14253B; border: 2px solid #FFC15C; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,.5); }

@@ -3,10 +3,11 @@
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
 import { AimOutlined, ExpandOutlined, CompressOutlined, ReloadOutlined, PauseOutlined, CaretRightOutlined, SendOutlined, AudioOutlined, AudioMutedOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons-vue'
-import BizMap from './BizMap.vue'
+import MapSlot from './MapSlot.vue'
 import WebRtcVideo from '@/components/viz/WebRtcVideo.vue'
 import CamShot from './CamShot.vue'
 import { toReal } from './geo'
+import imgCar from '@/assets/models/knight.webp'
 import { streamsOf } from '@/config/media'
 import { KIND_META, GAITS, ZONES, SENSORS, alarmColor, type BizAlarm } from '@/mock/biz'
 import {
@@ -30,7 +31,7 @@ const doneN = computed(() => (run.value ? pts.value.filter((p, i) => (runRoute.v
 const mapPts = computed(() => pts.value.map((p, i) => ({ mx: p.mx, my: p.my, st: (i < doneN.value ? 'done' : i === doneN.value ? 'cur' : 'todo') as 'done' | 'cur' | 'todo' })))
 
 /* 地图 */
-const mapMode = ref<'cloud' | 'grid' | 'sat'>(isIns.value ? 'sat' : 'cloud')
+const mapMode = ref<'cloud' | 'grid' | 'sat'>('cloud')
 
 /* 实时警情 */
 const alarms = computed(() => db.alarms.filter((a) => a.robot === curId.value).slice(0, 6))
@@ -116,16 +117,15 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
       </div>
       <div class="pp-panel hm-grow">
         <div class="pp-panel-h"><h3>任务统计</h3><a-tag v-if="run" :color="rt.pause ? 'orange' : 'cyan'" class="r">{{ rt.pause ? '已暂停' : run.kind }}</a-tag></div>
-        <div v-if="run" class="hm-task">
-          <div class="nm" :title="run.name">{{ run.name }}</div>
+        <div class="hm-task" :class="{ idle: !run }">
+          <div class="nm" :title="run?.name">{{ run ? run.name : on ? '当前无执行任务' : '设备离线' }}</div>
           <div class="ring">
-            <a-progress type="circle" :percent="Math.round(run.progress * 100)" :size="66" stroke-color="#26C6DA" :stroke-width="7" />
-            <div class="kv"><span>开始时间</span><b class="mono">{{ run.start }}</b><span>圈数</span><b class="mono">{{ run.laps }} / {{ run.circle }}</b><span>当前巡检点</span><b>{{ pts.length ? pts[Math.min(doneN, pts.length - 1)].desc : '—' }}</b></div>
+            <a-progress type="circle" :percent="run ? Math.round(run.progress * 100) : 0" :size="66" stroke-color="#26C6DA" :stroke-width="7" />
+            <div class="kv"><span>开始时间</span><b class="mono">{{ run?.start ?? '—' }}</b><span>圈数</span><b class="mono">{{ run ? `${run.laps} / ${run.circle}` : '—' }}</b><span>当前巡检点</span><b>{{ run && pts.length ? pts[Math.min(doneN, pts.length - 1)].desc : '无' }}</b></div>
           </div>
-          <div class="st4"><div><b class="mono">{{ doneN }}</b><small>已巡检</small></div><div><b class="mono">{{ pts.length - doneN }}</b><small>待巡检</small></div><div><b class="mono ok">{{ Math.max(0, doneN - 1) }}</b><small>正常</small></div><div><b class="mono bad">{{ doneN > 0 ? 1 : 0 }}</b><small>异常</small></div></div>
-          <div class="ops"><a-button size="small" @click="togglePause"><template v-if="rt.pause"><CaretRightOutlined />恢复</template><template v-else><PauseOutlined />暂停</template></a-button><a-button size="small" danger @click="stopRun">关闭任务</a-button></div>
+          <div class="st4"><div><b class="mono">{{ doneN }}</b><small>已巡检</small></div><div><b class="mono">{{ run ? pts.length - doneN : 0 }}</b><small>待巡检</small></div><div><b class="mono ok">{{ Math.max(0, doneN - 1) }}</b><small>正常</small></div><div><b class="mono bad">{{ doneN > 0 ? 1 : 0 }}</b><small>异常</small></div></div>
+          <div class="ops"><a-button size="small" :disabled="!run" @click="togglePause"><template v-if="rt.pause"><CaretRightOutlined />恢复</template><template v-else><PauseOutlined />暂停</template></a-button><a-button size="small" danger :disabled="!run" @click="stopRun">关闭任务</a-button></div>
         </div>
-        <div v-else class="hm-empty sm">{{ on ? '当前无执行任务' : '设备离线' }}</div>
       </div>
     </div>
 
@@ -136,13 +136,13 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
           <h3>巡检地图</h3><span class="muted sub">{{ isIns ? 'INS 坐标系' : rt.navMap || '未开启导航' }}</span>
           <span v-if="mapMode === 'grid'" class="hm-lg"><span v-for="z in ZONES" :key="z.k"><i :style="{ borderColor: z.c, background: z.c + '33' }" />{{ z.t }}</span></span>
           <span class="r">
-            <a-radio-group v-model:value="mapMode" size="small"><a-radio-button v-if="!isIns" value="cloud">点云</a-radio-button><a-radio-button v-if="!isIns" value="grid">栅格</a-radio-button><a-radio-button value="sat">卫星</a-radio-button></a-radio-group>
+            <a-radio-group v-model:value="mapMode" size="small"><a-radio-button value="cloud">点云</a-radio-button><a-radio-button value="grid">栅格</a-radio-button><a-radio-button value="sat">卫星</a-radio-button></a-radio-group>
             <a-tooltip title="定位机器人"><a-button type="text" size="small"><AimOutlined /></a-button></a-tooltip>
             <a-tooltip title="全屏"><a-button type="text" size="small" @click="fullMap"><ExpandOutlined /></a-button></a-tooltip>
           </span>
         </div>
         <div ref="mapBox" class="hm-box">
-          <BizMap v-if="on" :seed="seed" :mode="mapMode" :zones="mapMode === 'grid'" :shape="runRoute?.shape ?? null" :pts="mapPts" :progress="runRoute && run ? run.progress : 0" :robot="hasNav ? rt.pose : null" :cloud-bar="false" />
+          <MapSlot v-if="on" :seed="seed" :mode="mapMode" :zones="mapMode === 'grid'" :shape="runRoute?.shape ?? null" :pts="mapPts" :progress="runRoute && run ? run.progress : 0" :robot="hasNav ? rt.pose : null" :cloud-bar="false" />
           <div v-else class="hm-empty">设备离线</div>
           <div v-if="on && !hasNav" class="bz-ov">未开启定位 · 可在右侧「任务下发」中开启</div>
         </div>
@@ -164,8 +164,9 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
 
     <!-- ============ 右 ============ -->
     <div class="hm-col hm-right">
-      <div class="pp-panel">
+      <div class="pp-panel hm-st" :class="{ big: isIns }">
         <div class="pp-panel-h"><h3>{{ KIND_META[robot.kind].t }}状态</h3><a-badge :status="!on ? 'default' : run ? 'processing' : 'success'" :text="!on ? '离线' : run ? '任务中' : '在线'" style="margin-left:8px" /></div>
+        <div v-if="isIns" class="hm-hero"><img :src="imgCar" alt="" /><div><b>{{ robot.name }}</b><small class="mono">{{ robot.id }} · {{ robot.model }}</small><small>{{ robot.site }} · 累计 {{ (robot.mileage / 1000).toFixed(1) }} km</small></div></div>
         <div class="hm-big">
           <div><small>当前速度</small><b class="mono">{{ on ? speed.toFixed(2) : '--' }}<em>m/s</em></b></div>
           <div><small>剩余电量</small><b class="mono" :class="{ low: robot.battery < 30 }">{{ on ? robot.battery : '--' }}<em>%</em></b></div>
@@ -228,13 +229,14 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
         <div v-else class="hm-empty sm">设备离线</div>
       </div>
 
-      <div class="pp-panel hm-grow">
+      <div class="pp-panel hm-send-p" :class="{ 'hm-grow': !isIns }">
         <div class="pp-panel-h"><h3>任务下发</h3><span class="muted sub">{{ locText }}</span></div>
         <div class="hm-send">
-          <div class="ln loc"><a-select v-model:value="navSel" size="small" :disabled="hasNav" :placeholder="gridMaps.length ? '选择地图' : '暂无地图'" :options="gridMaps.map((m) => ({ value: m.name, label: m.name }))" />
+          <div v-if="!isIns" class="ln loc"><a-select v-model:value="navSel" size="small" :disabled="hasNav" :placeholder="gridMaps.length ? '选择地图' : '暂无地图'" :options="gridMaps.map((m) => ({ value: m.name, label: m.name }))" />
             <span class="tg"><button type="button" :class="{ on: rt.nav }" :disabled="!on || rt.ins || rt.msf" @click="toggleNav(navSel ?? '')">导航</button><button type="button" :class="{ on: rt.ins }" :disabled="!on || rt.nav || rt.msf" @click="toggleIns">INS</button><button type="button" :class="{ on: rt.msf }" :disabled="!on || rt.nav || rt.ins" @click="toggleMsf(navSel ?? '', isIns ? '卫星定位' : '融合定位')">MSF</button></span></div>
+          <div v-else class="ln loc ins"><label>定位</label><span class="tg"><button type="button" :class="{ on: rt.ins }" :disabled="!on || rt.msf" @click="toggleIns">INS</button><button type="button" :class="{ on: rt.msf }" :disabled="!on || rt.ins" @click="toggleMsf('', '卫星定位')">MSF</button></span></div>
           <div class="ln"><label>循迹任务</label><a-select v-model:value="rSel" size="small" placeholder="选择路线" :options="navRoutes.map((r) => ({ value: r.id, label: r.name }))" /><a-button size="small" type="primary" :disabled="!on || !!run" @click="openLaunch('循迹任务', { route: rSel })"><SendOutlined />下发</a-button></div>
-          <div v-if="!isIns" class="ln"><label>发布点任务</label><a-select v-model:value="pSel" size="small" placeholder="选择任务组" :options="pubGroups.map((g) => ({ value: g.id, label: g.name }))" /><a-button size="small" type="primary" :disabled="!on || !!run" @click="openLaunch('发布点任务', { group: pSel })"><SendOutlined />下发</a-button></div>
+          <div class="ln"><label>发布点任务</label><a-select v-model:value="pSel" size="small" placeholder="选择任务组" :options="pubGroups.map((g) => ({ value: g.id, label: g.name }))" /><a-button size="small" type="primary" :disabled="!on || !!run" @click="openLaunch('发布点任务', { group: pSel })"><SendOutlined />下发</a-button></div>
           <div class="ln"><label>多任务组</label><a-select v-model:value="mSel" size="small" placeholder="选择多任务组" :options="myMulti.map((m) => ({ value: m.id, label: m.name }))" /><a-button size="small" type="primary" :disabled="!on || !!run" @click="openLaunch('多任务组', { multi: mSel })"><SendOutlined />下发</a-button></div>
         </div>
       </div>
@@ -248,7 +250,7 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
 </template>
 
 <style scoped>
-.hm { display: grid; grid-template-columns: clamp(340px, 22vw, 430px) minmax(0, 1fr) 330px; gap: 14px; height: calc(100vh - 104px); min-height: 720px; }
+.hm { display: grid; grid-template-columns: clamp(340px, 22vw, 430px) minmax(0, 1fr) 330px; gap: 14px; height: calc(100vh - 108px); min-height: 720px; }
 .hm-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; min-height: 0; }
 .hm-col .r { margin-left: auto; display: flex; align-items: center; gap: 4px; }
 .hm-col .sub { margin-left: 8px; font-size: 12px; }
@@ -269,6 +271,7 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
 .hm-task .st4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; text-align: center; } .hm-task .st4 > div { padding: 3px 0; background: rgba(46,211,230,.05); border-radius: 4px; }
 .hm-task .st4 b { display: block; font-size: 16px; color: #fff; } .hm-task .st4 b.ok { color: #45E3A8; } .hm-task .st4 b.bad { color: #FF7A7A; } .hm-task .st4 small { font-size: 11px; color: var(--muted); }
 .hm-task .ops { display: flex; gap: 8px; margin-top: auto; } .hm-task .ops > * { flex: 1; }
+.hm-task.idle .nm { color: var(--faint); font-weight: 400; } .hm-task.idle .kv b { color: var(--faint); }
 .hm-map { flex: 1.7; min-height: 0; display: flex; flex-direction: column; }
 .hm-lg { display: flex; gap: 10px; margin-left: 12px; font-size: 11.5px; color: var(--muted); } .hm-lg i { display: inline-block; width: 9px; height: 9px; margin-right: 4px; border: 1px solid; vertical-align: -1px; }
 .hm-alarm { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
@@ -276,6 +279,12 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
 .hm-alarm .more { font-size: 12px; }
 .hm-type { display: inline-flex; align-items: center; gap: 6px; } .hm-type i { width: 6px; height: 6px; border-radius: 50%; }
 .hm-right { overflow: auto; }
+.hm-st.big { flex: 1 0 auto; display: flex; flex-direction: column; }
+.hm-hero { display: flex; align-items: center; gap: 14px; flex: 1; min-height: 0; height: 104px; padding: 10px 14px 0; }
+.hm-hero img { height: 100%; max-height: 104px; max-width: 52%; object-fit: contain; filter: drop-shadow(0 6px 12px rgba(0,0,0,.45)); }
+.hm-hero div { display: flex; flex-direction: column; gap: 4px; min-width: 0; } .hm-hero b { font-size: 15px; color: #fff; } .hm-hero small { font-size: 11.5px; color: var(--muted); }
+.hm-send-p { flex: none; } .hm-right:has(.hm-st.big) .hm-chart svg { height: 64px; } .hm-right:has(.hm-st.big) .hm-send { gap: 8px; padding: 10px 14px 12px; } .hm-send-p.hm-grow { flex: 1; }
+.hm-send .ln.loc.ins { grid-template-columns: 70px auto; }
 .hm-big { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px 14px 4px; }
 .hm-big > div { padding: 7px 10px; background: rgba(46,211,230,.05); border: 1px solid rgba(46,211,230,.12); border-radius: 4px; }
 .hm-big small { display: block; font-size: 11.5px; color: var(--muted); } .hm-big b { font-size: 18px; font-weight: 600; color: #fff; } .hm-big b.low { color: #FF7A7A; } .hm-big em { font-style: normal; font-size: 11px; color: var(--muted); margin-left: 3px; }
@@ -286,7 +295,7 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
 .hm-grid b.ok { color: #45E3A8; } .hm-grid b.warn { color: #FFC15C; } .hm-grid .lk { cursor: pointer; border: 1px dashed rgba(77,232,176,.35); }
 .hm-rtk { display: grid; grid-template-columns: auto auto; gap: 6px 16px; font-size: 12.5px; } .hm-rtk span { color: var(--muted); } .hm-rtk b { font-weight: 500; text-align: right; }
 .hm-mic { color: #45E3A8 !important; }
-.hm-ctl { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 12px 14px 14px; }
+.hm-ctl { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; padding: 10px 14px 10px; }
 .hm-ctl button { padding: 5px 0; font: inherit; font-size: 12px; color: var(--muted); cursor: pointer; background: rgba(46,211,230,.05); border: 1px solid var(--line); border-radius: 4px; }
 .hm-ctl button:hover:not(:disabled) { color: var(--text); border-color: var(--line-strong); } .hm-ctl button.on { color: #fff; border-color: var(--accent); background: var(--accent-soft); }
 .hm-ctl button.stop { color: #fff; background: rgba(255,107,107,.55); border-color: #FF7A7A; } .hm-ctl button:disabled { cursor: not-allowed; opacity: .5; }

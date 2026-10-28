@@ -3,7 +3,8 @@
  * 三维点云查看器（three.js）：加载 PCD，按高度 / 强度着色，可叠加路线、任务点与机器人位姿。
  * 交互：左键旋转 · 右键平移 · 滚轮缩放；参考 robot_web ThreePointCloudPreview
  */
-import { onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import { onBeforeUnmount, onMounted, reactive, ref, shallowRef, watch } from 'vue'
+import { SettingOutlined } from '@ant-design/icons-vue'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { Line2 } from 'three/examples/jsm/lines/Line2.js'
@@ -13,6 +14,8 @@ import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRe
 import { loadPCD, type PointCloud } from './pcd'
 import { MAP_FILES } from '@/config/media'
 
+/** 显示设置（模块内共享） */
+const cfg = reactive({ density: 'fine' as 'sparse' | 'fine', scheme: 'blue' as 'blue' | 'rainbow' })
 export interface CloudPt { x: number; y: number; st?: 'done' | 'cur' | 'todo' | 'bad' }
 const props = withDefaults(defineProps<{
   src?: string
@@ -34,7 +37,6 @@ const host = ref<HTMLDivElement>()
 const state = ref<'loading' | 'ok' | 'error'>('loading')
 const err = ref('')
 const info = ref({ n: 0, shown: 0 })
-const colorBy = ref<'height' | 'intensity'>('height')
 const viewMode = ref(props.view)
 
 let renderer: THREE.WebGLRenderer | null = null
@@ -51,18 +53,23 @@ let robotObj: THREE.Group | null = null
 let liveT = 0
 
 /** 高度色带（蓝 → 青 → 绿 → 黄 → 橙） */
-const RAMP = ['#2F6BFF', '#26C6DA', '#45E3A8', '#E8E35A', '#FF8A50'].map((c) => new THREE.Color(c))
-const ramp = (t: number, out: THREE.Color) => {
-  const x = Math.min(0.999, Math.max(0, t)) * (RAMP.length - 1); const i = Math.floor(x)
-  return out.copy(RAMP[i]).lerp(RAMP[i + 1], x - i)
+const RAMPS = {
+  rainbow: ['#2F6BFF', '#26C6DA', '#45E3A8', '#E8E35A', '#FF8A50'],
+  blue: ['#0E3A8A', '#1E6FD9', '#2ED3E6', '#BFF6FF'],
 }
+const RC = Object.fromEntries(Object.entries(RAMPS).map(([k, v]) => [k, v.map((c) => new THREE.Color(c))])) as Record<keyof typeof RAMPS, THREE.Color[]>
+const ramp = (t: number, out: THREE.Color) => {
+  const R = RC[cfg.scheme]; const x = Math.min(0.999, Math.max(0, t)) * (R.length - 1); const i = Math.floor(x)
+  return out.copy(R[i]).lerp(R[i + 1], x - i)
+}
+const showSet = ref(false)
 function paint() {
   const c = cloud.value; if (!c || !points) return
   const col = (points.geometry.getAttribute('color') as THREE.BufferAttribute)
   const tmp = new THREE.Color()
   const lo = groundZ - 0.3, hi = groundZ + 8
   for (let k = 0; k < c.count; k++) {
-    const t = colorBy.value === 'intensity' && c.intensity ? c.intensity[k] / 255 : (c.positions[k * 3 + 2] - lo) / (hi - lo)
+    const t = (c.positions[k * 3 + 2] - lo) / (hi - lo)
     ramp(t, tmp); col.setXYZ(k, tmp.r, tmp.g, tmp.b)
   }
   col.needsUpdate = true
@@ -79,9 +86,9 @@ function build(c: PointCloud) {
   const [x0, x1] = q(0), [y0, y1] = q(1)
   center.set((x0 + x1) / 2, (y0 + y1) / 2, groundZ)
   span = Math.max(x1 - x0, y1 - y0)
-  points = new THREE.Points(g, new THREE.PointsMaterial({ size: 2.2, sizeAttenuation: false, vertexColors: true, transparent: true, opacity: 0.95 }))
+  points = new THREE.Points(g, new THREE.PointsMaterial({ size: 1.3, sizeAttenuation: false, vertexColors: true, transparent: true, opacity: 0.95 }))
   scene.add(points)
-  paint()
+  paint(); applyDensity()
   info.value = { n: c.count, shown: c.count }
   // 地面网格（10 m）
   const grid = new THREE.GridHelper(Math.ceil(span / 10) * 10 + 40, Math.ceil(span / 10) + 4, 0x30567e, 0x1e3653)
@@ -89,6 +96,17 @@ function build(c: PointCloud) {
   ;(grid.material as THREE.Material).transparent = true; (grid.material as THREE.Material).opacity = 0.55
   scene.add(grid)
   setView(viewMode.value)
+}
+
+/** 稀疏：按 1/3 抽稀显示 */
+function applyDensity() {
+  const c = cloud.value; if (!c || !points) return
+  const g = points.geometry
+  if (cfg.density === 'sparse') {
+    const idx: number[] = []; for (let k = 0; k < c.count; k += 3) idx.push(k)
+    g.setIndex(idx)
+  } else g.setIndex(null)
+  ;(points.material as THREE.PointsMaterial).size = cfg.density === 'sparse' ? 1.6 : 1.3
 }
 
 function setView(v: '3d' | 'top') {
@@ -118,7 +136,7 @@ function drawOverlay() {
   const z = groundZ + 0.25
   const r = props.route
   if (r && r.length > 1) {
-    overlay.add(line(r, 0x45e3a8, 2, z, true))
+    overlay.add(line(r, 0x4ade80, 2, z, true))
     if (props.done > 0) {
       // 截取已完成部分
       const L = r.slice(1).reduce((s, p, i) => s + Math.hypot(p[0] - r[i][0], p[1] - r[i][1]), 0)
@@ -127,7 +145,7 @@ function drawOverlay() {
         const l = Math.hypot(r[i][0] - r[i - 1][0], r[i][1] - r[i - 1][1])
         if (d >= l) { out.push(r[i]); d -= l } else { const t = d / l; out.push([r[i - 1][0] + (r[i][0] - r[i - 1][0]) * t, r[i - 1][1] + (r[i][1] - r[i - 1][1]) * t]); d = 0 }
       }
-      if (out.length > 1) overlay.add(line(out, 0x26c6da, 4, z + 0.02))
+      if (out.length > 1) overlay.add(line(out, 0x22c55e, 4, z + 0.02))
     }
     const s = label('起点', 'start'); s.position.set(r[0][0], r[0][1], z); overlay.add(s)
   }
@@ -187,7 +205,8 @@ onMounted(async () => {
   } catch (e) { state.value = 'error'; err.value = (e as Error).message }
 })
 watch(() => [props.route, props.done, props.pts, props.robot], () => { if (cloud.value) drawOverlay() }, { deep: true })
-watch(colorBy, paint)
+watch(() => cfg.scheme, paint)
+watch(() => cfg.density, applyDensity)
 watch(() => props.live, (v) => { if (!v && points && cloud.value) { points.geometry.setDrawRange(0, Infinity); info.value.shown = cloud.value.count } })
 
 onBeforeUnmount(() => {
@@ -200,16 +219,18 @@ onBeforeUnmount(() => {
 <template>
   <div ref="host" class="pcv">
     <div v-if="state !== 'ok'" class="pcv-st"><template v-if="state === 'loading'"><a-spin size="small" /><span>点云加载中…</span></template><span v-else>点云加载失败：{{ err }}</span></div>
-    <template v-if="toolbar && state === 'ok'">
-      <div class="pcv-tb">
-        <button type="button" :class="{ on: viewMode === '3d' }" @click="setView('3d')">3D</button>
-        <button type="button" :class="{ on: viewMode === 'top' }" @click="setView('top')">俯视</button>
-        <i />
-        <button type="button" :class="{ on: colorBy === 'height' }" @click="colorBy = 'height'">高度</button>
-        <button v-if="cloud?.intensity" type="button" :class="{ on: colorBy === 'intensity' }" @click="colorBy = 'intensity'">强度</button>
-      </div>
-      <div class="pcv-info"><span class="ramp" />{{ colorBy === 'height' ? '低 → 高' : '弱 → 强' }} · {{ info.shown.toLocaleString() }}{{ live ? ` / ${info.n.toLocaleString()}` : '' }} 点<small>左键旋转 · 右键平移 · 滚轮缩放</small></div>
-    </template>
+    <div v-if="state === 'ok'" class="pcv-tb" @click.stop @pointerdown.stop>
+      <button type="button" class="gear" :class="{ on: showSet }" title="显示设置" @click="showSet = !showSet"><SettingOutlined /></button>
+      <template v-if="toolbar"><i /><button type="button" :class="{ on: viewMode === '3d' }" @click="setView('3d')">3D</button><button type="button" :class="{ on: viewMode === 'top' }" @click="setView('top')">俯视</button></template>
+    </div>
+    <div v-if="showSet && state === 'ok'" class="pcv-set" @click.stop @pointerdown.stop>
+      <div class="pcv-set-h">点云显示设置</div>
+      <label>地图清晰度</label>
+      <div class="pcv-seg"><button type="button" :class="{ on: cfg.density === 'sparse' }" @click="cfg.density = 'sparse'">稀疏</button><button type="button" :class="{ on: cfg.density === 'fine' }" @click="cfg.density = 'fine'">精细</button></div>
+      <label>配色方案</label>
+      <div class="pcv-seg"><button type="button" :class="{ on: cfg.scheme === 'blue' }" @click="cfg.scheme = 'blue'"><span class="sw blue" />科技经典蓝</button><button type="button" :class="{ on: cfg.scheme === 'rainbow' }" @click="cfg.scheme = 'rainbow'"><span class="sw rainbow" />高程彩虹</button></div>
+    </div>
+    <div v-if="toolbar && state === 'ok'" class="pcv-info"><span class="ramp" :class="cfg.scheme" />低 → 高 · {{ info.shown.toLocaleString() }}{{ live ? ` / ${info.n.toLocaleString()}` : '' }} 点<small>左键旋转 · 右键平移 · 滚轮缩放</small></div>
   </div>
 </template>
 
@@ -220,6 +241,14 @@ onBeforeUnmount(() => {
 .pcv-st { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--muted, #B6CADC); font-size: 13px; }
 .pcv-tb { position: absolute; left: 10px; top: 10px; display: flex; align-items: center; gap: 2px; padding: 3px; background: rgba(13,28,49,.78); border: 1px solid rgba(46,211,230,.2); border-radius: 6px; z-index: 2; }
 .pcv-tb button { height: 24px; padding: 0 9px; font: inherit; font-size: 12px; color: var(--muted, #B6CADC); background: none; border: 0; border-radius: 4px; cursor: pointer; }
+.pcv-tb button.gear { width: 26px; padding: 0; font-size: 13px; }
+.pcv-set { position: absolute; left: 10px; top: 44px; z-index: 3; width: 232px; padding: 10px 12px 12px; background: rgba(13,28,49,.94); border: 1px solid rgba(46,211,230,.25); border-radius: 6px; box-shadow: 0 6px 18px rgba(0,0,0,.35); }
+.pcv-set-h { margin-bottom: 8px; font-size: 13px; font-weight: 600; color: #fff; }
+.pcv-set label { display: block; margin: 8px 0 5px; font-size: 12px; color: var(--muted, #B6CADC); }
+.pcv-seg { display: flex; gap: 6px; }
+.pcv-seg button { flex: 1; height: 28px; display: flex; align-items: center; justify-content: center; gap: 5px; font: inherit; font-size: 12px; color: var(--muted, #B6CADC); background: rgba(46,211,230,.05); border: 1px solid rgba(46,211,230,.2); border-radius: 4px; cursor: pointer; }
+.pcv-seg button.on { color: #fff; border-color: #26C6DA; background: rgba(38,198,218,.16); }
+.sw { width: 14px; height: 8px; border-radius: 2px; } .sw.blue, .ramp.blue { background: linear-gradient(90deg, #0E3A8A, #1E6FD9, #2ED3E6, #BFF6FF) !important; } .sw.rainbow { background: linear-gradient(90deg, #2F6BFF, #26C6DA, #45E3A8, #E8E35A, #FF8A50); }
 .pcv-tb button:hover { color: #fff; } .pcv-tb button.on { color: #0B2D3D; background: #26C6DA; }
 .pcv-tb i { width: 1px; height: 14px; margin: 0 4px; background: rgba(46,211,230,.25); }
 .pcv-info { position: absolute; left: 10px; bottom: 8px; display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--muted, #B6CADC); z-index: 2; pointer-events: none; }

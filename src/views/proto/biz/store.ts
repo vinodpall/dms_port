@@ -49,7 +49,7 @@ export const steps = computed<Step[]>(() => {
   const s = rt.value; const routes = myRoutes.value; const pts = myGroups.value.filter((g) => g.kind === '循迹').reduce((a, g) => a + g.points.length, 0)
   const tail: Step[] = [
     { k: 'route', t: '录制循迹路线', d: routes.length ? `${routes.length} 条路线` : '暂无路线', done: routes.length > 0, tab: 'task', sub: 'route', tip: '定位开启后遥控机器人沿巡检路径行走一遍，完成录制' },
-    { k: 'point', t: '路线上添加任务点', d: pts ? `${myGroups.value.filter((g) => g.kind === '循迹').length} 个任务组 · ${pts} 个任务点` : '暂无任务点', done: pts > 0, tab: 'task', sub: 'points', tip: '为路线创建任务组，在巡检位置添加任务点（拍照/测温/表计…）' },
+    { k: 'point', t: '路线上添加任务点', d: pts ? `${myGroups.value.filter((g) => g.kind === '循迹').length} 个任务组 · ${pts} 个任务点` : '暂无任务点', done: pts > 0, tab: 'task', sub: 'route', tip: '为路线创建任务组，在巡检位置添加任务点（拍照/测温/表计…）' },
     { k: 'run', t: isIns.value ? '启动巡检任务' : '起点启动任务', d: s.run ? `执行中 · ${Math.round(s.run.progress * 100)}%` : '未在执行', done: !!s.run, tab: 'home', tip: isIns.value ? 'INS 不重新初始化即可直接启动任务' : '机器人位于路线起点、导航开启后启动循迹任务' },
   ]
   if (isIns.value) return [

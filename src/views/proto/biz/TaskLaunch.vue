@@ -40,7 +40,7 @@ const close = () => { launchReq.open = false }
 const fix = (t: string) => {
   if (t.startsWith('导航 /') || t.startsWith('INS /') || t.startsWith('导航地图')) return { l: '去开启', f: () => { close(); emit('go', 'nav', 'loc') } }
   if (t.startsWith('位于路线起点')) return { l: '前往起点', f: () => route.value && gotoStart(route.value) }
-  if (t.startsWith('任务组') || t.startsWith('已选择路线')) return { l: '去配置', f: () => { close(); emit('go', 'task', 'points') } }
+  if (t.startsWith('任务组') || t.startsWith('已选择路线')) return { l: '去配置', f: () => { close(); emit('go', 'task', 'route') } }
   if (t.startsWith('多任务组')) return { l: '去配置', f: () => { close(); emit('go', 'task', 'multi') } }
   if (t.startsWith('无其他任务')) return { l: '关闭任务', f: stopRun }
   if (t.startsWith('导航未暂停')) return { l: '恢复', f: togglePause }

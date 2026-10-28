@@ -5,18 +5,18 @@ import {
   PlayCircleOutlined, StopOutlined, EyeOutlined, BuildOutlined, AppstoreOutlined, BlockOutlined, AimOutlined, EnvironmentOutlined,
   PlusOutlined, DeleteOutlined, DragOutlined, EditOutlined, ClearOutlined, UndoOutlined, SaveOutlined, InfoCircleOutlined, MinusOutlined,
 } from '@ant-design/icons-vue'
-import BizMap from './BizMap.vue'
+import MapSlot from './MapSlot.vue'
 import { toReal } from './geo'
 import { ZONES, OBS_MODES } from '@/mock/biz'
 import {
-  robot, rt, isIns, hasNav, myBags, myMaps, myRoutes, myGroups, db, curId, toggleNav, toggleIns, initIns, toggleMsf,
+  robot, rt, isIns, hasNav, locText, myBags, myMaps, myRoutes, myGroups, db, curId, toggleNav, toggleIns, initIns, toggleMsf,
   startBag, stopBag, genMap, genGrid, stopJob, shortName,
 } from './store'
 
 const props = defineProps<{ sub: string }>()
 const emit = defineEmits<{ 'update:sub': [string]; go: [tab: string, sub?: string] }>()
 const subs = computed(() => (isIns.value
-  ? [{ value: 'loc', label: 'INS 定位' }, { value: 'file', label: '文件管理' }]
+  ? [{ value: 'loc', label: '导航定位' }, { value: 'build', label: '录包建图' }, { value: 'file', label: '文件管理' }]
   : [{ value: 'build', label: '录包建图' }, { value: 'edit', label: '地图编辑' }, { value: 'loc', label: '导航定位' }, { value: 'file', label: '文件管理' }]))
 const sub = computed({ get: () => (subs.value.some((s) => s.value === props.sub) ? props.sub : subs.value[0].value), set: (v) => emit('update:sub', v) })
 
@@ -53,12 +53,17 @@ const zMeta = (k: string) => ZONES.find((z) => z.k === k)!
 /* ---------- 导航定位 ---------- */
 const navMap = ref('')
 watch([curId, gridMaps], () => { navMap.value = rt.value.navMap && gridMaps.value.some((m) => m.name === rt.value.navMap) ? rt.value.navMap : gridMaps.value[0]?.name ?? '' }, { immediate: true })
+const locMode = ref<'cloud' | 'grid' | 'sat'>('grid')
+watch(curId, () => { locMode.value = isIns.value ? 'sat' : 'grid' }, { immediate: true })
 const relo = ref(false); const arrow = ref<{ x: number; y: number; yaw: number } | null>(null)
 const startRelo = () => { if (!rt.value.nav) return message.error('请先开启导航'); relo.value = true; arrow.value = null; message.info('在地图上点击机器人实际位置以设置初始位姿') }
 const onPick = (x: number, y: number) => { if (!relo.value) return; arrow.value = { x, y, yaw: rt.value.pose.yaw } }
 const okRelo = () => { if (!arrow.value) return; rt.value.pose = { ...arrow.value }; rt.value.locOk = true; relo.value = false; arrow.value = null; message.success('重定位成功') }
+const needMap = () => { if (!navMap.value) { message.error('请先选择地图'); return true } rt.value.navMap = navMap.value; return false }
+const onIns = () => { if (!rt.value.ins && needMap()) return; toggleIns() }
+const anyLoc = computed(() => rt.value.nav || rt.value.ins || rt.value.msf)
 const msfOpen = ref(false); const msfMode = ref<'融合定位' | '卫星定位'>('融合定位')
-const onMsf = () => { if (rt.value.msf) return toggleMsf(navMap.value, msfMode.value); if (!robot.value.rtk) return toggleMsf('', msfMode.value); msfOpen.value = true }
+const onMsf = () => { if (!rt.value.msf && needMap()) return; if (rt.value.msf) return toggleMsf(navMap.value, msfMode.value); if (!robot.value.rtk) return toggleMsf('', msfMode.value); msfOpen.value = true }
 const obsOpen = ref(false); const obsSel = ref('停障模式')
 const toggleGps = () => { rt.value.gps = !rt.value.gps; message.success(rt.value.gps ? '已开启GPS' : '已关闭GPS') }
 const setOrigin = () => Modal.confirm({ title: '原点设置', content: '将机器人当前位置设置为地图原点？', onOk: () => message.success('原点设置成功') })
@@ -68,15 +73,15 @@ const ghost = computed(() => myRoutes.value.filter((r) => isIns.value || r.map =
 
 /* ---------- 文件管理 ---------- */
 const del = (what: string, fn: () => void) => Modal.confirm({ title: `删除${what}`, content: `删除后不可恢复，确定删除吗？`, okButtonProps: { danger: true }, onOk: () => { fn(); message.success('已删除') } })
-const delMap = (name: string) => del(`地图「${name}」`, () => { db.maps.splice(db.maps.findIndex((m) => m.name === name), 1) })
-const delBag = (name: string) => del(`数据包「${name}」`, () => { db.bags.splice(db.bags.findIndex((m) => m.name === name), 1) })
+const delMap = (name: string) => del(`地图「${name}」`, () => { db.maps.splice(db.maps.findIndex((m) => m.name === name && m.robot === curId.value), 1) })
+const delBag = (name: string) => del(`数据包「${name}」`, () => { db.bags.splice(db.bags.findIndex((m) => m.name === name && m.robot === curId.value), 1) })
 const delRoute = (id: string) => del('路线及其任务组', () => { db.routes.splice(db.routes.findIndex((r) => r.id === id), 1); for (let i = db.groups.length - 1; i >= 0; i--) if (db.groups[i].route === id) db.groups.splice(i, 1) })
 </script>
 
 <template>
 
   <!-- ================= 录包建图 ================= -->
-  <div v-if="sub === 'build'" class="bz-2">
+  <div v-if="sub === 'build'" class="bz-2 bz-fit">
     <div class="pp-panel">
       <div class="bz-sec">
         <h4><span class="n">1</span>采集地图数据</h4>
@@ -100,22 +105,22 @@ const delRoute = (id: string) => del('路线及其任务组', () => { db.routes.
         <h4><span class="n">3</span>建图进度<span class="r">{{ rt.job ? rt.job.kind + ' · ' + rt.job.name : '无进行中的任务' }}</span></h4>
         <div style="display:flex;align-items:center;gap:12px"><a-progress :percent="rt.job?.progress ?? 0" stroke-color="#26C6DA" style="flex:1;margin:0" /><a-button size="small" danger :disabled="!rt.job" @click="stopJob">终止</a-button></div>
       </div>
-      <div class="bz-sec"><div class="bz-hint"><InfoCircleOutlined /><span>栅格地图生成后，前往「导航定位」选择地图开启导航，再到「路线与任务点」录制循迹路线。</span></div></div>
+      <div class="bz-sec"><div class="bz-hint"><InfoCircleOutlined /><span>栅格地图生成后，前往「导航定位」选择地图开启定位，再到「任务管理」录制循迹路线。</span></div></div>
     </div>
     <div class="bz-col">
-      <div class="pp-panel">
+      <div class="pp-panel bz-fill">
         <div class="pp-panel-h"><h3>建图预览</h3><span class="muted" style="font-size:12px;margin-left:6px">{{ rt.bagRec || rt.slam ? '实时点云' : previewMap ? previewMap.name + (previewMap.grid ? ' · 栅格地图' : ' · 点云地图') : '' }}</span></div>
         <div class="bz-canvas">
-          <BizMap v-if="rt.bagRec || rt.slam || previewMap" :seed="previewMap?.seed ?? 41" :mode="rt.bagRec || rt.slam || !previewMap?.grid ? 'cloud' : 'grid'" :zones="false" :live="!!(rt.bagRec || rt.slam)" :robot="rt.bagRec || rt.slam ? rt.pose : null" />
-          <BizMap v-else mode="blank" :zones="false" />
+          <MapSlot v-if="rt.bagRec || rt.slam || previewMap" :seed="previewMap?.seed ?? 41" :mode="rt.bagRec || rt.slam || !previewMap?.grid ? 'cloud' : 'grid'" :zones="false" :live="!!(rt.bagRec || rt.slam)" :robot="rt.bagRec || rt.slam ? rt.pose : null" />
+          <MapSlot v-else mode="blank" :zones="false" />
           <div v-if="rt.bagRec" class="bz-ov red"><i class="dot" />录包中 {{ mmss(rt.bagRec.t0) }} · 请遥控机器人遍历巡检区域</div>
           <div v-else-if="rt.job" class="bz-ov">{{ rt.job.kind }}中 · {{ rt.job.progress }}%</div>
           <div v-else-if="!previewMap" class="bz-ov tip">暂无地图，请先开始录包</div>
         </div>
       </div>
-      <div class="pp-panel">
+      <div class="pp-panel nv-list">
         <div class="pp-panel-h"><h3>地图列表</h3><span class="muted" style="font-size:12px;margin-left:6px">{{ myMaps.length }} 张</span></div>
-        <a-table size="small" :pagination="false" :data-source="myMaps" row-key="name" :custom-row="(r: any) => ({ onClick: () => (preview = r.name), style: 'cursor:pointer' })" :row-class-name="(r: any) => (r.name === preview ? 'bz-row-on' : '')"
+        <a-table size="small" :pagination="false" :data-source="myMaps" row-key="name" :scroll="{ y: 118 }" :custom-row="(r: any) => ({ onClick: () => (preview = r.name), style: 'cursor:pointer' })" :row-class-name="(r: any) => (r.name === preview ? 'bz-row-on' : '')"
           :columns="[{ title: '地图名称', dataIndex: 'name' }, { title: '类型', key: 'kind', width: 100 }, { title: '栅格地图', key: 'grid', width: 100 }, { title: '数据包', dataIndex: 'bag' }, { title: '分辨率', key: 'res', width: 100 }, { title: '创建时间', dataIndex: 'created', width: 150 }]">
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'kind'"><a-tag :color="record.kind === '融合地图' ? 'blue' : 'purple'">{{ record.kind }}</a-tag></template>
@@ -144,7 +149,7 @@ const delRoute = (id: string) => del('路线及其任务组', () => { db.routes.
       <div class="pp-panel-h"><h3>地图编辑</h3><span class="muted" style="font-size:12px;margin-left:6px">{{ em?.name }}</span>
         <span class="bz-panel-tools"><a-button size="small"><UndoOutlined />撤销</a-button><a-button size="small" type="primary" :disabled="!em" @click="message.success('地图已保存')"><SaveOutlined />保存地图</a-button></span></div>
       <div class="bz-canvas">
-        <BizMap v-if="em" :seed="em.seed" mode="grid" :zones="em.zones.length > 0" :edit="tool !== 'pan'" />
+        <MapSlot v-if="em" :seed="em.seed" mode="grid" :zones="em.zones.length > 0" :edit="tool !== 'pan'" />
         <div class="nv-tools">
           <a-tooltip title="拖动" placement="right"><button type="button" :class="{ on: tool === 'pan' }" @click="tool = 'pan'"><DragOutlined /></button></a-tooltip>
           <a-tooltip title="画笔（障碍物）" placement="right"><button type="button" :class="{ on: tool === 'pen' }" @click="tool = 'pen'"><EditOutlined /></button></a-tooltip>
@@ -162,37 +167,31 @@ const delRoute = (id: string) => del('路线及其任务组', () => { db.routes.
     </div>
   </div>
 
-  <!-- ================= 导航定位 / INS 定位 ================= -->
-  <div v-else-if="sub === 'loc'" class="bz-2">
-    <div class="pp-panel">
-      <template v-if="!isIns">
-        <div class="bz-sec">
-          <h4>导航</h4>
-          <div class="nv-field"><span>地图</span><a-select v-model:value="navMap" :disabled="rt.nav" style="flex:1" placeholder="请选择地图" :options="gridMaps.map((m) => ({ value: m.name, label: m.name }))" /></div>
-          <div v-if="!gridMaps.length" class="bz-hint warn" style="margin-bottom:10px"><InfoCircleOutlined /><span>暂无栅格地图，请先完成录包建图。</span></div>
-          <div class="bz-btns">
-            <a-button :type="rt.nav ? 'default' : 'primary'" :danger="rt.nav" :disabled="!robot.online" @click="toggleNav(navMap)">{{ rt.nav ? '关闭导航' : '开始导航' }}</a-button>
-            <a-button :disabled="!rt.nav" @click="rt.pause = !rt.pause; message.success(rt.pause ? '暂停指令已发送' : '恢复指令已发送')">{{ rt.pause ? '恢复导航' : '暂停导航' }}</a-button>
-            <a-button :disabled="!rt.nav" @click="rt.navStop = !rt.navStop; message.success(rt.navStop ? '暂停停障指令已发送' : '恢复停障指令已发送')">{{ rt.navStop ? '恢复停障' : '暂停停障' }}</a-button>
-            <a-button :disabled="!rt.nav" @click="startRelo"><AimOutlined />重定位</a-button>
-            <a-button :disabled="!rt.nav" @click="setOrigin">原点设置</a-button>
-            <a-button :disabled="!rt.run" @click="obsSel = rt.obsMode; obsOpen = true">循迹避障模式</a-button>
-          </div>
-        </div>
-      </template>
+  <!-- ================= 导航定位 ================= -->
+  <div v-else-if="sub === 'loc'" class="bz-2 bz-fit">
+    <div class="pp-panel nv-left">
       <div class="bz-sec">
-        <h4>{{ isIns ? 'INS 组合导航' : 'RTK 定位' }}<span v-if="!robot.rtk" class="r">未搭载 RTK</span></h4>
-        <template v-if="isIns">
-          <div class="bz-status" :class="{ ok: rt.insOrigin }"><i class="dot" /><span v-if="rt.insOrigin">INS 原点已设置 · <b>{{ rt.insOrigin.time }}</b></span><span v-else>未进行 INS 初始化</span></div>
-          <div v-if="rt.insOrigin" class="bz-kv" style="margin-bottom:12px"><span>纬度</span><b class="mono">{{ rt.insOrigin.lat.toFixed(6) }}</b><span>经度</span><b class="mono">{{ rt.insOrigin.lng.toFixed(6) }}</b><span>高度</span><b class="mono">{{ rt.insOrigin.alt }} m</b></div>
-        </template>
-        <div class="bz-btns">
-          <a-button :type="isIns && !rt.insOrigin ? 'primary' : 'default'" :disabled="!robot.rtk || !robot.online" @click="initIns">INS初始化</a-button>
-          <a-button :type="isIns && rt.insOrigin && !rt.ins ? 'primary' : 'default'" :danger="rt.ins" :disabled="!robot.rtk || !robot.online" @click="toggleIns">{{ rt.ins ? '关闭INS' : '开始INS' }}</a-button>
-          <a-button :danger="rt.msf" :disabled="!robot.rtk || !robot.online" @click="onMsf">{{ rt.msf ? '关闭MSF' : '开始MSF' }}</a-button>
-          <a-button :disabled="!robot.online" @click="toggleGps">{{ rt.gps ? '关闭GPS' : '开启GPS' }}</a-button>
+        <h4>定位方式<span class="r">{{ locText }}</span></h4>
+        <div class="nv-field"><span>地图</span><a-select v-model:value="navMap" :disabled="anyLoc" style="flex:1" :placeholder="gridMaps.length ? '请选择地图' : '暂无地图'" :options="gridMaps.map((m) => ({ value: m.name, label: m.name }))" /></div>
+        <div class="nv-sw">
+          <button type="button" :class="{ on: rt.nav }" :disabled="!robot.online || !navMap || rt.ins || rt.msf" @click="toggleNav(navMap)"><b>导航</b><small>{{ rt.nav ? '运行中' : '激光导航' }}</small></button>
+          <button type="button" :class="{ on: rt.ins }" :disabled="!robot.online || !robot.rtk || !navMap || rt.nav || rt.msf" @click="onIns"><b>INS</b><small>{{ rt.ins ? '运行中' : '组合导航' }}</small></button>
+          <button type="button" :class="{ on: rt.msf }" :disabled="!robot.online || !robot.rtk || !navMap || rt.nav || rt.ins" @click="onMsf"><b>MSF</b><small>{{ rt.msf ? rt.msfMode : '多源融合' }}</small></button>
         </div>
-        <div v-if="isIns" class="bz-hint" style="margin-top:12px"><InfoCircleOutlined /><span>INS 原点只需初始化一次。不重新初始化时，已录制路线与任务点坐标持续有效，开启 INS 后可直接执行任务。</span></div>
+        <div v-if="!navMap" class="bz-hint warn" style="margin-top:10px"><InfoCircleOutlined /><span>{{ gridMaps.length ? '请先选择地图，再开启导航 / INS / MSF。' : '暂无地图，请先在「录包建图」中生成地图。' }}</span></div>
+      </div>
+      <div class="bz-sec">
+        <h4>导航控制</h4>
+        <div class="nv-ops">
+          <a-button size="small" :disabled="!hasNav" @click="rt.pause = !rt.pause; message.success(rt.pause ? '暂停指令已发送' : '恢复指令已发送')">{{ rt.pause ? '恢复导航' : '暂停导航' }}</a-button>
+          <a-button size="small" :disabled="!hasNav" @click="rt.navStop = !rt.navStop; message.success(rt.navStop ? '暂停停障指令已发送' : '恢复停障指令已发送')">{{ rt.navStop ? '恢复停障' : '暂停停障' }}</a-button>
+          <a-button size="small" :disabled="!rt.nav" @click="startRelo"><AimOutlined />重定位</a-button>
+          <a-button size="small" :disabled="!rt.nav" @click="setOrigin">原点设置</a-button>
+          <a-button size="small" :disabled="!robot.online || !robot.rtk" @click="toggleGps">{{ rt.gps ? '关闭GPS' : '开启GPS' }}</a-button>
+          <a-button size="small" :disabled="!rt.run" @click="obsSel = rt.obsMode; obsOpen = true">循迹避障</a-button>
+          <a-button v-if="isIns" size="small" :disabled="!robot.rtk || !robot.online || rt.ins" @click="initIns">INS初始化</a-button>
+        </div>
+        <div v-if="isIns" class="bz-kv nv-org"><span>INS 原点</span><b class="mono">{{ rt.insOrigin ? `${rt.insOrigin.lat.toFixed(6)}, ${rt.insOrigin.lng.toFixed(6)}` : '未初始化' }}</b></div>
       </div>
       <div class="bz-sec">
         <h4>任务速度</h4>
@@ -200,26 +199,23 @@ const delRoute = (id: string) => del('路线及其任务组', () => { db.routes.
       </div>
       <div class="bz-sec">
         <h4>状态信息</h4>
-        <div class="bz-cards" style="margin-bottom:12px">
-          <div><small>速度</small><b class="mono">{{ rt.run && !rt.pause ? rt.speed.toFixed(2) : '0.00' }}<em>m/s</em></b></div>
-          <div><small>位姿 (x, y, θ)</small><b class="mono" style="font-size:13px">{{ toReal(rt.pose.x, rt.pose.y).x.toFixed(2) }}, {{ toReal(rt.pose.x, rt.pose.y).y.toFixed(2) }}, {{ rt.pose.yaw }}°</b></div>
-        </div>
         <div class="bz-kv">
-          <template v-if="!isIns"><span>激光雷达数据</span><b><a-badge status="success" text="正常" /></b></template>
-          <span>IMU数据</span><b><a-badge status="success" text="正常" /></b>
-          <span>卫星数据</span><b><a-badge :status="robot.rtk ? (rt.gps ? 'success' : 'default') : 'default'" :text="robot.rtk ? (rt.gps ? 'RTK 固定解 · 24 颗' : '未开启') : '未配置'" /></b>
-          <span>MSF状态</span><b><a-badge :status="rt.msf ? 'success' : 'default'" :text="robot.rtk ? (rt.msf ? rt.msfMode : '未开启') : '未配置'" /></b>
-          <span>定位状态</span><b><a-badge :status="hasNav ? (rt.locOk ? 'success' : 'processing') : 'default'" :text="hasNav ? (rt.locOk ? '正常' : '定位中') : '未收到'" /></b>
+          <span>速度</span><b class="mono">{{ rt.run && !rt.pause ? rt.speed.toFixed(2) : '0.00' }} m/s</b>
+          <span>位姿 (x, y, θ)</span><b class="mono">{{ toReal(rt.pose.x, rt.pose.y).x.toFixed(2) }}, {{ toReal(rt.pose.x, rt.pose.y).y.toFixed(2) }}, {{ rt.pose.yaw }}°</b>
+          <span>{{ isIns ? 'IMU数据' : '激光雷达数据' }}</span><b><a-badge status="success" text="正常" /></b>
+          <span>卫星数据</span><b><a-badge :status="robot.rtk && rt.gps ? 'success' : 'default'" :text="robot.rtk ? (rt.gps ? 'RTK 固定解 · 24 颗' : '未开启') : '未配置'" /></b>
+          <span>定位状态</span><b><a-badge :status="hasNav ? (rt.locOk ? 'success' : 'processing') : 'default'" :text="hasNav ? (rt.locOk ? '正常' : '定位中') : '未开启'" /></b>
         </div>
       </div>
     </div>
-    <div class="pp-panel">
-      <div class="pp-panel-h"><h3>{{ isIns ? '卫星地图' : '导航地图' }}</h3><span class="muted" style="font-size:12px;margin-left:6px">{{ isIns ? (rt.insOrigin ? 'INS 原点坐标系' : '未初始化') : rt.nav ? rt.navMap : navMap }}</span>
-        <span class="bz-panel-tools"><template v-if="relo"><a-button size="small" @click="relo = false; arrow = null">取消</a-button><a-button size="small" type="primary" :disabled="!arrow" @click="okRelo">确认重定位</a-button></template></span></div>
-      <div class="bz-canvas" style="aspect-ratio:16/10.4">
-        <BizMap :seed="curMapSeed" :mode="isIns ? 'sat' : navMap ? 'grid' : 'blank'" :zones="!isIns && !!navMap" :ghost="ghost" :robot="hasNav || isIns ? rt.pose : null" :pick="relo" :arrow="arrow" @pick="onPick" />
+    <div class="pp-panel bz-fill">
+      <div class="pp-panel-h"><h3>导航地图</h3><span class="muted" style="font-size:12px;margin-left:6px">{{ anyLoc ? rt.navMap : navMap || '未选择地图' }}</span>
+        <span class="bz-panel-tools"><template v-if="relo"><a-button size="small" @click="relo = false; arrow = null">取消</a-button><a-button size="small" type="primary" :disabled="!arrow" @click="okRelo">确认重定位</a-button></template>
+          <a-radio-group v-else v-model:value="locMode" size="small"><a-radio-button value="cloud">点云</a-radio-button><a-radio-button value="grid">栅格</a-radio-button><a-radio-button v-if="isIns" value="sat">卫星</a-radio-button></a-radio-group></span></div>
+      <div class="bz-canvas">
+        <MapSlot :seed="curMapSeed" :mode="navMap || anyLoc ? locMode : 'blank'" :zones="locMode === 'grid'" :ghost="ghost" :robot="hasNav ? rt.pose : null" :pick="relo" :arrow="arrow" :cloud-bar="false" @pick="onPick" />
         <div v-if="relo" class="bz-ov">重定位：在地图上点击机器人实际位置，确认后提交初始位姿</div>
-        <div v-else-if="!hasNav" class="bz-ov tip">{{ isIns ? (rt.insOrigin ? '开启 INS 后显示机器人实时位置' : '请先进行 INS 初始化') : '开始导航后显示机器人实时位置' }}</div>
+        <div v-else-if="!hasNav" class="bz-ov tip">{{ navMap ? '开启导航 / INS / MSF 后显示机器人实时位置' : '请先选择地图' }}</div>
         <div v-else class="bz-ov"><a-badge :status="rt.locOk ? 'success' : 'processing'" />{{ rt.locOk ? '定位正常' : '定位中…' }}<a v-if="!rt.run" style="margin-left:8px" @click="emit('go', 'task', 'route')">去录制路线 →</a></div>
       </div>
     </div>
@@ -227,7 +223,7 @@ const delRoute = (id: string) => del('路线及其任务组', () => { db.routes.
 
   <!-- ================= 文件管理 ================= -->
   <div v-else-if="sub === 'file'" class="bz-col">
-    <div v-if="!isIns" class="pp-panel">
+    <div class="pp-panel">
       <div class="pp-panel-h"><h3>地图</h3><span class="muted" style="font-size:12px;margin-left:6px">{{ myMaps.length }} 个</span></div>
       <a-table size="small" :pagination="false" :data-source="myMaps" row-key="name" :columns="[{ title: '地图名称', dataIndex: 'name' }, { title: '类型', dataIndex: 'kind' }, { title: '栅格地图', key: 'grid' }, { title: '来源数据包', dataIndex: 'bag' }, { title: '路线', key: 'routes' }, { title: '创建时间', dataIndex: 'created' }, { title: '操作', key: 'op', width: 90 }]">
         <template #bodyCell="{ column, record }">
@@ -237,7 +233,7 @@ const delRoute = (id: string) => del('路线及其任务组', () => { db.routes.
         </template>
       </a-table>
     </div>
-    <div v-if="!isIns" class="pp-panel">
+    <div class="pp-panel">
       <div class="pp-panel-h"><h3>数据包</h3><span class="muted" style="font-size:12px;margin-left:6px">{{ myBags.length }} 个</span></div>
       <a-table size="small" :pagination="false" :data-source="myBags" row-key="name" :columns="[{ title: '数据包名称', dataIndex: 'name' }, { title: '大小', dataIndex: 'size' }, { title: '录制时长', dataIndex: 'dur' }, { title: '已生成地图', key: 'map' }, { title: '录制时间', dataIndex: 'time' }, { title: '操作', key: 'op', width: 90 }]">
         <template #bodyCell="{ column, record }">
@@ -271,7 +267,7 @@ const delRoute = (id: string) => del('路线及其任务组', () => { db.routes.
   </a-modal>
   <a-modal v-model:open="dlg.fusion" title="新建融合地图" ok-text="确定" @ok="okFusion"><a-form layout="vertical" style="margin-top:12px"><a-form-item label="融合地图名称"><a-input v-model:value="form.fusion" placeholder="请输入融合地图名称" /></a-form-item></a-form></a-modal>
   <a-modal v-model:open="dlg.slam" title="实时建图 - 栅格地图" :footer="null" :width="760">
-    <div class="bz-canvas" style="margin:12px 0"><BizMap :seed="41" mode="cloud" live :zones="false" :robot="rt.pose" /></div>
+    <div class="bz-canvas" style="margin:12px 0"><MapSlot v-if="dlg.slam" :seed="41" mode="cloud" live :zones="false" :robot="rt.pose" /></div>
     <div class="muted" style="font-size:12px">分辨率: 0.2 · 地图尺寸: 514×501 · 车辆位姿: x: {{ toReal(rt.pose.x, rt.pose.y).x.toFixed(3) }}, y: {{ toReal(rt.pose.x, rt.pose.y).y.toFixed(3) }}, θ: {{ rt.pose.yaw }}°</div>
   </a-modal>
   <a-modal v-model:open="zoneOpen" title="添加功能区" ok-text="确定" @ok="addZone">
@@ -292,6 +288,15 @@ const delRoute = (id: string) => del('路线及其任务组', () => { db.routes.
 
 <style scoped>
 .nv-field { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; font-size: 13px; color: var(--muted); }
+.nv-sw { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.nv-sw button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 0; font: inherit; cursor: pointer; color: var(--text); background: rgba(46,211,230,.05); border: 1px solid var(--line-strong); border-radius: 4px; }
+.nv-sw button b { font-size: 14px; } .nv-sw button small { font-size: 11px; color: var(--muted); }
+.nv-sw button:hover:not(:disabled) { border-color: var(--cyan); } .nv-sw button:disabled { cursor: not-allowed; opacity: .4; }
+.nv-sw button.on { color: #0B1C2E; background: var(--cyan); border-color: var(--cyan); } .nv-sw button.on small { color: #0B1C2E; }
+.nv-ops { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; } .nv-ops :deep(.ant-btn) { padding: 0 4px; }
+.nv-org { margin-top: 10px; }
+.nv-left { overflow: auto; }
+.nv-list { flex: none; }
 .nv-speed { display: flex; align-items: center; gap: 14px; } .nv-speed b { width: 80px; text-align: center; font-size: 15px; }
 .nv-tools { position: absolute; z-index: 1; left: 10px; top: 10px; display: flex; flex-direction: column; gap: 4px; padding: 4px; background: rgba(13,28,47,.82); border: 1px solid var(--line); border-radius: 6px; }
 .nv-tools button { width: 30px; height: 30px; display: grid; place-items: center; font-size: 15px; color: var(--muted); cursor: pointer; background: none; border: 1px solid transparent; border-radius: 4px; }

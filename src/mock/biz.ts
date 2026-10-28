@@ -45,12 +45,16 @@ export const BAGS: BizBag[] = [
   { name: 'bag_20261016_0930', robot: 'DOG-001', size: '3.6 GB', dur: '18 分 42 秒', time: '2026-10-16 09:30' },
   { name: 'bag_20261009_1520', robot: 'DOG-001', size: '3.1 GB', dur: '15 分 06 秒', time: '2026-10-09 15:20' },
   { name: 'bag_20261012_1410', robot: 'DOG-002', size: '5.1 GB', dur: '26 分 10 秒', time: '2026-10-12 14:10' },
+  { name: 'bag_20261007_1450', robot: 'CAR-001', size: '6.8 GB', dur: '32 分 15 秒', time: '2026-10-07 14:50' },
+  { name: 'bag_20261001_1010', robot: 'CAR-002', size: '6.2 GB', dur: '29 分 40 秒', time: '2026-10-01 10:10' },
   { name: 'bag_20261019_1605', robot: 'DOG-003', size: '2.2 GB', dur: '11 分 37 秒', time: '2026-10-19 16:05' },
 ]
 const Z1 = [{ name: '禁行区-庭院花坛', k: 'forbid' }, { name: '禁行区-东楼设备间', k: 'forbid' }, { name: '东侧台阶', k: 'stair' }, { name: '消防通道坡道', k: 'slope' }, { name: '院门窄道', k: 'narrow' }, { name: '庭院草坪', k: 'grass' }]
 export const MAPS: BizMapItem[] = [
   { name: '综合楼一层', robot: 'DOG-001', kind: '点云地图', grid: true, bag: 'bag_20261016_0930', res: 0.2, size: '514×501', area: 3200, created: '2026-10-16 10:12', seed: 11, zones: Z1 },
   { name: '综合楼二层', robot: 'DOG-001', kind: '点云地图', grid: true, bag: 'bag_20261009_1520', res: 0.05, size: '1260×840', area: 3000, created: '2026-10-09 16:02', seed: 41, zones: Z1.slice(0, 2) },
+  { name: '室外园区', robot: 'CAR-001', kind: '融合地图', grid: true, bag: 'bag_20261007_1450', res: 0.1, size: '1800×1200', area: 21600, created: '2026-10-07 16:20', seed: 31, zones: [] },
+  { name: '室外园区', robot: 'CAR-002', kind: '融合地图', grid: true, bag: 'bag_20261001_1010', res: 0.1, size: '1800×1200', area: 21600, created: '2026-10-01 11:30', seed: 31, zones: [] },
   { name: '地下管廊', robot: 'DOG-002', kind: '融合地图', grid: true, bag: 'bag_20261012_1410', res: 0.05, size: '2400×420', area: 1800, created: '2026-10-12 15:30', seed: 23, zones: Z1.slice(2, 5) },
 ]
 /** INS 原点（/navigation/{id}/ins_origin） */
@@ -99,6 +103,7 @@ export const GROUPS: TaskGroup[] = [
   { id: 'G-06', name: '温湿度巡检', robot: 'DOG-002', kind: '循迹', route: 'RT-05', map: '地下管廊', points: mkPts(15, 6, 8) },
   { id: 'G-07', name: '外围安防', robot: 'CAR-001', kind: '循迹', route: 'RT-06', map: '', points: mkPts(21, 4, 8) },
   { id: 'G-08', name: '道路巡查', robot: 'CAR-001', kind: '循迹', route: 'RT-07', map: '', points: mkPts(25, 5, 5) },
+  { id: 'G-10', name: '停车场定点巡查', robot: 'CAR-001', kind: '发布点', map: '室外园区', points: mkFree(33, 5) },
   { id: 'G-09', name: '外围安防', robot: 'CAR-002', kind: '循迹', route: 'RT-08', map: '', points: mkPts(29, 4, 6) },
 ]
 export interface MultiStep { startMode: '导航' | 'INS' | 'MSF'; mode: '循迹模式' | '发布点模式'; map: string; route: string; group: string; circle: number; obs: string; gait: number; ground: number; origin: boolean }
