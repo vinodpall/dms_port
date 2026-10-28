@@ -39,11 +39,11 @@ const del = () => Modal.confirm({ title: '删除记录', content: `确定删除�
       <div class="rc-f"><span>结果</span><a-select v-model:value="f.res" :options="opt(['正常', '异常'])" /></div>
       <div class="rc-f w"><span>时间</span><a-range-picker show-time /></div>
       <div class="rc-btns">
-        <a-button type="primary" @click="query"><SearchOutlined />查询</a-button>
-        <a-button @click="reset"><ReloadOutlined />重置</a-button>
-        <a-button danger :disabled="!sel.length" @click="del"><DeleteOutlined />删除</a-button>
-        <a-button @click="message.success('已导出 Excel')"><ExportOutlined />导出</a-button>
-        <a-button @click="roundsOpen = true"><UnorderedListOutlined />轮次信息</a-button>
+        <a-button type="primary" @click="query">查询</a-button>
+        <a-button @click="reset">重置</a-button>
+        <a-button danger :disabled="!sel.length" @click="del">删除</a-button>
+        <a-button @click="message.success('已导出 Excel')">导出</a-button>
+        <a-button @click="roundsOpen = true">轮次信息</a-button>
       </div>
     </div>
     <a-table :data-source="rows" row-key="id" size="middle" :pagination="{ current: page, pageSize: size, size: 'small', showSizeChanger: false, showTotal: (t: number) => `共 ${t} 条`, onChange: (p: number) => (page = p) }" :row-selection="{ selectedRowKeys: sel, onChange: (k: any) => (sel = k) }"

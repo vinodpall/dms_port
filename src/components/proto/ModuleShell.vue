@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { AppstoreOutlined, LogoutOutlined, BellOutlined, QuestionCircleOutlined, MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons-vue'
+import { AppstoreOutlined, LogoutOutlined, BellOutlined, MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons-vue'
 import BrandMark from '@/components/BrandMark.vue'
 import { PLATFORM } from '@/constants'
 import { useClock } from '@/composables/entry'
@@ -42,9 +42,7 @@ const logout = () => { session.logout(); router.replace({ name: 'login' }) }
       <div class="pp-mod"><b>{{ title }}</b><small>{{ en }}</small></div>
       <div class="pp-top-r">
         <slot name="extra" />
-        <a-tooltip title="返回模块导航"><a-button type="text" class="pp-ico" @click="router.push('/portal')"><AppstoreOutlined /></a-button></a-tooltip>
         <a-badge v-if="!noBell" :count="3" size="small" :offset="[-6, 6]"><a-button type="text" class="pp-ico"><BellOutlined /></a-button></a-badge>
-        <a-button type="text" class="pp-ico"><QuestionCircleOutlined /></a-button>
         <span class="pp-clock">{{ time }}</span>
         <a-dropdown placement="bottomRight">
           <div class="pp-user"><span class="av">{{ session.info.init }}</span><span>{{ session.info.user }}<small>{{ session.info.name }}</small></span></div>

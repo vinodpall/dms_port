@@ -240,9 +240,10 @@ onBeforeUnmount(() => {
 .pcv-tb button { height: 24px; padding: 0 9px; font: inherit; font-size: 12px; color: var(--muted, #B6CADC); background: none; border: 0; border-radius: 7px; cursor: pointer; }
 .pcv-tb button.gear { width: 26px; padding: 0; font-size: 13px; }
 .pcv-tb { left: 16px !important; top: 16px !important; padding: 0 !important; gap: 4px !important; background: none !important; border: 0 !important; }
-.pcv-tb button.gear { width: 24px !important; height: 24px; display: grid; place-items: center; color: #9adfff !important; background: rgba(10,30,45,.75) !important; border: 1px solid #164159 !important; border-radius: 7px; transition: transform .2s, color .2s, border-color .2s; }
+.pcv-tb button.gear { width: 24px !important; height: 24px; display: grid; place-items: center; color: #9adfff !important; background: rgba(10,30,45,.75) !important; border: 1px solid #164159 !important; border-radius: 7px; transition: color .2s, border-color .2s; }
 .pcv-tb button.gear.on, .pcv-tb button.gear:hover { color: #00e1ff !important; border-color: #00e1ff !important; }
-.pcv-tb button.gear.on { transform: rotate(60deg); }
+.pcv-tb button.gear.on :deep(.anticon) { animation: pcv-spin .45s ease; }
+@keyframes pcv-spin { from { transform: rotate(0); } to { transform: rotate(90deg); } }
 .pcv-tb > button:not(.gear) { background: rgba(10,30,45,.75); border: 1px solid #164159; color: #9adfff; }
 .pcv-tb i { display: none; }
 .pcv-set { position: absolute; left: 16px; top: 46px; z-index: 3; width: 145px; padding: 8px 10px; background: rgba(10,30,45,.92); border: 1px solid #164159; border-radius: 7px; box-shadow: 0 6px 18px rgba(0,0,0,.4); }

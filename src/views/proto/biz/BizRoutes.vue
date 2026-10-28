@@ -28,21 +28,24 @@ const byMap = computed(() => {
   return out
 })
 const pubGroups = computed(() => myGroups.value.filter((g) => g.kind === '发布点'))
-const sel = ref('') // 路线 id 或 'G:'+发布点任务组 id
+/** 发布点任务：按地图归类，地图下再分任务组（与循迹路线 → 任务组 一致） */
+const pubMaps = computed(() => { const s = new Set<string>(myMaps.value.filter((m) => m.grid).map((m) => m.name)); pubGroups.value.forEach((g) => s.add(g.map || 'INS 坐标系')); return [...s] })
+const sel = ref('') // 路线 id 或 'M:'+发布点地图
 watch([curId, myRoutes, pubGroups, sub], () => {
-  if (sub.value === 'pub') { if (!pubGroups.value.some((g) => 'G:' + g.id === sel.value)) sel.value = pubGroups.value[0] ? 'G:' + pubGroups.value[0].id : '' }
+  if (sub.value === 'pub') { if (!pubMaps.value.some((m) => 'M:' + m === sel.value)) sel.value = pubMaps.value[0] ? 'M:' + pubMaps.value[0] : '' }
   else if (!myRoutes.value.some((r) => r.id === sel.value)) sel.value = myRoutes.value[0]?.id ?? ''
 }, { immediate: true })
 watch(lastRoute, (v) => { if (v) sel.value = v })
 const route = computed(() => routeById(sel.value))
-const pubSel = computed(() => (sel.value.startsWith('G:') ? pubGroups.value.find((g) => 'G:' + g.id === sel.value) : undefined))
+const pubSel = computed(() => (sel.value.startsWith('M:') ? { name: sel.value.slice(2), map: sel.value.slice(2) } : undefined))
+const pubOf = (m: string) => pubGroups.value.filter((g) => (g.map || 'INS 坐标系') === m)
 const groupsOf = (id: string) => myGroups.value.filter((g) => g.route === id)
 const ptsOf = (id: string) => groupsOf(id).reduce((a, g) => a + g.points.length, 0)
 const lenM = (shape: number) => (routeLen(shape) * UNIT).toFixed(1)
 const mapSeed = (name?: string) => myMaps.value.find((m) => m.name === name)?.seed ?? 11
 const pickRoute = (id: string) => { sel.value = id; editing.value = false }
 /* 地图：任务管理不显示卫星图，仅点云 / 栅格 */
-const mode = ref<'grid' | 'cloud'>('grid')
+const mode = ref<'grid' | 'cloud'>('cloud')
 watch(mode, (m) => { if (m !== 'grid') editing.value = false })
 /* 任务启停 */
 const running = computed(() => !!group.value && rt.value.run?.group === group.value.id)
@@ -74,20 +77,20 @@ const delRoute = () => { const r = route.value!; Modal.confirm({ title: '删除�
 
 /* ---------- 任务组 ---------- */
 const gid = ref('')
-const groups = computed<TaskGroup[]>(() => (pubSel.value ? [pubSel.value] : route.value ? groupsOf(route.value.id) : []))
+const groups = computed<TaskGroup[]>(() => (pubSel.value ? pubOf(pubSel.value.map) : route.value ? groupsOf(route.value.id) : []))
 watch([sel, groups], () => { if (!groups.value.some((g) => g.id === gid.value)) gid.value = groups.value[0]?.id ?? '' }, { immediate: true })
 const group = computed(() => groups.value.find((g) => g.id === gid.value))
 const gOpen = ref(false); const gf = reactive({ name: '', kind: '循迹' as '循迹' | '发布点', map: '' })
-const openGroup = (kind: '循迹' | '发布点') => { gf.name = ''; gf.kind = kind; gf.map = rt.value.navMap || gridMaps.value[0]?.name || ''; gOpen.value = true }
+const openGroup = (kind: '循迹' | '发布点') => { gf.name = ''; gf.kind = kind; gf.map = pubSel.value?.map ?? (rt.value.navMap || gridMaps.value[0]?.name || ''); gOpen.value = true }
 const okGroup = () => {
   if (!gf.name.trim()) return message.error('请输入任务组名称')
   const id = `G-${String(db.groups.length + 1).padStart(2, '0')}${Math.floor(Math.random() * 9)}`
   if (gf.kind === '循迹') { if (groups.value.some((g) => g.name === gf.name.trim())) return message.error('任务组名称已存在'); db.groups.push({ id, name: gf.name.trim(), robot: curId.value, kind: '循迹', route: route.value!.id, map: route.value!.map, points: [] }); gid.value = id }
-  else { db.groups.push({ id, name: gf.name.trim(), robot: curId.value, kind: '发布点', map: gf.map, points: [] }); sel.value = 'G:' + id }
+  else { db.groups.push({ id, name: gf.name.trim(), robot: curId.value, kind: '发布点', map: gf.map, points: [] }); gid.value = id }
   
   gOpen.value = false; message.success('任务组已创建，请添加任务点')
 }
-const delGroup = () => { const g = group.value!; Modal.confirm({ title: pubSel.value ? '删除发布点任务' : '删除任务组', content: `确定删除任务组「${g.name}」及其 ${g.points.length} 个任务点吗？`, okButtonProps: { danger: true }, onOk: () => { db.groups.splice(db.groups.findIndex((x) => x.id === g.id), 1);  message.success('已删除') } }) }
+const delGroup = () => { const g = group.value!; Modal.confirm({ title: '删除任务组', content: `确定删除任务组「${g.name}」及其 ${g.points.length} 个任务点吗？`, okButtonProps: { danger: true }, onOk: () => { db.groups.splice(db.groups.findIndex((x) => x.id === g.id), 1);  message.success('已删除') } }) }
 
 /* ---------- 任务点 ---------- */
 const selPt = ref(-1)
@@ -118,7 +121,7 @@ const pose = computed(() => ({ x: toReal(rt.value.pose.x, rt.value.pose.y).x.toF
     <div class="pp-panel rt-col">
       <template v-if="sub === 'route'">
         <div class="pp-panel-h"><h3>循迹路线</h3><span class="muted" style="font-size:12px;margin-left:6px">{{ myRoutes.length }} 条</span>
-          <span class="bz-panel-tools"><a-button v-if="!rt.trackRec" size="small" type="primary" @click="openRec"><PlayCircleOutlined />录制路线</a-button><a-button v-else size="small" danger @click="stopTrackRec"><StopOutlined />完成录制</a-button></span></div>
+          <span class="bz-panel-tools"><a-button v-if="!rt.trackRec" size="small" type="primary" @click="openRec">录制路线</a-button><a-button v-else size="small" danger @click="stopTrackRec">完成录制</a-button></span></div>
         <div v-if="rt.trackRec" style="padding:10px 10px 0"><div class="bz-status on" style="margin:0"><i class="dot" /><span>录制中 · <b>{{ rt.trackRec.name }}</b></span><span class="mono">{{ mmss(rt.trackRec.t0) }}</span></div></div>
         <div class="bz-items rt-scroll">
           <template v-for="g in byMap" :key="g.map">
@@ -132,14 +135,13 @@ const pose = computed(() => ({ x: toReal(rt.value.pose.x, rt.value.pose.y).x.toF
         </div>
       </template>
       <template v-else>
-        <div class="pp-panel-h"><h3>发布点任务</h3><span class="muted" style="font-size:12px;margin-left:6px">{{ pubGroups.length }} 个</span>
-          <span class="bz-panel-tools"><a-button size="small" type="primary" @click="openGroup('发布点')"><PlusOutlined />新增</a-button></span></div>
+        <div class="pp-panel-h"><h3>发布点任务</h3><span class="muted" style="font-size:12px;margin-left:6px">{{ pubMaps.length }} 张地图</span></div>
         <div class="bz-items rt-scroll">
-          <button v-for="g in pubGroups" :key="g.id" type="button" class="bz-item" :class="{ on: 'G:' + g.id === sel }" @click="pickRoute('G:' + g.id)">
-            <span class="b"><b>{{ g.name }}</b><small>{{ g.map || 'INS 坐标系' }} · {{ g.points.length }} 个任务点</small></span>
-            <a-tag v-if="rt.run?.group === g.id" color="cyan" class="tg">执行中</a-tag>
+          <button v-for="m in pubMaps" :key="m" type="button" class="bz-item" :class="{ on: 'M:' + m === sel }" @click="pickRoute('M:' + m)">
+            <span class="b"><b>{{ m }}</b><small>{{ pubOf(m).length }} 个任务组 · {{ pubOf(m).reduce((a, g) => a + g.points.length, 0) }} 个任务点</small></span>
+            <a-tag v-if="pubOf(m).some((g) => rt.run?.group === g.id)" color="cyan" class="tg">执行中</a-tag>
           </button>
-          <div v-if="!pubGroups.length" class="bz-empty">暂无发布点任务<br /><span style="font-size:12px">点击「新增」后直接在地图上添加任务点</span></div>
+          <div v-if="!pubMaps.length" class="bz-empty">暂无地图<br /><span style="font-size:12px">请先在导航管理中建图</span></div>
         </div>
       </template>
     </div>
@@ -150,39 +152,36 @@ const pose = computed(() => ({ x: toReal(rt.value.pose.x, rt.value.pose.y).x.toF
         <h3>{{ recording && !route ? '路线录制' : pubSel ? pubSel.name : route ? shortName(route) : '地图' }}</h3>
         <span class="bz-panel-tools">
           <template v-if="route && sub === 'route'">
-            <a-button size="small" :disabled="route.smooth" @click="smooth"><NodeIndexOutlined />{{ route.smooth ? '已平滑' : '轨迹平滑' }}</a-button>
-            <a-tooltip :title="mode !== 'grid' ? '请切换到栅格地图后编辑' : ''"><a-button size="small" :type="editing ? 'primary' : 'default'" :disabled="!!rt.run || mode !== 'grid'" @click="editing = !editing"><EditOutlined />{{ editing ? '退出编辑' : '路线编辑' }}</a-button></a-tooltip>
+            <a-button size="small" :disabled="route.smooth" @click="smooth">{{ route.smooth ? '已平滑' : '轨迹平滑' }}</a-button>
+            <a-tooltip :title="mode !== 'grid' ? '请切换到栅格地图后编辑' : ''"><a-button size="small" :type="editing ? 'primary' : 'default'" :disabled="!!rt.run || mode !== 'grid'" @click="editing = !editing">{{ editing ? '退出编辑' : '路线编辑' }}</a-button></a-tooltip>
             <a-tooltip title="删除路线"><a-button size="small" danger :disabled="rt.run?.route === route.id" @click="delRoute"><DeleteOutlined /></a-button></a-tooltip>
           </template>
         </span></div>
       <div v-if="editing && route" class="bz-bar">
-        <a-radio-group v-model:value="et.tool" size="small" button-style="solid"><a-radio-button value="seg"><ScissorOutlined /> 选段</a-radio-button><a-radio-button value="draw"><HighlightOutlined /> 绘制</a-radio-button></a-radio-group>
+        <a-radio-group v-model:value="et.tool" size="small" button-style="solid"><a-radio-button value="seg">选段</a-radio-button><a-radio-button value="draw">绘制</a-radio-button></a-radio-group>
         <a-radio-group v-model:value="et.line" size="small"><a-radio-button value="直线">直线</a-radio-button><a-radio-button value="曲线">曲线</a-radio-button></a-radio-group>
         <span>步长 <a-input-number v-model:value="et.step" size="small" :min="0.05" :max="1" :step="0.05" style="width:72px" /> m</span>
         <span>Z 值 <a-input-number v-model:value="et.z" size="small" :step="0.1" style="width:72px" /></span>
-        <span class="sp" /><a-button size="small"><UndoOutlined />撤销</a-button><a-button size="small"><RedoOutlined />重置</a-button><a-button size="small" type="primary" @click="saveEdit"><SaveOutlined />保存上传</a-button>
+        <span class="sp" /><a-button size="small">撤销</a-button><a-button size="small">重置</a-button><a-button size="small" type="primary" @click="saveEdit">保存上传</a-button>
       </div>
       <div class="bz-canvas">
         <MapSlot v-if="recording && !route" :seed="mapSeed(rt.trackRec!.map)" :mode="mode" :zones="false" :shape="rt.trackRec!.shape" :draw="rt.trackRec!.f" :robot="rt.pose" :light="mode === 'grid'" :cloud-bar="false" />
         <MapSlot v-else :seed="mapSeed(route?.map ?? pubSel?.map)" :mode="mode" :zones="mode === 'grid' && !isIns" :shape="sub === 'route' ? route?.shape ?? null : null" :pts="mapPts" :sel="selPt" :robot="rt.pose" :edit="editing" :light="mode === 'grid'" :cloud-bar="false" />
         <a-radio-group v-model:value="mode" size="small" class="rt-mode"><a-radio-button value="cloud">点云</a-radio-button><a-radio-button value="grid">栅格</a-radio-button></a-radio-group>
-        <div v-if="recording" class="bz-ov red"><i class="dot" />录制中 {{ mmss(rt.trackRec!.t0) }} · 遥控机器人沿巡检路径行走，到达终点后点击「完成录制」</div>
-        <div v-else-if="editing" class="bz-ov tip">{{ et.tool === 'seg' ? '在路线上点击两个节点选取路段，可删除或重绘该段' : '按住鼠标在地图上绘制新的路线段' }}</div>
-        <div v-else-if="sub === 'route' && !route" class="bz-ov tip">{{ myRoutes.length ? '请选择左侧路线' : '暂无路线，请先录制循迹路线' }}</div>
       </div>
     </div>
 
     <!-- 右：任务组 + 任务点列表 -->
     <div class="pp-panel rt-col">
-      <div class="pp-panel-h"><h3>{{ pubSel ? '任务点' : '任务组' }}</h3>
-        <a-select v-if="!pubSel" v-model:value="gid" size="small" class="rt-gsel" :disabled="!route" :placeholder="route ? '暂无任务组' : '请选择路线'" :options="groups.map((g) => ({ value: g.id, label: `${g.name}（${g.points.length}）` }))" />
+      <div class="pp-panel-h"><h3>任务组</h3>
+        <a-select v-model:value="gid" size="small" class="rt-gsel" :disabled="!route && !pubSel" :placeholder="route || pubSel ? '暂无任务组' : '请选择路线'" :options="groups.map((g) => ({ value: g.id, label: `${g.name}（${g.points.length}）` }))" />
         <span class="bz-panel-tools">
-          <a-tooltip v-if="!pubSel" title="新增任务组"><a-button size="small" :disabled="!route" @click="openGroup('循迹')"><PlusOutlined /></a-button></a-tooltip>
-          <a-tooltip :title="pubSel ? '删除发布点任务' : '删除任务组'"><a-button size="small" danger :disabled="!group || running" @click="delGroup"><DeleteOutlined /></a-button></a-tooltip>
+          <a-tooltip title="新增任务组"><a-button size="small" :disabled="!route && !pubSel" @click="openGroup(pubSel ? '发布点' : '循迹')"><PlusOutlined /></a-button></a-tooltip>
+          <a-tooltip title="删除任务组"><a-button size="small" danger :disabled="!group || running" @click="delGroup"><DeleteOutlined /></a-button></a-tooltip>
         </span></div>
       <div class="rt-acts">
-        <a-button size="small" type="primary" :disabled="!group" @click="openPoint()"><PlusOutlined />新增任务点</a-button>
-        <a-button size="small" :type="running ? 'primary' : 'default'" :danger="running" :disabled="!group" @click="toggleRun"><template v-if="running"><StopOutlined />停止任务</template><template v-else><PlayCircleOutlined />启动任务</template></a-button>
+        <a-button size="small" :disabled="!group" @click="openPoint()">新增任务点</a-button>
+        <a-button size="small"  type="primary" :danger="running" :disabled="!group" @click="toggleRun"><template v-if="running">停止任务</template><template v-else>启动任务</template></a-button>
       </div>
       <ul class="rt-pts rt-scroll">
         <li v-for="(p, i) in group?.points ?? []" :key="p.id" :class="{ on: i === selPt }" @click="selPt = i">
@@ -226,10 +225,10 @@ const pose = computed(() => ({ x: toReal(rt.value.pose.x, rt.value.pose.y).x.toF
         <a-col :span="5"><a-form-item label="Y"><a-input-number v-model:value="pf.y" :step="0.1" style="width:100%" /></a-form-item></a-col>
         <a-col :span="4"><a-form-item label="Z"><a-input-number v-model:value="pf.z" :step="0.1" style="width:100%" /></a-form-item></a-col>
         <a-col :span="5"><a-form-item label="角度"><a-input-number v-model:value="pf.angle" :min="-180" :max="180" style="width:100%" /></a-form-item></a-col>
-        <a-col :span="5"><a-form-item label=" "><a-button block @click="usePose"><AimOutlined />当前位姿</a-button></a-form-item></a-col>
+        <a-col :span="5"><a-form-item label=" "><a-button block @click="usePose">当前位姿</a-button></a-form-item></a-col>
       </a-row>
       <a-row :gutter="12">
-        <a-col :span="12"><a-form-item label="预置点"><div style="display:flex;gap:8px"><a-select v-model:value="pf.preset" allow-clear placeholder="不使用" style="flex:1" :options="PRESETS.map((p) => ({ value: p, label: p }))" /><a-button @click="presetSel = pf.preset || '预置点1'; presetOpen = true"><CameraOutlined />设置</a-button></div></a-form-item></a-col>
+        <a-col :span="12"><a-form-item label="预置点"><div style="display:flex;gap:8px"><a-select v-model:value="pf.preset" allow-clear placeholder="不使用" style="flex:1" :options="PRESETS.map((p) => ({ value: p, label: p }))" /><a-button @click="presetSel = pf.preset || '预置点1'; presetOpen = true">设置</a-button></div></a-form-item></a-col>
         <a-col :span="12"><a-form-item label="额外事务配置"><a-select v-model:value="pf.extra" allow-clear placeholder="无" :options="PROMPTS.filter((p) => p.on).map((p) => ({ value: '提示词：' + p.name, label: '大模型提示词 · ' + p.name }))" /></a-form-item></a-col>
       </a-row>
       <a-form-item label="任务描述"><a-input v-model:value="pf.desc" placeholder="如：配电柜 1# 柜门" :maxlength="40" /></a-form-item>

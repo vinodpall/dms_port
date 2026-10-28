@@ -60,10 +60,10 @@ const delSc = (id: string) => Modal.confirm({ title: '删除定时任务', conte
       <a-select v-model:value="mid" size="small" style="width:200px;margin-left:12px" placeholder="选择多任务组" :options="myMulti.map((m) => ({ value: m.id, label: m.name }))" />
       <span class="bz-panel-tools">
         <span v-if="multi" class="muted" style="font-size:12px">异常时原地启动 <a-switch v-model:checked="multi.inPlace" size="small" /></span>
-        <a-button size="small" @click="mgName = ''; mgOpen = true"><PlusOutlined />新建多任务组</a-button>
-        <a-button size="small" :disabled="!multi" @click="openStep()"><PlusOutlined />添加任务</a-button>
+        <a-button size="small" @click="mgName = ''; mgOpen = true">新建多任务组</a-button>
+        <a-button size="small" :disabled="!multi" @click="openStep()">添加任务</a-button>
         <a-button size="small" danger :disabled="!multi" @click="delMg">删除</a-button>
-        <a-button size="small" type="primary" :disabled="!multi || !!run" @click="startMulti"><PlayCircleOutlined />启动</a-button>
+        <a-button size="small" type="primary" :disabled="!multi || !!run" @click="startMulti">启动任务</a-button>
       </span></div>
     <div style="padding:12px 16px 0"><div class="bz-hint"><InfoCircleOutlined /><span>多任务组按顺序依次执行各任务；开启「原点发布」时，该任务开始前会先发布原点位姿；开启「异常时原地启动」时，任务异常中断后从当前位置继续下一个任务。</span></div></div>
     <a-table size="small" :pagination="false" :data-source="multi?.steps ?? []" :row-key="(_r: any, i: any) => i" :columns="mCols" style="margin-top:8px">
@@ -83,7 +83,7 @@ const delSc = (id: string) => Modal.confirm({ title: '删除定时任务', conte
   <!-- ================= 定时循迹 ================= -->
   <div v-else class="pp-panel">
     <div class="pp-panel-h"><h3>定时任务</h3><span class="muted" style="font-size:12px;margin-left:6px">{{ mySched.length }} 个 · 每日按时自动启动</span>
-      <span class="bz-panel-tools"><a-button size="small" type="primary" :disabled="!myRoutes.length" @click="openSc"><PlusOutlined />新增定时循迹</a-button></span></div>
+      <span class="bz-panel-tools"><a-button size="small" type="primary" :disabled="!myRoutes.length" @click="openSc">新增定时循迹</a-button></span></div>
     <a-table size="small" :pagination="false" :data-source="mySched" row-key="id"
       :columns="[{ title: '执行时间', key: 'time', width: 120 }, { title: '路线', key: 'route' }, { title: '任务组', key: 'group' }, { title: '任务点数', key: 'n', width: 100 }, { title: '创建时间', dataIndex: 'created', width: 170 }, { title: '操作', key: 'op', width: 90 }]">
       <template #bodyCell="{ column, record }">

@@ -40,7 +40,7 @@ body { font-family: var(--font-sans); }
 
 /* ================= 控件设计规范（深色主题）：实色、细描边、圆角 ================= */
 [data-theme="dark"] {
-  --c-bg: rgba(10,24,42,.6); --c-bd: rgba(120,170,210,.24); --c-bd-h: rgba(46,211,230,.6); --c-txt: #D6E8F3;
+  --c-bg: rgba(16,36,60,.85); --c-bd: rgba(110,175,220,.45); --c-bd-h: rgba(46,211,230,.6); --c-txt: #D6E8F3;
 }
 [data-theme="dark"] .ant-btn { border-radius: 8px; font-weight: 500; transition: background .15s, border-color .15s, color .15s, box-shadow .15s; }
 [data-theme="dark"] .ant-btn-sm { border-radius: 6px; padding-inline: 10px; }
@@ -78,7 +78,7 @@ body { font-family: var(--font-sans); }
 [data-theme="dark"] .ant-select-item-option-selected:not(.ant-select-item-option-disabled) { color: #fff; background: rgba(46,211,230,.2) !important; font-weight: 500; }
 
 /* 单选按钮组：分段控件 */
-[data-theme="dark"] .ant-radio-group .ant-radio-button-wrapper { color: #B6CADC; background: rgba(10,24,42,.6); border-color: rgba(120,170,210,.24); }
+[data-theme="dark"] .ant-radio-group .ant-radio-button-wrapper { color: #B6CADC; background: rgba(16,36,60,.85); border-color: rgba(110,175,220,.45); }
 [data-theme="dark"] .ant-radio-group .ant-radio-button-wrapper:first-child { border-start-start-radius: 8px; border-end-start-radius: 8px; }
 [data-theme="dark"] .ant-radio-group .ant-radio-button-wrapper:last-child { border-start-end-radius: 8px; border-end-end-radius: 8px; }
 [data-theme="dark"] .ant-radio-group-small .ant-radio-button-wrapper:first-child { border-start-start-radius: 6px; border-end-start-radius: 6px; }
@@ -100,3 +100,9 @@ body { font-family: var(--font-sans); }
 [data-theme="dark"] .ant-tag { border-radius: 6px; }
 [data-theme="dark"] .ant-alert { border-radius: 10px; }
 [data-theme="dark"] .ant-tooltip .ant-tooltip-inner { border-radius: 8px; }
+
+/* 标签：浅色描边 + 同色半透明底（避免深黑底） */
+[data-theme="dark"] .ant-tag { padding: 0 8px; line-height: 20px; border-radius: 6px; color: #5FD8EA; background: rgba(46,211,230,.1); border: 1px solid rgba(46,211,230,.35); }
+[data-theme="dark"] .ant-tag[class*="ant-tag-"]:not(.ant-tag-checkable) { background: color-mix(in srgb, currentColor 12%, transparent) !important; border-color: color-mix(in srgb, currentColor 42%, transparent) !important; }
+[data-theme="dark"] .ant-tag-cyan { color: #5FD8EA !important; } [data-theme="dark"] .ant-tag-purple { color: #C3A2FF !important; } [data-theme="dark"] .ant-tag-green, [data-theme="dark"] .ant-tag-success { color: #5BE3AE !important; }
+[data-theme="dark"] .ant-tag-orange, [data-theme="dark"] .ant-tag-warning, [data-theme="dark"] .ant-tag-gold { color: #FFC35C !important; } [data-theme="dark"] .ant-tag-red, [data-theme="dark"] .ant-tag-error { color: #FF8A8A !important; } [data-theme="dark"] .ant-tag-blue, [data-theme="dark"] .ant-tag-processing { color: #7DB4FF !important; }

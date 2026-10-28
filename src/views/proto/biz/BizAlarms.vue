@@ -35,7 +35,7 @@ const fall = reactive({ on: true, roll: 45, pitch: 45 })
   <div class="bz-tbar">
     <a-segmented v-model:value="tab" size="small" :options="[{ value: 'list', label: '告警列表' }, { value: 'rule', label: '识别配置' }]" />
     <span class="sp" />
-    <a-button v-if="tab === 'list'" size="small"><ExportOutlined />导出</a-button>
+    <a-button v-if="tab === 'list'" size="small">导出</a-button>
   </div>
   <template v-if="tab === 'list'">
     <div class="pp-panel">
@@ -62,7 +62,7 @@ const fall = reactive({ on: true, roll: 45, pitch: 45 })
 
   <div v-else class="al-rule">
     <div class="pp-panel al-prompt">
-      <div class="pp-panel-h"><h3>AI 识别提示词</h3><span class="muted" style="font-size:12px">下发至机器人视觉算法，按相机通道生效</span><a-button size="small" class="r"><PlusOutlined />新增</a-button></div>
+      <div class="pp-panel-h"><h3>AI 识别提示词</h3><span class="muted" style="font-size:12px">下发至机器人视觉算法，按相机通道生效</span><a-button size="small" class="r">新增</a-button></div>
       <div class="al-pl">
         <ul>
           <li v-for="(p, i) in prompts" :key="p.name" :class="{ on: pSel === i }" @click="pSel = i"><b>{{ p.name }}</b><a-tag :color="p.cam === '红外' ? 'orange' : 'cyan'">{{ p.cam }}</a-tag><a-switch v-model:checked="p.on" size="small" @click.stop /></li>
@@ -79,7 +79,7 @@ const fall = reactive({ on: true, roll: 45, pitch: 45 })
     </div>
     <div class="al-side">
       <div class="pp-panel">
-        <div class="pp-panel-h"><h3>传感器告警阈值</h3><a-button size="small" class="r"><PlusOutlined />添加传感器</a-button></div>
+        <div class="pp-panel-h"><h3>传感器告警阈值</h3><a-button size="small" class="r">添加传感器</a-button></div>
         <a-table :data-source="sensors" row-key="en" size="small" :pagination="false" :columns="[{ title: '传感器', key: 'n' }, { title: '下限', key: 'lo', width: 96 }, { title: '上限', key: 'hi', width: 96 }, { title: '启用', key: 'on', width: 60 }]">
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'n'"><b style="font-weight:500">{{ record.cn }}</b> <span class="mono muted" style="font-size:11px">{{ record.en }} · {{ record.unit }}</span></template>

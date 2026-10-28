@@ -58,7 +58,7 @@ const zMeta = (k: string) => ZONES.find((z) => z.k === k)!
 /* ---------- 导航定位 ---------- */
 const navMap = ref('')
 watch([curId, gridMaps], () => { navMap.value = rt.value.navMap && gridMaps.value.some((m) => m.name === rt.value.navMap) ? rt.value.navMap : gridMaps.value[0]?.name ?? '' }, { immediate: true })
-const locMode = ref<'cloud' | 'grid' | 'sat'>('grid')
+const locMode = ref<'cloud' | 'grid' | 'sat'>('cloud')
 watch(curId, () => { locMode.value = 'cloud' }, { immediate: true })
 const relo = ref(false); const arrow = ref<{ x: number; y: number; yaw: number } | null>(null)
 const startRelo = () => { if (!rt.value.nav) return message.error('请先开启导航'); relo.value = true; arrow.value = null; message.info('在地图上点击机器人实际位置以设置初始位姿') }
@@ -105,18 +105,18 @@ const delRoute = (id: string) => del('路线及其任务组', () => { db.routes.
         <h4><span class="n">1</span>采集地图数据</h4>
         <div class="bz-status" :class="{ on: rt.bagRec }"><i class="dot" /><template v-if="rt.bagRec"><span>录包中 · <b>{{ rt.bagRec.name }}</b></span><span class="mono">{{ mmss(rt.bagRec.t0) }}</span></template><span v-else>未在录包，遥控机器人前请先开始录包</span></div>
         <div class="bz-btns">
-          <a-button type="primary" :disabled="!!rt.bagRec || !robot.online" @click="openBag"><PlayCircleOutlined />开始录包</a-button>
-          <a-button :disabled="!rt.bagRec" danger @click="stopBag"><StopOutlined />完成录制</a-button>
+          <a-button type="primary" :disabled="!!rt.bagRec || !robot.online" @click="openBag">开始录包</a-button>
+          <a-button :disabled="!rt.bagRec" danger @click="stopBag">完成录制</a-button>
           <a-button :danger="rt.slam" :disabled="!robot.online" @click="toggleSlam">{{ rt.slam ? '关闭建图' : '实时建图' }}</a-button>
-          <a-button :disabled="!rt.slam" @click="dlg.slam = true"><EyeOutlined />查看实时地图</a-button>
+          <a-button :disabled="!rt.slam" @click="dlg.slam = true">查看实时地图</a-button>
         </div>
       </div>
       <div class="bz-sec">
         <h4><span class="n">2</span>创建二维地图</h4>
         <div class="bz-btns">
-          <a-button type="primary" :disabled="!!rt.bagRec || !canGen" @click="openMap"><BuildOutlined />生成地图</a-button>
-          <a-button type="primary" :disabled="!!rt.bagRec || !myMaps.length" @click="openGrid"><AppstoreOutlined />生成栅格地图</a-button>
-          <a-tooltip :title="robot.rtk ? '' : '当前机器人未搭载RTK设备'"><a-button :disabled="!!rt.bagRec || !robot.rtk" @click="form.fusion = ''; dlg.fusion = true"><BlockOutlined />新建融合地图</a-button></a-tooltip>
+          <a-button type="primary" :disabled="!!rt.bagRec || !canGen" @click="openMap">生成地图</a-button>
+          <a-button type="primary" :disabled="!!rt.bagRec || !myMaps.length" @click="openGrid">生成栅格地图</a-button>
+          <a-tooltip :title="robot.rtk ? '' : '当前机器人未搭载RTK设备'"><a-button :disabled="!!rt.bagRec || !robot.rtk" @click="form.fusion = ''; dlg.fusion = true">新建融合地图</a-button></a-tooltip>
         </div>
       </div>
       <div class="bz-sec">
@@ -130,9 +130,6 @@ const delRoute = (id: string) => del('路线及其任务组', () => { db.routes.
       <div class="bz-canvas">
         <MapSlot v-if="rt.bagRec || rt.slam" :seed="41" mode="grid" :zones="false" :labels="false" live :robot="rt.pose" />
         <div v-else class="nv-blank"><BuildOutlined /><span>开始录包或开启实时建图后，此处显示实时栅格地图</span></div>
-        <div v-if="rt.bagRec" class="bz-ov red"><i class="dot" />录包中 {{ mmss(rt.bagRec.t0) }} · 请遥控机器人遍历巡检区域</div>
-        <div v-else-if="rt.slam" class="bz-ov"><i class="dot" />实时建图中</div>
-        <div v-if="rt.bagRec || rt.slam" class="bz-ov tip">分辨率 0.05 · 地图尺寸 514×501 · 位姿 {{ toReal(rt.pose.x, rt.pose.y).x.toFixed(2) }}, {{ toReal(rt.pose.x, rt.pose.y).y.toFixed(2) }}, {{ rt.pose.yaw }}°</div>
       </div>
     </div>
   </div>
@@ -143,11 +140,11 @@ const delRoute = (id: string) => del('路线及其任务组', () => { db.routes.
       <div class="pp-panel-h"><h3>地图编辑</h3>
         <a-select v-model:value="editMap" size="small" style="width:180px;margin-left:12px" :placeholder="gridMaps.length ? '请选择地图' : '暂无地图'" :options="gridMaps.map((m) => ({ value: m.name, label: m.name }))" />
         <span class="bz-panel-tools">
-          <a-button size="small" :type="zonePanel ? 'primary' : 'default'" :disabled="!em" @click="zonePanel = !zonePanel"><BlockOutlined />功能区</a-button>
-          <a-button size="small" :type="editOn ? 'primary' : 'default'" :disabled="!em" @click="editOn = !editOn; tool = editOn ? 'pen' : 'pan'"><EditOutlined />编辑</a-button>
+          <a-button size="small" :type="zonePanel ? 'primary' : 'default'" :disabled="!em" @click="zonePanel = !zonePanel">功能区</a-button>
+          <a-button size="small" :type="editOn ? 'primary' : 'default'" :disabled="!em" @click="editOn = !editOn; tool = editOn ? 'pen' : 'pan'">编辑</a-button>
         </span></div>
       <div class="bz-canvas">
-        <MapSlot v-if="em" :seed="em.seed" mode="grid" :zones="zonePreview" :edit="editOn" />
+        <MapSlot v-if="em" :seed="em.seed" mode="grid" :zones="zonePreview" :edit="editOn" light :controls="false" />
         <div v-else class="nv-blank"><span>暂无栅格地图，请先在「录包建图」中生成</span></div>
         <!-- 编辑工具条 -->
         <div v-if="editOn" class="nv-tools">
@@ -169,7 +166,6 @@ const delRoute = (id: string) => del('路线及其任务组', () => { db.routes.
           <div class="row"><a-button size="small" danger :disabled="zoneSel === ''" @click="delZone(+zoneSel)">删除</a-button><a-button size="small" :type="zonePreview ? 'primary' : 'default'" @click="zonePreview = !zonePreview">预览</a-button></div>
           <a-button size="small" type="primary" block :disabled="!drawing" @click="submitZone">提交</a-button>
         </div>
-        <div v-if="drawing" class="bz-ov">{{ zf.geo === 'area' ? '在地图上依次点击绘制多边形区域（至少 3 个点）' : '在地图上依次点击绘制线段（至少 2 个点）' }}，完成后点击「提交」</div>
         <div v-if="em && zonePreview" class="bz-legend"><span v-for="z in ZONES" :key="z.k"><i :style="{ borderColor: z.c, background: z.c + '33' }" />{{ z.t }}</span></div>
       </div>
     </div>
@@ -193,7 +189,7 @@ const delRoute = (id: string) => del('路线及其任务组', () => { db.routes.
         <div class="nv-ops">
           <a-button size="small" :disabled="!hasNav" @click="rt.pause = !rt.pause; message.success(rt.pause ? '暂停指令已发送' : '恢复指令已发送')">{{ rt.pause ? '恢复导航' : '暂停导航' }}</a-button>
           <a-button size="small" :disabled="!hasNav" @click="rt.navStop = !rt.navStop; message.success(rt.navStop ? '暂停停障指令已发送' : '恢复停障指令已发送')">{{ rt.navStop ? '恢复停障' : '暂停停障' }}</a-button>
-          <a-button size="small" :disabled="!rt.nav" @click="startRelo"><AimOutlined />重定位</a-button>
+          <a-button size="small" :disabled="!rt.nav" @click="startRelo">重定位</a-button>
           <a-button size="small" :disabled="!rt.nav" @click="setOrigin">原点设置</a-button>
           <a-button size="small" :disabled="!robot.online || !robot.rtk" @click="toggleGps">{{ rt.gps ? '关闭GPS' : '开启GPS' }}</a-button>
           <a-button size="small" :disabled="!rt.run" @click="obsSel = rt.obsMode; obsOpen = true">循迹避障</a-button>
@@ -223,9 +219,6 @@ const delRoute = (id: string) => del('路线及其任务组', () => { db.routes.
           <a-radio-group v-else v-model:value="locMode" size="small"><a-radio-button value="cloud">点云</a-radio-button><a-radio-button value="grid">栅格</a-radio-button><a-radio-button value="sat">卫星</a-radio-button></a-radio-group></span></div>
       <div class="bz-canvas">
         <MapSlot :seed="curMapSeed" :mode="navMap || anyLoc ? locMode : 'blank'" :zones="locMode === 'grid'" :ghost="ghost" :robot="hasNav ? rt.pose : null" :pick="relo" :arrow="arrow" :cloud-bar="false" @pick="onPick" />
-        <div v-if="relo" class="bz-ov">重定位：在地图上点击机器人实际位置，确认后提交初始位姿</div>
-        <div v-else-if="!hasNav" class="bz-ov tip">{{ navMap ? '开启导航 / INS / MSF 后显示机器人实时位置' : '请先选择地图' }}</div>
-        <div v-else class="bz-ov"><a-badge :status="rt.locOk ? 'success' : 'processing'" />{{ rt.locOk ? '定位正常' : '定位中…' }}<a v-if="!rt.run" style="margin-left:8px" @click="emit('go', 'task', 'route')">去录制路线 →</a></div>
       </div>
     </div>
   </div>
@@ -235,9 +228,9 @@ const delRoute = (id: string) => del('路线及其任务组', () => { db.routes.
     <div class="pp-panel bz-fill">
       <div class="nv-ftb">
         <span>地图</span><a-select v-model:value="fMap" style="width:200px" :disabled="rt.nav" :placeholder="myMaps.length ? '请选择地图' : '暂无地图'" :options="myMaps.map((m) => ({ value: m.name, label: m.name }))" />
-        <a-button danger :disabled="!fMap || rt.nav" @click="delMap(fMap)"><DeleteOutlined />删除地图</a-button>
+        <a-button danger :disabled="!fMap || rt.nav" @click="delMap(fMap)">删除地图</a-button>
         <span style="margin-left:20px">数据包</span><a-select v-model:value="fBag" style="width:220px" :placeholder="myBags.length ? '请选择数据包' : '暂无数据包'" :options="myBags.map((b) => ({ value: b.name, label: b.name }))" />
-        <a-button danger :disabled="!fBag" @click="delBag(fBag)"><DeleteOutlined />删除数据包</a-button>
+        <a-button danger :disabled="!fBag" @click="delBag(fBag)">删除数据包</a-button>
         <span class="muted" style="margin-left:auto;font-size:12px">{{ fileGroups.length }} 组路线文件 · {{ fileGroups.reduce((a, g) => a + g.items.length, 0) + otherFiles.length }} 个文件</span>
       </div>
       <div class="nv-board">
@@ -296,16 +289,16 @@ const delRoute = (id: string) => del('路线及其任务组', () => { db.routes.
 .nv-org { margin-top: 10px; }
 .nv-left { overflow: hidden; }
 .nv-left > .bz-sec { padding: 10px 14px; } .nv-left .bz-sec h4 { margin-bottom: 8px; } .nv-left .nv-field { margin-bottom: 8px; }
-.nv-left .nv-sw button { padding: 5px 0; gap: 0; } .nv-left .nv-ops { gap: 6px; } .nv-left .nv-org { margin-top: 6px; }
+.nv-left .nv-sw button { padding: 8px 0; gap: 2px; } .nv-left .nv-ops :deep(.ant-btn) { height: 30px; } .nv-left .nv-speed { padding: 2px 0; } .nv-left .nv-ops { gap: 6px; } .nv-left .nv-org { margin-top: 6px; }
 .nv-list { flex: none; }
 .nv-blank { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--faint); font-size: 13px; } .nv-blank .anticon { font-size: 34px; opacity: .5; }
 .nv-left { display: flex; flex-direction: column; } .nv-left > .bz-sec:last-child { flex: 1; display: flex; flex-direction: column; }
-.nv-st { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; align-content: start; }
-.nv-st > div { display: flex; flex-direction: column; justify-content: center; gap: 1px; min-width: 0; padding: 5px 10px; background: rgba(46,211,230,.05); border: 1px solid rgba(46,211,230,.12); border-radius: 7px; } .nv-st > div.w { grid-column: span 2; }
-.nv-st small { font-size: 11.5px; color: var(--muted); } .nv-st b { font-size: 13.5px; font-weight: 600; color: #fff; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; } .nv-st em { font-style: normal; font-size: 11px; color: var(--muted); margin-left: 3px; } .nv-st :deep(.ant-badge-status-text) { font-size: 13px; }
+.nv-st { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: minmax(44px, 1fr); gap: 8px; }
+.nv-st > div { display: flex; flex-direction: column; justify-content: center; gap: 3px; min-width: 0; padding: 6px 12px; background: rgba(46,211,230,.05); border: 1px solid rgba(46,211,230,.12); border-radius: 7px; } .nv-st > div.w { grid-column: span 2; }
+.nv-st small { font-size: 11.5px; color: var(--muted); } .nv-st b { font-size: 15px; font-weight: 600; color: #fff; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; } .nv-st em { font-style: normal; font-size: 11px; color: var(--muted); margin-left: 3px; } .nv-st :deep(.ant-badge-status-text) { font-size: 13px; }
 .nv-edit { display: flex; } .nv-edit > .pp-panel, .nv-file > .pp-panel { flex: 1; } .nv-file { display: flex; }
 .nv-tools .sz { display: flex; flex-direction: column; align-items: center; padding: 4px 0; font-size: 11px; color: var(--muted); } .nv-tools button.save { color: var(--cyan); }
-.nv-zp { position: absolute; z-index: 2; right: 10px; top: 10px; width: 200px; display: flex; flex-direction: column; gap: 8px; padding: 10px; background: rgba(13,28,47,.92); border: 1px solid var(--line-strong); border-radius: 8px; }
+.nv-zp { position: absolute; z-index: 2; right: 58px; top: 10px; width: 200px; display: flex; flex-direction: column; gap: 8px; padding: 10px; background: rgba(13,28,47,.92); border: 1px solid var(--line-strong); border-radius: 8px; }
 .nv-zp .seg { display: flex; } .nv-zp .seg button { flex: 1; height: 26px; font: inherit; font-size: 12px; color: var(--muted); cursor: pointer; background: rgba(46,211,230,.05); border: 1px solid var(--line-strong); } .nv-zp .seg button.on { color: #0B1C2E; background: var(--cyan); border-color: var(--cyan); }
 .nv-zp .row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .nv-zp .types { display: flex; flex-direction: column; gap: 2px; } .nv-zp .types label { display: flex; align-items: center; gap: 8px; padding: 4px 8px; font-size: 12.5px; color: var(--muted); cursor: pointer; border-radius: 7px; } .nv-zp .types label.on { color: #fff; background: var(--accent-soft); } .nv-zp .types i { width: 12px; height: 12px; border: 1px solid; }
@@ -319,7 +312,7 @@ const delRoute = (id: string) => del('路线及其任务组', () => { db.routes.
 .nv-fi .t { flex: none; padding: 0 6px; font-size: 11px; line-height: 18px; border-radius: 5px; } .nv-fi .t.r { color: #45E3A8; background: rgba(69,227,168,.12); } .nv-fi .t.g { color: #26C6DA; background: rgba(38,198,218,.12); } .nv-fi .t.p { color: #B48CFF; background: rgba(180,140,255,.14); }
 .nv-fi .n { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; } .nv-fi .tm { font-size: 11.5px; color: var(--muted); }
 .nv-speed { display: flex; align-items: center; gap: 14px; } .nv-speed b { width: 80px; text-align: center; font-size: 15px; }
-.nv-tools { position: absolute; z-index: 1; left: 10px; top: 10px; display: flex; flex-direction: column; gap: 4px; padding: 4px; background: rgba(13,28,47,.82); border: 1px solid var(--line); border-radius: 8px; }
+.nv-tools { position: absolute; z-index: 1; right: 10px; top: 10px; display: flex; flex-direction: column; gap: 4px; padding: 4px; background: rgba(13,28,47,.82); border: 1px solid var(--line); border-radius: 8px; }
 .nv-tools button { width: 30px; height: 30px; display: grid; place-items: center; font-size: 15px; color: var(--muted); cursor: pointer; background: none; border: 1px solid transparent; border-radius: 7px; }
 .nv-tools button:hover { color: #fff; } .nv-tools button.on { color: #fff; background: var(--accent-soft); border-color: var(--accent); }
 .nv-zones { list-style: none; margin: 0; padding: 6px 12px 10px; } .nv-zones li { display: flex; align-items: center; gap: 10px; padding: 8px 4px; border-bottom: 1px dashed var(--line); }

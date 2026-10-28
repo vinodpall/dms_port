@@ -53,7 +53,7 @@ const estop = () => message.error(`${robot.value.name} 已触发软件急停`)
           <template #option="{ r }"><div class="bv-opt"><i :style="{ background: state(r.id).c }" /><b class="mono">{{ r.id }}</b><span>{{ r.name }}</span><em>{{ LOC_META[r.loc as 'lidar' | 'ins'].s }}</em><small>{{ state(r.id).t }}</small></div></template>
         </a-select>
       </div>
-      <a-button danger size="small" class="bv-stop" :disabled="!robot.online" @click="estop"><StopOutlined />急停</a-button>
+      <a-button type="primary" danger size="small" class="bv-stop" :disabled="!robot.online" @click="estop">急停</a-button>
     </template>
 
     <div :style="{ '--off': !robot.online && tab !== 'log' ? '52px' : '0px' }"><a-spin :spinning="switching" tip="机器人切换中...">
