@@ -100,8 +100,10 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
   <div class="hm">
     <!-- ============ 左 ============ -->
     <div class="hm-col">
-      <div v-for="c in cams" :key="c.k" class="pp-panel hm-cam">
-        <div :ref="(el) => (camBox[c.k] = el as HTMLDivElement)" class="hm-box">
+      <div class="pp-panel hm-cam">
+        <div class="pp-panel-h"><h3>实时视频</h3></div>
+        <div class="hm-vlist">
+        <div v-for="c in cams" :key="c.k" :ref="(el) => (camBox[c.k] = el as HTMLDivElement)" class="hm-box hm-vbox">
           <WebRtcVideo v-if="on" :ref="(el) => (camRef[c.k] = el as any)" :url="c.url" :label="`${c.t}${sub[c.k] ? ' · 子码流' : ''}`" />
           <div v-else class="hm-empty">{{ c.t }} · 设备离线</div>
           <div class="hm-vact">
@@ -110,13 +112,14 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
             <a-tooltip :title="fs === c.k ? '退出全屏' : '全屏'"><button type="button" @click="toggleFull(c.k)"><CompressOutlined v-if="fs === c.k" /><ExpandOutlined v-else /></button></a-tooltip>
           </div>
         </div>
+        </div>
       </div>
       <div class="pp-panel hm-grow">
         <div class="pp-panel-h"><h3>任务统计</h3><a-tag v-if="run" :color="rt.pause ? 'orange' : 'cyan'" class="r">{{ rt.pause ? '已暂停' : run.kind }}</a-tag></div>
         <div v-if="run" class="hm-task">
           <div class="nm" :title="run.name">{{ run.name }}</div>
           <div class="ring">
-            <a-progress type="circle" :percent="Math.round(run.progress * 100)" :size="82" stroke-color="#26C6DA" :stroke-width="7" />
+            <a-progress type="circle" :percent="Math.round(run.progress * 100)" :size="66" stroke-color="#26C6DA" :stroke-width="7" />
             <div class="kv"><span>开始时间</span><b class="mono">{{ run.start }}</b><span>圈数</span><b class="mono">{{ run.laps }} / {{ run.circle }}</b><span>当前巡检点</span><b>{{ pts.length ? pts[Math.min(doneN, pts.length - 1)].desc : '—' }}</b></div>
           </div>
           <div class="st4"><div><b class="mono">{{ doneN }}</b><small>已巡检</small></div><div><b class="mono">{{ pts.length - doneN }}</b><small>待巡检</small></div><div><b class="mono ok">{{ Math.max(0, doneN - 1) }}</b><small>正常</small></div><div><b class="mono bad">{{ doneN > 0 ? 1 : 0 }}</b><small>异常</small></div></div>
@@ -250,7 +253,8 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
 .hm-col .r { margin-left: auto; display: flex; align-items: center; gap: 4px; }
 .hm-col .sub { margin-left: 8px; font-size: 12px; }
 .hm-grow { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-.hm-cam { flex: none; display: flex; flex-direction: column; } .hm-cam .hm-box { aspect-ratio: 16 / 9; flex: none; margin: 0; border: 0; }
+.hm-cam { flex: none; display: flex; flex-direction: column; } .hm-vlist { display: flex; flex-direction: column; gap: 8px; padding: 10px; }
+.hm-cam .hm-box { aspect-ratio: 16 / 9; flex: none; margin: 0; }
 .hm-cam .hm-box:fullscreen { aspect-ratio: auto; }
 .hm-vact { position: absolute; right: 8px; bottom: 8px; z-index: 2; display: flex; gap: 4px; }
 .hm-vact button { width: 26px; height: 26px; display: grid; place-items: center; padding: 0; font: inherit; font-size: 13px; color: #E6F7FB; cursor: pointer; background: rgba(8,18,32,.62); border: 1px solid rgba(46,211,230,.28); border-radius: 4px; }
@@ -258,11 +262,11 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
 .hm-vact button:hover:not(:disabled) { color: #fff; border-color: var(--cyan); background: rgba(8,18,32,.85); } .hm-vact button:disabled { cursor: not-allowed; opacity: .45; }
 .hm-box { position: relative; flex: 1; min-height: 0; margin: 10px; overflow: hidden; border: 1px solid rgba(46,211,230,.16); border-radius: 4px; background: #0C1728; }
 .hm-empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--faint); font-size: 13px; } .hm-empty.sm { position: static; flex: 1; padding: 28px 0; }
-.hm-task { flex: 1; display: flex; flex-direction: column; gap: 12px; padding: 12px 14px; }
+.hm-task { flex: 1; display: flex; flex-direction: column; gap: 8px; padding: 8px 14px 10px; }
 .hm-task .nm { font-size: 13.5px; font-weight: 500; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .hm-task .ring { display: flex; align-items: center; gap: 14px; } .hm-task .ring :deep(.ant-progress-text) { color: #fff; font-size: 17px; }
 .hm-task .kv { flex: 1; min-width: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 8px; font-size: 12px; } .hm-task .kv span { color: var(--muted); } .hm-task .kv b { font-weight: 500; text-align: right; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.hm-task .st4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; text-align: center; } .hm-task .st4 > div { padding: 6px 0; background: rgba(46,211,230,.05); border-radius: 4px; }
+.hm-task .st4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; text-align: center; } .hm-task .st4 > div { padding: 3px 0; background: rgba(46,211,230,.05); border-radius: 4px; }
 .hm-task .st4 b { display: block; font-size: 16px; color: #fff; } .hm-task .st4 b.ok { color: #45E3A8; } .hm-task .st4 b.bad { color: #FF7A7A; } .hm-task .st4 small { font-size: 11px; color: var(--muted); }
 .hm-task .ops { display: flex; gap: 8px; margin-top: auto; } .hm-task .ops > * { flex: 1; }
 .hm-map { flex: 1.7; min-height: 0; display: flex; flex-direction: column; }
