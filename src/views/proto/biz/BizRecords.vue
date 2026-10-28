@@ -31,29 +31,29 @@ const del = () => Modal.confirm({ title: '删除记录', content: `确定删除�
 <template>
   <div ref="host" class="pp-panel">
     <div class="rc-filter">
-      <span>日志类型</span><a-select v-model:value="f.kind" style="width:110px" :options="opt(['循迹任务', '发布点任务', '日常巡检'])" />
-      <span>地图</span><a-select v-model:value="f.map" style="width:120px" :options="opt(uniq('map'))" />
-      <span>路线</span><a-select v-model:value="f.route" style="width:170px" :options="opt(uniq('route').filter((v) => v !== '—'))" />
-      <span>任务组</span><a-select v-model:value="f.group" style="width:110px" :options="opt(uniq('group'))" />
-      <span>识别项目</span><a-select v-model:value="f.item" style="width:110px" :options="opt(ITEMS)" />
-      <span>结果</span><a-select v-model:value="f.res" style="width:80px" :options="opt(['正常', '异常'])" />
-      <a-range-picker show-time style="width:300px" />
-      <span class="rc-btns">
+      <div class="rc-f"><span>日志类型</span><a-select v-model:value="f.kind" :options="opt(['循迹任务', '发布点任务', '日常巡检'])" /></div>
+      <div class="rc-f"><span>地图</span><a-select v-model:value="f.map" :options="opt(uniq('map'))" /></div>
+      <div class="rc-f"><span>路线</span><a-select v-model:value="f.route" :options="opt(uniq('route').filter((v) => v !== '—'))" /></div>
+      <div class="rc-f"><span>任务组</span><a-select v-model:value="f.group" :options="opt(uniq('group'))" /></div>
+      <div class="rc-f"><span>识别项目</span><a-select v-model:value="f.item" :options="opt(ITEMS)" /></div>
+      <div class="rc-f"><span>结果</span><a-select v-model:value="f.res" :options="opt(['正常', '异常'])" /></div>
+      <div class="rc-f w"><span>时间</span><a-range-picker show-time /></div>
+      <div class="rc-btns">
         <a-button type="primary" @click="query"><SearchOutlined />查询</a-button>
         <a-button @click="reset"><ReloadOutlined />重置</a-button>
         <a-button danger :disabled="!sel.length" @click="del"><DeleteOutlined />删除</a-button>
         <a-button @click="message.success('已导出 Excel')"><ExportOutlined />导出</a-button>
         <a-button @click="roundsOpen = true"><UnorderedListOutlined />轮次信息</a-button>
-      </span>
+      </div>
     </div>
     <a-table :data-source="rows" row-key="id" size="middle" :pagination="{ current: page, pageSize: size, size: 'small', showSizeChanger: false, showTotal: (t: number) => `共 ${t} 条`, onChange: (p: number) => (page = p) }" :row-selection="{ selectedRowKeys: sel, onChange: (k: any) => (sel = k) }"
-      :columns="[{ title: '时间', key: 'time', width: 165 }, { title: '地图', dataIndex: 'map', width: 110, ellipsis: true }, { title: '日志类型', key: 'kind', width: 100 }, { title: '任务名称（路线）', dataIndex: 'route', ellipsis: true }, { title: '任务组', dataIndex: 'group', width: 100, ellipsis: true }, { title: '实时坐标', key: 'coord', width: 120 }, { title: '识别项目', dataIndex: 'item', width: 100 }, { title: '识别结果', key: 'result', width: 160, ellipsis: true }, { title: '描述', dataIndex: 'desc', width: 140, ellipsis: true }, { title: '操作', key: 'op', width: 110 }]">
+      :columns="[{ title: '时间', key: 'time', width: 165 }, { title: '地图', dataIndex: 'map', width: 110, ellipsis: true }, { title: '日志类型', key: 'kind', width: 100 }, { title: '任务名称（路线）', dataIndex: 'route', ellipsis: true }, { title: '任务组', dataIndex: 'group', width: 100, ellipsis: true }, { title: '实时坐标', key: 'coord', width: 120 }, { title: '识别项目', dataIndex: 'item', width: 100 }, { title: '识别结果', key: 'result', width: 160, ellipsis: true }, { title: '描述', dataIndex: 'desc', width: 140, ellipsis: true }, { title: '操作', key: 'op', width: 70 }]">
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'time'"><span class="mono">{{ record.time }}</span></template>
         <template v-else-if="column.key === 'kind'"><a-tag :color="record.kind === '发布点任务' ? 'purple' : record.kind === '日常巡检' ? 'blue' : 'cyan'">{{ record.kind }}</a-tag></template>
         <template v-else-if="column.key === 'coord'"><span class="mono" style="font-size:12px">{{ record.coord }}</span></template>
         <template v-else-if="column.key === 'result'"><span :class="{ ng: record.bad }">{{ record.result }}</span></template>
-        <template v-else-if="column.key === 'op'"><span class="bz-ops"><a @click="img = record">图片</a><a @click="showRound(record.round)">轮次</a></span></template>
+        <template v-else-if="column.key === 'op'"><span class="bz-ops"><a @click="img = record">图片</a></span></template>
       </template>
     </a-table>
   </div>
@@ -98,9 +98,10 @@ const del = () => Modal.confirm({ title: '删除记录', content: `确定删除�
 </template>
 
 <style scoped>
-.rc-filter { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 14px 16px; border-bottom: 1px solid rgba(46,211,230,.1); font-size: 13px; color: var(--muted); }
-.rc-filter > span:not(:first-child) { margin-left: 4px; }
-.rc-btns { display: flex; gap: 8px; margin-left: auto !important; }
+.rc-filter { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px 16px; padding: 14px 16px; border-bottom: 1px solid rgba(46,211,230,.1); font-size: 13px; color: var(--muted); }
+.rc-f { display: flex; align-items: center; gap: 8px; min-width: 0; } .rc-f > span { flex: none; } .rc-f > :deep(.ant-select), .rc-f > :deep(.ant-picker) { flex: 1; min-width: 0; }
+.rc-f.w { grid-column: span 2; }
+.rc-btns { grid-column: span 4; display: flex; justify-content: flex-end; gap: 8px; }
 .ng { color: #FF7A7A; }
 .rc-img { aspect-ratio: 16 / 9; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; } .rc-img :deep(svg) { width: 100%; height: 100%; display: block; }
 </style>

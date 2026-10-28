@@ -34,6 +34,8 @@ export function parsePGM(buf: ArrayBuffer): ParsedPGM {
 
 export interface GridStyle { free: string; occ: string; unknown: string }
 /** 深色主题配色：可通行 / 障碍 / 未知 */
+/** 原始黑白配色（同 ROS map_server：白=空闲 黑=障碍 灰=未知） */
+export const RAW_GRID: GridStyle = { free: '#FEFEFE', occ: '#000000', unknown: '#CDCDCD' }
 export const DARK_GRID: GridStyle = { free: '#1A324D', occ: '#A9D8EA', unknown: '#101f33' }
 const hex = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16))
 

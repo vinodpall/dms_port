@@ -9,7 +9,6 @@ import BizNav from './biz/BizNav.vue'
 import BizRoutes from './biz/BizRoutes.vue'
 import BizTasks from './biz/BizTasks.vue'
 import BizRecords from './biz/BizRecords.vue'
-import BizAlarms from './biz/BizAlarms.vue'
 import BizLogs from './biz/BizLogs.vue'
 import TaskLaunch from './biz/TaskLaunch.vue'
 import BizMap from './biz/BizMap.vue'
@@ -27,10 +26,10 @@ const MENU = [
 const PAGES = computed<Record<string, { t: string; d: string; tabs: { k: string; t: string }[] }>>(() => ({
   nav: {
     t: '导航管理', d: isIns.value ? 'INS 机器人使用 GPS 坐标，完成 INS 初始化并开启定位后即可录制路线' : '录包建图 → 生成栅格地图 → 开启导航定位，为录制路线做准备',
-    tabs: isIns.value ? [{ k: 'loc', t: '导航定位' }, { k: 'build', t: '录包建图' }, { k: 'file', t: '文件管理' }] : [{ k: 'loc', t: '导航定位' }, { k: 'build', t: '录包建图' }, { k: 'edit', t: '地图编辑' }, { k: 'file', t: '文件管理' }],
+    tabs: isIns.value ? [{ k: 'build', t: '录包建图' }, { k: 'loc', t: '导航定位' }, { k: 'file', t: '文件管理' }] : [{ k: 'build', t: '录包建图' }, { k: 'loc', t: '导航定位' }, { k: 'edit', t: '地图编辑' }, { k: 'file', t: '文件管理' }],
   },
   task: { t: '任务管理', d: '录制循迹路线、在路线上配置任务点，并编排多任务组与定时任务；任务从首页「任务下发」或路线列表下发', tabs: [{ k: 'route', t: '循迹路线' }, { k: 'pub', t: '发布点任务' }, { k: 'multi', t: '多任务组' }, { k: 'sched', t: '定时任务' }] },
-  log: { t: '日志管理', d: '巡检结果、告警处置与业务操作记录', tabs: [{ k: 'rec', t: '巡检记录' }, { k: 'alarm', t: '告警记录' }, { k: 'op', t: '操作日志' }] },
+  log: { t: '日志管理', d: '巡检结果、告警处置与业务操作记录', tabs: [{ k: 'rec', t: '警情记录' }, { k: 'op', t: '操作日志' }] },
 }))
 const tab = ref('home')
 const sub = ref('')
@@ -66,7 +65,6 @@ const estop = () => message.error(`${robot.value.name} 已触发软件急停`)
         <BizRoutes v-else-if="tab === 'task' && (cur === 'route' || cur === 'pub')" v-model:sub="cur" @go="go" />
         <BizTasks v-else-if="tab === 'task'" :sub="cur" />
         <BizRecords v-else-if="cur === 'rec'" :key="curId" />
-        <BizAlarms v-else-if="cur === 'alarm'" />
         <BizLogs v-else :key="curId" />
       </template>
     </a-spin>

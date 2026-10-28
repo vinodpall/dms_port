@@ -8,6 +8,8 @@ import WebRtcVideo from '@/components/viz/WebRtcVideo.vue'
 import CamShot from './CamShot.vue'
 import { toReal } from './geo'
 import imgCar from '@/assets/models/knight.webp'
+import imgX30 from '@/assets/models/x30.webp'
+import imgGo2 from '@/assets/models/go2.webp'
 import { streamsOf } from '@/config/media'
 import { KIND_META, GAITS, ZONES, SENSORS, alarmColor, type BizAlarm } from '@/mock/biz'
 import {
@@ -50,6 +52,8 @@ const ctl = (k: string) => {
   else if (k === 'force') { force.value = !force.value; act(force.value ? '开启力控模式' : '关闭力控模式') }
   else if (k === 'stop') message.error('已触发急停')
 }
+const robotImg = computed(() => (isIns.value ? imgCar : robot.value.model.startsWith('X30') ? imgX30 : imgGo2))
+const charge = (k: string) => act(k)
 const posture = computed(() => (!rt.value.standing ? '趴下' : crawl.value ? '匍匐' : '站立'))
 
 /* 无人车传感器数据（对齐 robot_web sensor-data-card：左右切换传感器 + 曲线） */
@@ -148,7 +152,7 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
         </div>
       </div>
       <div class="pp-panel hm-alarm">
-        <div class="pp-panel-h"><h3>实时警情</h3><span class="muted sub">{{ alarms.filter((a) => a.state === '待处理').length }} 条待处理</span><a class="r more" @click="emit('go', 'log', 'alarm')">全部告警 →</a></div>
+        <div class="pp-panel-h"><h3>实时警情</h3><span class="muted sub">{{ alarms.filter((a) => a.state === '待处理').length }} 条待处理</span><a class="r more" @click="emit('go', 'log', 'rec')">全部警情 →</a></div>
         <a-table size="small" :pagination="false" :data-source="alarms" row-key="id" :scroll="{ y: 'calc(100% - 39px)' }"
           :columns="[{ title: '报警时间', key: 'time', width: 120 }, { title: '警情类型', key: 'type', width: 110 }, { title: '内容', dataIndex: 'content', ellipsis: true }, { title: '来源', dataIndex: 'src', width: 72 }, { title: '状态', key: 'state', width: 84 }, { title: '图片', key: 'pic', width: 60 }]">
           <template #bodyCell="{ column, record }">
@@ -166,7 +170,7 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
     <div class="hm-col hm-right">
       <div class="pp-panel hm-st" :class="{ big: isIns }">
         <div class="pp-panel-h"><h3>{{ KIND_META[robot.kind].t }}状态</h3><a-badge :status="!on ? 'default' : run ? 'processing' : 'success'" :text="!on ? '离线' : run ? '任务中' : '在线'" style="margin-left:8px" /></div>
-        <div v-if="isIns" class="hm-hero"><img :src="imgCar" alt="" /><div><b>{{ robot.name }}</b><small class="mono">{{ robot.id }} · {{ robot.model }}</small><small>{{ robot.site }} · 累计 {{ (robot.mileage / 1000).toFixed(1) }} km</small></div></div>
+        <div class="hm-hero"><img :src="robotImg" alt="" /><div><b>{{ robot.name }}</b><small class="mono">{{ robot.id }} · {{ robot.model }}</small><small>{{ robot.site }} · 累计 {{ (robot.mileage / 1000).toFixed(1) }} km</small></div></div>
         <div class="hm-big">
           <div><small>当前速度</small><b class="mono">{{ on ? speed.toFixed(2) : '--' }}<em>m/s</em></b></div>
           <div><small>剩余电量</small><b class="mono" :class="{ low: robot.battery < 30 }">{{ on ? robot.battery : '--' }}<em>%</em></b></div>
@@ -208,8 +212,11 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
           <button type="button" :class="{ on: moving }" :disabled="!on" @click="ctl('move')">{{ moving ? '停止运动' : '开始运动' }}</button>
           <button type="button" :class="{ on: crawl }" :disabled="!on" @click="ctl('crawl')">{{ crawl ? '正常姿态' : '匍匐姿态' }}</button>
           <button type="button" :class="{ on: !manual }" :disabled="!on" @click="ctl('auto')">{{ manual ? '非手动模式' : '手动模式' }}</button>
-          <button v-for="(g, i) in GAITS" :key="g" type="button" :class="{ on: gait === i }" :disabled="!on" @click="setGait(i)">{{ g }}</button>
-          <button v-for="c in ['开始充电', '结束充电', '重置充电']" :key="c" type="button" :disabled="!on" @click="act(c)">{{ c }}</button>
+          <a-select :value="gait" size="small" class="gsel" :disabled="!on" :options="GAITS.map((g, i) => ({ value: i, label: '步态：' + g }))" @change="(v: any) => setGait(Number(v))" />
+          <a-dropdown :trigger="['click']" :disabled="!on">
+            <button type="button" :disabled="!on">充电 ▾</button>
+            <template #overlay><a-menu @click="({ key }: any) => charge(String(key))"><a-menu-item key="开始充电">开始充电</a-menu-item><a-menu-item key="结束充电">结束充电</a-menu-item><a-menu-item key="重置充电">重置充电</a-menu-item></a-menu></template>
+          </a-dropdown>
         </div>
       </div>
       <!-- 无人车：传感器数据 -->
@@ -280,8 +287,8 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
 .hm-type { display: inline-flex; align-items: center; gap: 6px; } .hm-type i { width: 6px; height: 6px; border-radius: 50%; }
 .hm-right { overflow: auto; }
 .hm-st.big { flex: 1 0 auto; display: flex; flex-direction: column; }
-.hm-hero { display: flex; align-items: center; gap: 14px; flex: 1; min-height: 0; height: 104px; padding: 10px 14px 0; }
-.hm-hero img { height: 100%; max-height: 104px; max-width: 52%; object-fit: contain; filter: drop-shadow(0 6px 12px rgba(0,0,0,.45)); }
+.hm-hero { display: flex; align-items: center; gap: 14px; flex: none; height: 96px; padding: 10px 14px 0; }
+.hm-hero img { height: 100%; max-height: 96px; max-width: 52%; object-fit: contain; filter: drop-shadow(0 6px 12px rgba(0,0,0,.45)); }
 .hm-hero div { display: flex; flex-direction: column; gap: 4px; min-width: 0; } .hm-hero b { font-size: 15px; color: #fff; } .hm-hero small { font-size: 11.5px; color: var(--muted); }
 .hm-send-p { flex: none; } .hm-right:has(.hm-st.big) .hm-chart svg { height: 64px; } .hm-right:has(.hm-st.big) .hm-send { gap: 8px; padding: 10px 14px 12px; } .hm-send-p.hm-grow { flex: 1; }
 .hm-send .ln.loc.ins { grid-template-columns: 70px auto; }
@@ -299,7 +306,7 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
 .hm-ctl button { padding: 5px 0; font: inherit; font-size: 12px; color: var(--muted); cursor: pointer; background: rgba(46,211,230,.05); border: 1px solid var(--line); border-radius: 4px; }
 .hm-ctl button:hover:not(:disabled) { color: var(--text); border-color: var(--line-strong); } .hm-ctl button.on { color: #fff; border-color: var(--accent); background: var(--accent-soft); }
 .hm-ctl button.stop { color: #fff; background: rgba(255,107,107,.55); border-color: #FF7A7A; } .hm-ctl button:disabled { cursor: not-allowed; opacity: .5; }
-.hm-ctl button:nth-child(7), .hm-ctl button:nth-child(16) { margin-top: 4px; } .hm-ctl button:nth-child(8), .hm-ctl button:nth-child(9), .hm-ctl button:nth-child(17), .hm-ctl button:nth-child(18) { margin-top: 4px; }
+.hm-ctl .gsel { grid-column: span 2; } .hm-ctl .gsel :deep(.ant-select-selector) { height: 28px !important; align-items: center; }
 .hm-stog { gap: 0 !important; } .hm-stog b { min-width: 64px; text-align: center; font-size: 12.5px; font-weight: 500; }
 .hm-chart { padding: 8px 14px 12px; } .hm-chart .cv { display: flex; align-items: baseline; gap: 4px; } .hm-chart .cv b { font-size: 20px; color: #45E3A8; } .hm-chart .cv em { font-style: normal; font-size: 11px; color: var(--muted); } .hm-chart .cv small { margin-left: auto; font-size: 11px; color: var(--faint); }
 .hm-chart svg { display: block; width: 100%; height: 110px; margin-top: 6px; border-bottom: 1px solid var(--line); }

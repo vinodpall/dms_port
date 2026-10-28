@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watchEffect } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watchEffect } from 'vue'
 import { PlusOutlined, MinusOutlined, CompressOutlined } from '@ant-design/icons-vue'
 import PointCloudView from '@/components/viz/PointCloudView.vue'
 import SatMap from '@/components/viz/SatMap.vue'
-import { loadGridImage } from '@/components/viz/gridmap'
+import { loadGridImage, RAW_GRID } from '@/components/viz/gridmap'
 import { MAP_FILES } from '@/config/media'
 import { ROUTE_SET, GRID_RECT, routeAt, routeLen, toReal, toLngLat, fromLngLat, yawToReal, SAT_CENTER, type P } from './geo'
 /**
@@ -39,7 +39,12 @@ const ptColor = (st?: string) => (st === 'done' ? '#26C6DA' : st === 'bad' ? '#F
 /* ---------- 栅格底图 ---------- */
 const gridUrl = ref('')
 const gridErr = ref('')
-onMounted(() => { loadGridImage(MAP_FILES.pgm, true).then((u) => { gridUrl.value = u }).catch((e) => { gridErr.value = (e as Error).message }) })
+/* 实时建图：栅格从机器人位置向外逐步显现 */
+const liveR = ref(0)
+let liveTm = 0
+watchEffect(() => { clearInterval(liveTm); if (props.live && props.mode === 'grid') { liveR.value = 4; liveTm = window.setInterval(() => { liveR.value = liveR.value > 110 ? 4 : liveR.value + 0.6 }, 200) } })
+onBeforeUnmount(() => clearInterval(liveTm))
+onMounted(() => { loadGridImage(MAP_FILES.pgm, true, RAW_GRID).then((u) => { gridUrl.value = u }).catch((e) => { gridErr.value = (e as Error).message }) })
 
 /* ---------- 缩放 / 平移 ---------- */
 const vb = reactive({ x: 0, y: 0, w: 160, h: 100 })
@@ -111,7 +116,8 @@ const onSatPick = (lng: number, lat: number) => { const p = fromLngLat(lng, lat,
     <rect x="-200" y="-200" width="560" height="500" fill="#101f33" />
     <rect x="-200" y="-200" width="560" height="500" :fill="`url(#g-${uid})`" />
     <template v-if="mode === 'grid'">
-      <image v-if="gridUrl" :href="gridUrl" :x="GRID_RECT.x" :y="GRID_RECT.y" :width="GRID_RECT.w" :height="GRID_RECT.h" preserveAspectRatio="none" class="bm-img" />
+      <clipPath v-if="live" :id="`lv-${uid}`"><circle :cx="robot?.x ?? 80" :cy="robot?.y ?? 50" :r="liveR" /></clipPath>
+      <image v-if="gridUrl" :clip-path="live ? `url(#lv-${uid})` : undefined" :href="gridUrl" :x="GRID_RECT.x" :y="GRID_RECT.y" :width="GRID_RECT.w" :height="GRID_RECT.h" preserveAspectRatio="none" class="bm-img" />
       <text v-else x="80" y="50" class="bm-room">{{ gridErr ? '栅格地图加载失败' : '栅格地图加载中…' }}</text>
       <template v-if="labels && gridUrl"><text v-for="r in AREAS" :key="r.t" :x="r.x" :y="r.y" class="bm-room">{{ r.t }}</text></template>
     </template>
@@ -165,7 +171,7 @@ const onSatPick = (lng: number, lat: number) => { const p = fromLngLat(lng, lat,
 .bm-ctl button { width: 24px; height: 24px; display: grid; place-items: center; font-size: 12px; color: var(--muted, #B6CADC); background: none; border: 0; border-radius: 4px; cursor: pointer; }
 .bm-ctl button:hover:not(:disabled) { color: #fff; background: rgba(46,211,230,.12); } .bm-ctl button:disabled { opacity: .35; cursor: default; }
 .bm-tag { font-size: 2.4px; fill: #FFC15C; text-anchor: middle; }
-.bm-room { font-size: 2.8px; fill: rgba(158,195,214,.5); text-anchor: middle; dominant-baseline: middle; letter-spacing: .2px; }
+.bm-room { font-size: 2.8px; fill: rgba(60,72,88,.55); text-anchor: middle; dominant-baseline: middle; letter-spacing: .2px; }
 .bm-pt { font: 600 2.2px var(--mono, monospace); text-anchor: middle; }
 .bm-pulse { transform-box: fill-box; transform-origin: center; animation: bm-pulse 2.8s ease-in-out infinite; }
 @keyframes bm-pulse { 0%, 100% { opacity: .9; transform: scale(.85); } 50% { opacity: .35; transform: scale(1.15); } }
