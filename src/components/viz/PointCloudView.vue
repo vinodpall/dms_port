@@ -236,29 +236,29 @@ onBeforeUnmount(() => {
 .pcv :deep(canvas) { display: block; width: 100% !important; height: 100% !important; }
 .pcv :deep(.pcv-labels) { position: absolute; inset: 0; pointer-events: none; }
 .pcv-st { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--muted, #B6CADC); font-size: 13px; }
-.pcv-tb { position: absolute; left: 10px; top: 10px; display: flex; align-items: center; gap: 2px; padding: 3px; background: rgba(13,28,49,.78); border: 1px solid rgba(46,211,230,.2); border-radius: 6px; z-index: 2; }
-.pcv-tb button { height: 24px; padding: 0 9px; font: inherit; font-size: 12px; color: var(--muted, #B6CADC); background: none; border: 0; border-radius: 4px; cursor: pointer; }
+.pcv-tb { position: absolute; left: 10px; top: 10px; display: flex; align-items: center; gap: 2px; padding: 3px; background: rgba(13,28,49,.78); border: 1px solid rgba(46,211,230,.2); border-radius: 8px; z-index: 2; }
+.pcv-tb button { height: 24px; padding: 0 9px; font: inherit; font-size: 12px; color: var(--muted, #B6CADC); background: none; border: 0; border-radius: 7px; cursor: pointer; }
 .pcv-tb button.gear { width: 26px; padding: 0; font-size: 13px; }
 .pcv-tb { left: 16px !important; top: 16px !important; padding: 0 !important; gap: 4px !important; background: none !important; border: 0 !important; }
-.pcv-tb button.gear { width: 24px !important; height: 24px; display: grid; place-items: center; color: #9adfff !important; background: rgba(10,30,45,.75) !important; border: 1px solid #164159 !important; border-radius: 4px; transition: transform .2s, color .2s, border-color .2s; }
+.pcv-tb button.gear { width: 24px !important; height: 24px; display: grid; place-items: center; color: #9adfff !important; background: rgba(10,30,45,.75) !important; border: 1px solid #164159 !important; border-radius: 7px; transition: transform .2s, color .2s, border-color .2s; }
 .pcv-tb button.gear.on, .pcv-tb button.gear:hover { color: #00e1ff !important; border-color: #00e1ff !important; }
 .pcv-tb button.gear.on { transform: rotate(60deg); }
 .pcv-tb > button:not(.gear) { background: rgba(10,30,45,.75); border: 1px solid #164159; color: #9adfff; }
 .pcv-tb i { display: none; }
-.pcv-set { position: absolute; left: 16px; top: 46px; z-index: 3; width: 145px; padding: 8px 10px; background: rgba(10,30,45,.92); border: 1px solid #164159; border-radius: 4px; box-shadow: 0 6px 18px rgba(0,0,0,.4); }
+.pcv-set { position: absolute; left: 16px; top: 46px; z-index: 3; width: 145px; padding: 8px 10px; background: rgba(10,30,45,.92); border: 1px solid #164159; border-radius: 7px; box-shadow: 0 6px 18px rgba(0,0,0,.4); }
 .pcv-set-h { margin: 2px 0 4px; font-size: 11px; color: #8ab4f8; }
 .pcv-set-d { height: 1px; margin: 6px 0; background: #164159; }
-.pcv-opt { display: flex; align-items: center; gap: 8px; width: 100%; padding: 4px 2px; font: inherit; font-size: 12px; color: #c9e6f5; text-align: left; background: none; border: 0; border-radius: 3px; cursor: pointer; }
+.pcv-opt { display: flex; align-items: center; gap: 8px; width: 100%; padding: 4px 2px; font: inherit; font-size: 12px; color: #c9e6f5; text-align: left; background: none; border: 0; border-radius: 5px; cursor: pointer; }
 .pcv-opt:hover { background: rgba(0,225,255,.08); }
 .pcv-opt i { width: 12px; height: 12px; flex: none; border: 1px solid #4d7a93; border-radius: 50%; }
 .pcv-opt.on { color: #00e1ff; } .pcv-opt.on i { border-color: #00e1ff; box-shadow: inset 0 0 0 2.5px rgba(10,30,45,.92); background: #00e1ff; }
 .pcv-tb button:hover { color: #fff; } .pcv-tb > button:not(.gear).on { color: #00e1ff; border-color: #00e1ff; }
 .pcv-tb i { width: 1px; height: 14px; margin: 0 4px; background: rgba(46,211,230,.25); }
 .pcv-info { position: absolute; left: 10px; bottom: 8px; display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--muted, #B6CADC); z-index: 2; pointer-events: none; }
-.pcv-info .ramp { width: 54px; height: 6px; border-radius: 3px; background: linear-gradient(90deg, #0000ff, #00ffff, #00ff00, #ffff00, #ff0000); } .pcv-info .ramp.blue { background: linear-gradient(90deg, hsl(212,90%,48%), hsl(176,90%,66%)); }
+.pcv-info .ramp { width: 54px; height: 6px; border-radius: 5px; background: linear-gradient(90deg, #0000ff, #00ffff, #00ff00, #ffff00, #ff0000); } .pcv-info .ramp.blue { background: linear-gradient(90deg, hsl(212,90%,48%), hsl(176,90%,66%)); }
 .pcv-info small { color: var(--faint, #8EA6BE); margin-left: 6px; }
 .pcv :deep(.pcv-lb) { font: 600 10.5px var(--mono, monospace); pointer-events: none; }
-.pcv :deep(.pcv-lb.start) { padding: 1px 5px; color: #FFC15C; background: rgba(13,28,49,.8); border: 1px solid #FFC15C; border-radius: 4px; font-family: inherit; transform: translateY(-14px); }
+.pcv :deep(.pcv-lb.start) { padding: 1px 5px; color: #FFC15C; background: rgba(13,28,49,.8); border: 1px solid #FFC15C; border-radius: 7px; font-family: inherit; transform: translateY(-14px); }
 .pcv :deep(.pcv-lb.pt) { width: 18px; height: 18px; display: grid; place-items: center; color: #FFD08A; background: #14253B; border: 1.5px solid #FFC15C; border-radius: 50%; }
 .pcv :deep(.pcv-lb.pt.done) { color: #0B1C2E; background: #26C6DA; border-color: #7FF3FF; }
 .pcv :deep(.pcv-lb.pt.bad) { color: #fff; background: #FF7A7A; border-color: #FFB0B0; }

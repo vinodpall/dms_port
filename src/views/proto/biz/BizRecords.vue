@@ -103,5 +103,5 @@ const del = () => Modal.confirm({ title: '删除记录', content: `确定删除�
 .rc-f.w { grid-column: span 2; }
 .rc-btns { grid-column: span 4; display: flex; justify-content: flex-end; gap: 8px; }
 .ng { color: #FF7A7A; }
-.rc-img { aspect-ratio: 16 / 9; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; } .rc-img :deep(svg) { width: 100%; height: 100%; display: block; }
+.rc-img { aspect-ratio: 16 / 9; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; } .rc-img :deep(svg) { width: 100%; height: 100%; display: block; }
 </style>

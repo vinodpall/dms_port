@@ -77,13 +77,13 @@ const estop = () => message.error(`${robot.value.name} 已触发软件急停`)
 <style scoped>
 .bv-off { margin-bottom: 14px; }
 .bv-park { display: none; }
-.bv-rb { display: flex; align-items: center; height: 30px; padding-left: 10px; margin-right: 8px; background: rgba(46,211,230,.06); border: 1px solid var(--line-strong); border-radius: 4px; }
+.bv-rb { display: flex; align-items: center; height: 30px; padding-left: 10px; margin-right: 8px; background: rgba(46,211,230,.06); border: 1px solid var(--line-strong); border-radius: 7px; }
 .bv-rb > i { width: 7px; height: 7px; border-radius: 50%; }
 .bv-rb :deep(.ant-select) { width: 196px; } .bv-rb :deep(.ant-select-selection-item) { font-weight: 500; color: #fff; }
 .bv-stop { margin-right: 10px; }
 .bv-opt { display: flex; align-items: center; gap: 8px; } .bv-opt i { width: 7px; height: 7px; border-radius: 50%; } .bv-opt b { font-size: 12.5px; } .bv-opt span { flex: 1; } .bv-opt em { font-style: normal; font-size: 11px; color: var(--muted); } .bv-opt small { font-size: 11px; color: var(--faint); }
 .bv-flow { display: flex; align-items: center; gap: 6px; margin: -4px 0 12px; }
-.bv-flow button { display: flex; align-items: center; gap: 7px; padding: 4px 8px; font: inherit; font-size: 12.5px; color: var(--muted); white-space: nowrap; cursor: pointer; background: none; border: 1px solid transparent; border-radius: 4px; }
+.bv-flow button { display: flex; align-items: center; gap: 7px; padding: 4px 8px; font: inherit; font-size: 12.5px; color: var(--muted); white-space: nowrap; cursor: pointer; background: none; border: 1px solid transparent; border-radius: 7px; }
 .bv-flow button:hover { background: rgba(46,211,230,.06); }
 .bv-flow i { width: 18px; height: 18px; display: grid; place-items: center; font: 600 10.5px var(--mono); font-style: normal; border: 1px solid var(--line-strong); border-radius: 50%; }
 .bv-flow small { font-size: 11px; color: var(--faint); }

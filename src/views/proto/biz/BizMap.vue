@@ -167,8 +167,8 @@ const onSatPick = (lng: number, lat: number) => { const p = fromLngLat(lng, lat,
 .bm-wrap > :deep(.pcv), .bm-wrap > :deep(.sat) { position: absolute; inset: 0; }
 .bm { display: block; width: 100%; height: 100%; touch-action: none; } .bm.pan { cursor: grab; } .bm.pick { cursor: crosshair; }
 .bm-img { image-rendering: pixelated; }
-.bm-ctl { position: absolute; right: 8px; bottom: 8px; display: flex; flex-direction: column; gap: 2px; padding: 3px; background: rgba(13,28,49,.78); border: 1px solid rgba(46,211,230,.2); border-radius: 6px; }
-.bm-ctl button { width: 24px; height: 24px; display: grid; place-items: center; font-size: 12px; color: var(--muted, #B6CADC); background: none; border: 0; border-radius: 4px; cursor: pointer; }
+.bm-ctl { position: absolute; right: 8px; bottom: 8px; display: flex; flex-direction: column; gap: 2px; padding: 3px; background: rgba(13,28,49,.78); border: 1px solid rgba(46,211,230,.2); border-radius: 8px; }
+.bm-ctl button { width: 24px; height: 24px; display: grid; place-items: center; font-size: 12px; color: var(--muted, #B6CADC); background: none; border: 0; border-radius: 7px; cursor: pointer; }
 .bm-ctl button:hover:not(:disabled) { color: #fff; background: rgba(46,211,230,.12); } .bm-ctl button:disabled { opacity: .35; cursor: default; }
 .bm-tag { font-size: 2.4px; fill: #FFC15C; text-anchor: middle; }
 .bm-room { font-size: 2.8px; fill: rgba(60,72,88,.55); text-anchor: middle; dominant-baseline: middle; letter-spacing: .2px; }

@@ -87,8 +87,8 @@ onBeforeUnmount(() => { map?.destroy(); map = null })
 <style scoped>
 .sat { position: relative; width: 100%; height: 100%; min-height: 120px; background: #132034; overflow: hidden; }
 .sat-map { position: absolute; inset: 0; }
-.sat-tb { position: absolute; left: 10px; top: 10px; z-index: 5; display: flex; gap: 2px; padding: 3px; background: rgba(13,28,49,.82); border: 1px solid rgba(46,211,230,.25); border-radius: 6px; }
-.sat-tb button { height: 24px; padding: 0 10px; font: inherit; font-size: 12px; color: var(--muted, #B6CADC); background: none; border: 0; border-radius: 4px; cursor: pointer; }
+.sat-tb { position: absolute; left: 10px; top: 10px; z-index: 5; display: flex; gap: 2px; padding: 3px; background: rgba(13,28,49,.82); border: 1px solid rgba(46,211,230,.25); border-radius: 8px; }
+.sat-tb button { height: 24px; padding: 0 10px; font: inherit; font-size: 12px; color: var(--muted, #B6CADC); background: none; border: 0; border-radius: 7px; cursor: pointer; }
 .sat-tb button:hover { color: #fff; } .sat-tb button.on { color: #0B2D3D; background: #26C6DA; }
 .sat-st { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--muted, #B6CADC); font-size: 13px; }
 .sat :deep(.amap-scalecontrol) { background: rgba(13,28,49,.6) !important; color: #F3F8FC; }
@@ -96,7 +96,7 @@ onBeforeUnmount(() => { map?.destroy(); map = null })
 .sat :deep(.sm-pt.done) { color: #0B1C2E; background: #26C6DA; border-color: #7FF3FF; }
 .sat :deep(.sm-pt.bad) { color: #fff; background: #FF7A7A; border-color: #FFB0B0; }
 .sat :deep(.sm-pt.cur) { border-color: #fff; }
-.sat :deep(.sm-start) { padding: 1px 6px; font-size: 11px; white-space: nowrap; color: #FFC15C; background: rgba(13,28,49,.85); border: 1px solid #FFC15C; border-radius: 4px; }
+.sat :deep(.sm-start) { padding: 1px 6px; font-size: 11px; white-space: nowrap; color: #FFC15C; background: rgba(13,28,49,.85); border: 1px solid #FFC15C; border-radius: 7px; }
 .sat :deep(.sm-rb) { position: relative; width: 36px; height: 36px; display: grid; place-items: center; }
 .sat :deep(.sm-rb i) { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(rgba(127,243,255,.55), rgba(127,243,255,0) 70%); animation: sm-pulse 2.8s ease-in-out infinite; }
 .sat :deep(.sm-rb svg) { width: 26px; height: 26px; position: relative; }

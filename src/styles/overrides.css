@@ -37,3 +37,66 @@ body { font-family: var(--font-sans); }
 .tag.warn { background: var(--warn-soft); color: var(--warn); }
 .tag.crit { background: var(--crit-soft); color: var(--crit); }
 .tag.info { background: var(--accent-soft); color: var(--accent); }
+
+/* ================= 控件设计规范（深色主题）：实色、细描边、圆角 ================= */
+[data-theme="dark"] {
+  --c-bg: rgba(10,24,42,.6); --c-bd: rgba(120,170,210,.24); --c-bd-h: rgba(46,211,230,.6); --c-txt: #D6E8F3;
+}
+[data-theme="dark"] .ant-btn { border-radius: 8px; font-weight: 500; transition: background .15s, border-color .15s, color .15s, box-shadow .15s; }
+[data-theme="dark"] .ant-btn-sm { border-radius: 6px; padding-inline: 10px; }
+[data-theme="dark"] .ant-btn-default:not(:disabled) { color: var(--c-txt); background: rgba(46,211,230,.07); border-color: rgba(46,211,230,.3); }
+[data-theme="dark"] .ant-btn-default:not(:disabled):hover { color: #fff; background: rgba(46,211,230,.15); border-color: #2ED3E6; }
+[data-theme="dark"] .ant-btn-default:not(:disabled):active { background: rgba(46,211,230,.22); }
+[data-theme="dark"] .ant-btn-primary:not(:disabled) { color: #fff; background: #1597B3; border: 1px solid #23B5D2; box-shadow: 0 2px 8px rgba(21,151,179,.28); }
+[data-theme="dark"] .ant-btn-primary:not(:disabled):hover { background: #1BAACA; border-color: #4FD6EA; }
+[data-theme="dark"] .ant-btn-primary:not(:disabled):active { background: #12849D; }
+[data-theme="dark"] .ant-btn-dangerous.ant-btn-default:not(:disabled) { color: #FF8E8E; background: rgba(255,107,107,.08); border-color: rgba(255,122,122,.45); }
+[data-theme="dark"] .ant-btn-dangerous.ant-btn-default:not(:disabled):hover { color: #fff; background: rgba(255,107,107,.2); border-color: #FF7A7A; }
+[data-theme="dark"] .ant-btn-dangerous.ant-btn-primary:not(:disabled) { background: #D9534F; border-color: #F07070; box-shadow: 0 2px 8px rgba(217,83,79,.3); }
+[data-theme="dark"] .ant-btn:disabled { color: rgba(182,202,220,.38) !important; background: rgba(255,255,255,.03) !important; border-color: rgba(140,175,220,.12) !important; box-shadow: none !important; }
+[data-theme="dark"] .ant-btn-text:not(:disabled), [data-theme="dark"] .ant-btn-link:not(:disabled) { background: transparent; border-color: transparent; box-shadow: none; }
+[data-theme="dark"] .ant-btn-text:not(:disabled):hover { background: rgba(46,211,230,.1); color: #fff; }
+[data-theme="dark"] .ant-btn-text:disabled, [data-theme="dark"] .ant-btn-link:disabled { background: transparent !important; border-color: transparent !important; }
+
+/* 输入框 / 下拉框 / 数字框 */
+[data-theme="dark"] .ant-input, [data-theme="dark"] .ant-input-affix-wrapper, [data-theme="dark"] .ant-input-number, [data-theme="dark"] .ant-picker,
+[data-theme="dark"] .ant-select:not(.ant-select-customize-input):not(.ant-select-borderless) .ant-select-selector { background: var(--c-bg) !important; border-color: var(--c-bd) !important; border-radius: 8px !important; box-shadow: none !important; transition: border-color .15s, box-shadow .15s; }
+[data-theme="dark"] .ant-input-affix-wrapper > .ant-input, [data-theme="dark"] .ant-input-number .ant-input-number-input { background: transparent !important; }
+[data-theme="dark"] .ant-input-sm, [data-theme="dark"] .ant-input-affix-wrapper-sm, [data-theme="dark"] .ant-input-number-sm, [data-theme="dark"] .ant-picker-small, [data-theme="dark"] .ant-select-sm .ant-select-selector { border-radius: 6px !important; }
+[data-theme="dark"] .ant-input:hover, [data-theme="dark"] .ant-input-affix-wrapper:hover, [data-theme="dark"] .ant-input-number:hover, [data-theme="dark"] .ant-picker:hover,
+[data-theme="dark"] .ant-select:not(.ant-select-disabled):hover .ant-select-selector { border-color: var(--c-bd-h) !important; }
+[data-theme="dark"] .ant-input:focus, [data-theme="dark"] .ant-input-affix-wrapper-focused, [data-theme="dark"] .ant-input-number-focused, [data-theme="dark"] .ant-picker-focused,
+[data-theme="dark"] .ant-select-focused:not(.ant-select-borderless) .ant-select-selector { border-color: #2ED3E6 !important; box-shadow: 0 0 0 3px rgba(46,211,230,.14) !important; }
+[data-theme="dark"] .ant-select-disabled .ant-select-selector, [data-theme="dark"] .ant-input[disabled], [data-theme="dark"] .ant-input-number-disabled { background: rgba(255,255,255,.025) !important; border-color: rgba(140,175,220,.12) !important; color: rgba(182,202,220,.45) !important; }
+[data-theme="dark"] .ant-select-arrow { color: rgba(170,200,225,.6); }
+[data-theme="dark"] .ant-input-group-addon { background: rgba(46,211,230,.08) !important; border-color: var(--c-bd) !important; border-radius: 8px 0 0 8px; }
+/* 下拉弹层 */
+[data-theme="dark"] .ant-select-dropdown, [data-theme="dark"] .ant-dropdown .ant-dropdown-menu, [data-theme="dark"] .ant-picker-dropdown .ant-picker-panel-container, [data-theme="dark"] .ant-popover .ant-popover-inner {
+  background: #14283F !important; border: 1px solid rgba(46,211,230,.22); border-radius: 10px !important; box-shadow: 0 10px 28px rgba(0,0,0,.45) !important; padding: 4px; }
+[data-theme="dark"] .ant-select-item, [data-theme="dark"] .ant-dropdown-menu-item { border-radius: 6px !important; }
+[data-theme="dark"] .ant-select-item-option-active:not(.ant-select-item-option-disabled), [data-theme="dark"] .ant-dropdown-menu-item:hover { background: rgba(46,211,230,.1) !important; }
+[data-theme="dark"] .ant-select-item-option-selected:not(.ant-select-item-option-disabled) { color: #fff; background: rgba(46,211,230,.2) !important; font-weight: 500; }
+
+/* 单选按钮组：分段控件 */
+[data-theme="dark"] .ant-radio-group .ant-radio-button-wrapper { color: #B6CADC; background: rgba(10,24,42,.6); border-color: rgba(120,170,210,.24); }
+[data-theme="dark"] .ant-radio-group .ant-radio-button-wrapper:first-child { border-start-start-radius: 8px; border-end-start-radius: 8px; }
+[data-theme="dark"] .ant-radio-group .ant-radio-button-wrapper:last-child { border-start-end-radius: 8px; border-end-end-radius: 8px; }
+[data-theme="dark"] .ant-radio-group-small .ant-radio-button-wrapper:first-child { border-start-start-radius: 6px; border-end-start-radius: 6px; }
+[data-theme="dark"] .ant-radio-group-small .ant-radio-button-wrapper:last-child { border-start-end-radius: 6px; border-end-end-radius: 6px; }
+[data-theme="dark"] .ant-radio-group .ant-radio-button-wrapper:hover { color: #fff; }
+[data-theme="dark"] .ant-radio-group .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) { color: #fff !important; background: #1597B3 !important; border-color: #23B5D2 !important; }
+[data-theme="dark"] .ant-radio-group .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled)::before { background: #23B5D2 !important; }
+
+/* 弹窗：圆角、分区 */
+[data-theme="dark"] .ant-modal .ant-modal-content { padding: 0; overflow: hidden; background: #132740; border: 1px solid rgba(46,211,230,.22); border-radius: 14px; box-shadow: 0 18px 48px rgba(0,0,0,.55); }
+[data-theme="dark"] .ant-modal .ant-modal-header { margin: 0; padding: 16px 22px; background: rgba(46,211,230,.06); border-bottom: 1px solid rgba(46,211,230,.14); }
+[data-theme="dark"] .ant-modal .ant-modal-title { font-size: 15px; font-weight: 600; }
+[data-theme="dark"] .ant-modal .ant-modal-body { padding: 16px 22px; }
+[data-theme="dark"] .ant-modal .ant-modal-footer { margin: 0; padding: 12px 22px 16px; }
+[data-theme="dark"] .ant-modal .ant-modal-close { top: 14px; inset-inline-end: 16px; border-radius: 8px; }
+[data-theme="dark"] .ant-modal-confirm .ant-modal-body { padding: 22px 24px 18px; }
+[data-theme="dark"] .ant-modal-confirm .ant-modal-confirm-btns { margin-top: 18px; }
+[data-theme="dark"] .ant-drawer .ant-drawer-content { background: #132740; }
+[data-theme="dark"] .ant-tag { border-radius: 6px; }
+[data-theme="dark"] .ant-alert { border-radius: 10px; }
+[data-theme="dark"] .ant-tooltip .ant-tooltip-inner { border-radius: 8px; }

@@ -288,7 +288,7 @@ const delRoute = (id: string) => del('路线及其任务组', () => { db.routes.
 <style scoped>
 .nv-field { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; font-size: 13px; color: var(--muted); }
 .nv-sw { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.nv-sw button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 0; font: inherit; cursor: pointer; color: var(--text); background: rgba(46,211,230,.05); border: 1px solid var(--line-strong); border-radius: 4px; }
+.nv-sw button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 0; font: inherit; cursor: pointer; color: var(--text); background: rgba(46,211,230,.05); border: 1px solid var(--line-strong); border-radius: 7px; }
 .nv-sw button b { font-size: 14px; } .nv-sw button small { font-size: 11px; color: var(--muted); }
 .nv-sw button:hover:not(:disabled) { border-color: var(--cyan); } .nv-sw button:disabled { cursor: not-allowed; opacity: .4; }
 .nv-sw button.on { color: #0B1C2E; background: var(--cyan); border-color: var(--cyan); } .nv-sw button.on small { color: #0B1C2E; }
@@ -301,26 +301,26 @@ const delRoute = (id: string) => del('路线及其任务组', () => { db.routes.
 .nv-blank { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--faint); font-size: 13px; } .nv-blank .anticon { font-size: 34px; opacity: .5; }
 .nv-left { display: flex; flex-direction: column; } .nv-left > .bz-sec:last-child { flex: 1; display: flex; flex-direction: column; }
 .nv-st { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; align-content: start; }
-.nv-st > div { display: flex; flex-direction: column; justify-content: center; gap: 1px; min-width: 0; padding: 5px 10px; background: rgba(46,211,230,.05); border: 1px solid rgba(46,211,230,.12); border-radius: 4px; } .nv-st > div.w { grid-column: span 2; }
+.nv-st > div { display: flex; flex-direction: column; justify-content: center; gap: 1px; min-width: 0; padding: 5px 10px; background: rgba(46,211,230,.05); border: 1px solid rgba(46,211,230,.12); border-radius: 7px; } .nv-st > div.w { grid-column: span 2; }
 .nv-st small { font-size: 11.5px; color: var(--muted); } .nv-st b { font-size: 13.5px; font-weight: 600; color: #fff; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; } .nv-st em { font-style: normal; font-size: 11px; color: var(--muted); margin-left: 3px; } .nv-st :deep(.ant-badge-status-text) { font-size: 13px; }
 .nv-edit { display: flex; } .nv-edit > .pp-panel, .nv-file > .pp-panel { flex: 1; } .nv-file { display: flex; }
 .nv-tools .sz { display: flex; flex-direction: column; align-items: center; padding: 4px 0; font-size: 11px; color: var(--muted); } .nv-tools button.save { color: var(--cyan); }
-.nv-zp { position: absolute; z-index: 2; right: 10px; top: 10px; width: 200px; display: flex; flex-direction: column; gap: 8px; padding: 10px; background: rgba(13,28,47,.92); border: 1px solid var(--line-strong); border-radius: 6px; }
+.nv-zp { position: absolute; z-index: 2; right: 10px; top: 10px; width: 200px; display: flex; flex-direction: column; gap: 8px; padding: 10px; background: rgba(13,28,47,.92); border: 1px solid var(--line-strong); border-radius: 8px; }
 .nv-zp .seg { display: flex; } .nv-zp .seg button { flex: 1; height: 26px; font: inherit; font-size: 12px; color: var(--muted); cursor: pointer; background: rgba(46,211,230,.05); border: 1px solid var(--line-strong); } .nv-zp .seg button.on { color: #0B1C2E; background: var(--cyan); border-color: var(--cyan); }
 .nv-zp .row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.nv-zp .types { display: flex; flex-direction: column; gap: 2px; } .nv-zp .types label { display: flex; align-items: center; gap: 8px; padding: 4px 8px; font-size: 12.5px; color: var(--muted); cursor: pointer; border-radius: 4px; } .nv-zp .types label.on { color: #fff; background: var(--accent-soft); } .nv-zp .types i { width: 12px; height: 12px; border: 1px solid; }
+.nv-zp .types { display: flex; flex-direction: column; gap: 2px; } .nv-zp .types label { display: flex; align-items: center; gap: 8px; padding: 4px 8px; font-size: 12.5px; color: var(--muted); cursor: pointer; border-radius: 7px; } .nv-zp .types label.on { color: #fff; background: var(--accent-soft); } .nv-zp .types i { width: 12px; height: 12px; border: 1px solid; }
 .nv-zp .hr { height: 1px; background: var(--line); }
 .nv-ftb { display: flex; align-items: center; gap: 10px; padding: 14px 16px; font-size: 13px; color: var(--muted); border-bottom: 1px solid var(--line); }
 .nv-board { position: relative; flex: 1; min-height: 0; overflow: auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; gap: 14px; padding: 14px 16px; }
-.nv-fc { padding: 12px 14px; background: rgba(46,211,230,.04); border: 1px solid rgba(46,211,230,.14); border-radius: 6px; }
+.nv-fc { padding: 12px 14px; background: rgba(46,211,230,.04); border: 1px solid rgba(46,211,230,.14); border-radius: 8px; }
 .nv-fch { display: flex; align-items: center; gap: 6px; font-size: 13.5px; } .nv-fch i { width: 7px; height: 7px; border-radius: 50%; background: var(--cyan); } .nv-fch b { color: #fff; font-weight: 500; } .nv-fch a { margin-left: auto; font-size: 12px; }
 .nv-fcm { margin: 4px 0 8px 13px; font-size: 11.5px; color: var(--faint); }
 .nv-fi { display: flex; align-items: center; gap: 10px; padding: 7px 4px; font-size: 12.5px; border-top: 1px dashed var(--line); }
-.nv-fi .t { flex: none; padding: 0 6px; font-size: 11px; line-height: 18px; border-radius: 3px; } .nv-fi .t.r { color: #45E3A8; background: rgba(69,227,168,.12); } .nv-fi .t.g { color: #26C6DA; background: rgba(38,198,218,.12); } .nv-fi .t.p { color: #B48CFF; background: rgba(180,140,255,.14); }
+.nv-fi .t { flex: none; padding: 0 6px; font-size: 11px; line-height: 18px; border-radius: 5px; } .nv-fi .t.r { color: #45E3A8; background: rgba(69,227,168,.12); } .nv-fi .t.g { color: #26C6DA; background: rgba(38,198,218,.12); } .nv-fi .t.p { color: #B48CFF; background: rgba(180,140,255,.14); }
 .nv-fi .n { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; } .nv-fi .tm { font-size: 11.5px; color: var(--muted); }
 .nv-speed { display: flex; align-items: center; gap: 14px; } .nv-speed b { width: 80px; text-align: center; font-size: 15px; }
-.nv-tools { position: absolute; z-index: 1; left: 10px; top: 10px; display: flex; flex-direction: column; gap: 4px; padding: 4px; background: rgba(13,28,47,.82); border: 1px solid var(--line); border-radius: 6px; }
-.nv-tools button { width: 30px; height: 30px; display: grid; place-items: center; font-size: 15px; color: var(--muted); cursor: pointer; background: none; border: 1px solid transparent; border-radius: 4px; }
+.nv-tools { position: absolute; z-index: 1; left: 10px; top: 10px; display: flex; flex-direction: column; gap: 4px; padding: 4px; background: rgba(13,28,47,.82); border: 1px solid var(--line); border-radius: 8px; }
+.nv-tools button { width: 30px; height: 30px; display: grid; place-items: center; font-size: 15px; color: var(--muted); cursor: pointer; background: none; border: 1px solid transparent; border-radius: 7px; }
 .nv-tools button:hover { color: #fff; } .nv-tools button.on { color: #fff; background: var(--accent-soft); border-color: var(--accent); }
 .nv-zones { list-style: none; margin: 0; padding: 6px 12px 10px; } .nv-zones li { display: flex; align-items: center; gap: 10px; padding: 8px 4px; border-bottom: 1px dashed var(--line); }
 .nv-zones li > i { width: 12px; height: 12px; flex: none; border: 1px solid; } .nv-zones li div { flex: 1; min-width: 0; } .nv-zones li b { display: block; font-size: 13px; font-weight: 500; } .nv-zones li small { font-size: 11.5px; color: var(--muted); }

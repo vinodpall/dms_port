@@ -266,15 +266,15 @@ const pose = computed(() => ({ x: toReal(rt.value.pose.x, rt.value.pose.y).x.toF
 .rt-gsel { flex: 1; min-width: 0; margin-left: 10px; }
 .rt-acts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 10px 12px; border-bottom: 1px solid var(--line); } .rt-acts :deep(.ant-btn) { padding: 0 4px; }
 .rt-pts { list-style: none; margin: 0; padding: 4px 8px; }
-.rt-pts li { display: flex; align-items: center; gap: 10px; padding: 8px 6px; border-bottom: 1px dashed var(--line); cursor: pointer; border-radius: 4px; }
+.rt-pts li { display: flex; align-items: center; gap: 10px; padding: 8px 6px; border-bottom: 1px dashed var(--line); cursor: pointer; border-radius: 7px; }
 .rt-pts li:hover { background: rgba(46,211,230,.05); } .rt-pts li.on { background: var(--accent-soft); }
 .rt-pts li > i { width: 22px; height: 22px; flex: none; display: grid; place-items: center; font-size: 11px; font-style: normal; color: #FFD08A; border: 1.5px solid #FFC15C; border-radius: 50%; }
 .rt-pts li > div { flex: 1; min-width: 0; } .rt-pts b { display: block; font-size: 13px; font-weight: 500; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; } .rt-pts small { display: block; font-size: 11.5px; color: var(--muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .rt-pts li.empty { justify-content: center; padding: 40px 0; color: var(--faint); font-size: 12.5px; border: 0; cursor: default; }
 .rt-pose { padding: 8px 14px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); } .rt-pose b { margin-left: 6px; font-weight: 500; color: var(--text); }
 .rp-preset { display: grid; grid-template-columns: 1fr 170px; gap: 14px; margin-top: 12px; }
-.rp-cam { aspect-ratio: 16 / 9; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; } .rp-cam :deep(svg) { width: 100%; height: 100%; display: block; }
+.rp-cam { aspect-ratio: 16 / 9; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; } .rp-cam :deep(svg) { width: 100%; height: 100%; display: block; }
 .rp-ptz { display: flex; flex-direction: column; gap: 10px; }
-.rp-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; } .rp-pad button { height: 34px; color: var(--text); cursor: pointer; background: rgba(46,211,230,.06); border: 1px solid var(--line); border-radius: 4px; } .rp-pad button:hover { border-color: var(--cyan); }
+.rp-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; } .rp-pad button { height: 34px; color: var(--text); cursor: pointer; background: rgba(46,211,230,.06); border: 1px solid var(--line); border-radius: 7px; } .rp-pad button:hover { border-color: var(--cyan); }
 .rp-zoom { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 </style>

@@ -36,7 +36,7 @@ const mapPts = computed(() => pts.value.map((p, i) => ({ mx: p.mx, my: p.my, st:
 const mapMode = ref<'cloud' | 'grid' | 'sat'>('cloud')
 
 /* 实时警情 */
-const alarms = computed(() => db.alarms.filter((a) => a.robot === curId.value).slice(0, 6))
+const alarms = computed(() => db.alarms.filter((a) => a.robot === curId.value).slice(0, 5))
 const pic = ref<BizAlarm | null>(null)
 
 /* 机器狗控制（对齐 robot_web robot-control-grid） */
@@ -153,7 +153,7 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
       </div>
       <div class="pp-panel hm-alarm">
         <div class="pp-panel-h"><h3>实时警情</h3><span class="muted sub">{{ alarms.filter((a) => a.state === '待处理').length }} 条待处理</span><a class="r more" @click="emit('go', 'log', 'rec')">全部警情 →</a></div>
-        <a-table size="small" :pagination="false" :data-source="alarms" row-key="id" :scroll="{ y: 'calc(100% - 39px)' }"
+        <a-table size="small" :pagination="false" :data-source="alarms" row-key="id"
           :columns="[{ title: '报警时间', key: 'time', width: 120 }, { title: '警情类型', key: 'type', width: 110 }, { title: '内容', dataIndex: 'content', ellipsis: true }, { title: '来源', dataIndex: 'src', width: 72 }, { title: '状态', key: 'state', width: 84 }, { title: '图片', key: 'pic', width: 60 }]">
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'time'"><span class="mono">{{ record.time.slice(5) }}</span></template>
@@ -266,16 +266,16 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
 .hm-cam .hm-box:fullscreen { aspect-ratio: auto; }
 .hm-vact { position: absolute; right: 8px; bottom: 8px; z-index: 2; display: flex; gap: 4px; opacity: 0; transition: opacity .18s; }
 .hm-vbox:hover .hm-vact, .hm-vbox:fullscreen .hm-vact { opacity: 1; }
-.hm-vact button { width: 26px; height: 26px; display: grid; place-items: center; padding: 0; font: inherit; font-size: 13px; color: #E6F7FB; cursor: pointer; background: rgba(8,18,32,.62); border: 1px solid rgba(46,211,230,.28); border-radius: 4px; }
+.hm-vact button { width: 26px; height: 26px; display: grid; place-items: center; padding: 0; font: inherit; font-size: 13px; color: #E6F7FB; cursor: pointer; background: rgba(8,18,32,.62); border: 1px solid rgba(46,211,230,.28); border-radius: 7px; }
 .hm-vact button.tx { font-size: 12px; font-weight: 600; }
 .hm-vact button:hover:not(:disabled) { color: #fff; border-color: var(--cyan); background: rgba(8,18,32,.85); } .hm-vact button:disabled { cursor: not-allowed; opacity: .45; }
-.hm-box { position: relative; flex: 1; min-height: 0; margin: 10px; overflow: hidden; border: 1px solid rgba(46,211,230,.16); border-radius: 4px; background: #0C1728; }
+.hm-box { position: relative; flex: 1; min-height: 0; margin: 10px; overflow: hidden; border: 1px solid rgba(46,211,230,.16); border-radius: 7px; background: #0C1728; }
 .hm-empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--faint); font-size: 13px; } .hm-empty.sm { position: static; flex: 1; padding: 28px 0; }
 .hm-task { flex: 1; display: flex; flex-direction: column; gap: 8px; padding: 8px 14px 10px; }
 .hm-task .nm { font-size: 13.5px; font-weight: 500; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .hm-task .ring { display: flex; align-items: center; gap: 14px; } .hm-task .ring :deep(.ant-progress-text) { color: #fff; font-size: 17px; }
 .hm-task .kv { flex: 1; min-width: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 8px; font-size: 12px; } .hm-task .kv span { color: var(--muted); } .hm-task .kv b { font-weight: 500; text-align: right; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.hm-task .st4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; text-align: center; } .hm-task .st4 > div { padding: 3px 0; background: rgba(46,211,230,.05); border-radius: 4px; }
+.hm-task .st4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; text-align: center; } .hm-task .st4 > div { padding: 3px 0; background: rgba(46,211,230,.05); border-radius: 7px; }
 .hm-task .st4 b { display: block; font-size: 16px; color: #fff; } .hm-task .st4 b.ok { color: #45E3A8; } .hm-task .st4 b.bad { color: #FF7A7A; } .hm-task .st4 small { font-size: 11px; color: var(--muted); }
 .hm-task .ops { display: flex; gap: 8px; margin-top: auto; } .hm-task .ops > * { flex: 1; }
 .hm-task.idle .nm { color: var(--faint); font-weight: 400; } .hm-task.idle .kv b { color: var(--faint); }
@@ -285,7 +285,7 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
 .hm-alarm :deep(.ant-table-wrapper) { flex: 1; min-height: 0; padding: 0 10px 8px; }
 .hm-alarm .more { font-size: 12px; }
 .hm-alarm :deep(.ant-table), .hm-alarm :deep(.ant-table-container), .hm-alarm :deep(.ant-spin-nested-loading), .hm-alarm :deep(.ant-spin-container) { height: 100%; }
-.hm-alarm :deep(.ant-table-container) { display: flex; flex-direction: column; } .hm-alarm :deep(.ant-table-body) { flex: 1; }
+.hm-alarm :deep(.ant-table-container) { display: flex; flex-direction: column; } .hm-alarm :deep(.ant-table-tbody > tr > td) { padding-top: 0; padding-bottom: 0; height: 40px; } .hm-alarm :deep(.ant-table-thead > tr > th) { padding-top: 8px; padding-bottom: 8px; }
 .hm-alarm :deep(.ant-table-placeholder td) { border-bottom: 0 !important; background: transparent !important; }
 .hm-alarm :deep(.ant-table-placeholder:hover td) { background: transparent !important; }
 .hm-none { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 120px; color: var(--faint); font-size: 12.5px; } .hm-none .anticon { font-size: 22px; opacity: .55; }
@@ -298,17 +298,17 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
 .hm-send-p { flex: none; } .hm-right:has(.hm-st.big) .hm-chart svg { height: 64px; } .hm-right:has(.hm-st.big) .hm-send { gap: 8px; padding: 10px 14px 12px; } .hm-send-p.hm-grow { flex: 1; }
 .hm-send .ln.loc.ins { grid-template-columns: 70px auto; }
 .hm-big { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px 14px 4px; }
-.hm-big > div { padding: 7px 10px; background: rgba(46,211,230,.05); border: 1px solid rgba(46,211,230,.12); border-radius: 4px; }
+.hm-big > div { padding: 7px 10px; background: rgba(46,211,230,.05); border: 1px solid rgba(46,211,230,.12); border-radius: 7px; }
 .hm-big small { display: block; font-size: 11.5px; color: var(--muted); } .hm-big b { font-size: 18px; font-weight: 600; color: #fff; } .hm-big b.low { color: #FF7A7A; } .hm-big em { font-style: normal; font-size: 11px; color: var(--muted); margin-left: 3px; }
 .hm-big { grid-template-columns: repeat(3, 1fr) !important; } .hm-big b { font-size: 16px !important; }
 .hm-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; padding: 10px 12px 14px; }
-.hm-grid > div { min-width: 0; padding: 5px 1px; text-align: center; background: rgba(46,211,230,.04); border-radius: 4px; }
+.hm-grid > div { min-width: 0; padding: 5px 1px; text-align: center; background: rgba(46,211,230,.04); border-radius: 7px; }
 .hm-grid small { display: block; font-size: 11px; color: var(--muted); } .hm-grid b { display: block; font-size: 12px; font-weight: 500; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .hm-grid b.ok { color: #45E3A8; } .hm-grid b.warn { color: #FFC15C; } .hm-grid .lk { cursor: pointer; border: 1px dashed rgba(77,232,176,.35); }
 .hm-rtk { display: grid; grid-template-columns: auto auto; gap: 6px 16px; font-size: 12.5px; } .hm-rtk span { color: var(--muted); } .hm-rtk b { font-weight: 500; text-align: right; }
 .hm-mic { color: #45E3A8 !important; }
 .hm-ctl { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; padding: 10px 14px 10px; }
-.hm-ctl button { padding: 5px 0; font: inherit; font-size: 12px; color: var(--muted); cursor: pointer; background: rgba(46,211,230,.05); border: 1px solid var(--line); border-radius: 4px; }
+.hm-ctl button { padding: 5px 0; font: inherit; font-size: 12px; color: var(--muted); cursor: pointer; background: rgba(46,211,230,.05); border: 1px solid var(--line); border-radius: 7px; }
 .hm-ctl button:hover:not(:disabled) { color: var(--text); border-color: var(--line-strong); } .hm-ctl button.on { color: #fff; border-color: var(--accent); background: var(--accent-soft); }
 .hm-ctl button.stop { color: #fff; background: rgba(255,107,107,.55); border-color: #FF7A7A; } .hm-ctl button:disabled { cursor: not-allowed; opacity: .5; }
 .hm-ctl .gsel { grid-column: span 2; } .hm-ctl .gsel :deep(.ant-select-selector) { height: 28px !important; align-items: center; }
@@ -319,8 +319,8 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
 .hm-send .ln { display: grid; grid-template-columns: 70px minmax(0, 1fr) auto; align-items: center; gap: 8px; font-size: 12.5px; }
 .hm-send .ln.loc { grid-template-columns: minmax(0, 1fr) auto; padding-bottom: 10px; border-bottom: 1px dashed var(--line); }
 .hm-send .tg { display: flex; } .hm-send .tg button { height: 24px; padding: 0 10px; font: inherit; font-size: 12px; color: var(--muted); cursor: pointer; background: rgba(46,211,230,.05); border: 1px solid var(--line-strong); margin-left: -1px; }
-.hm-send .tg button:first-child { border-radius: 4px 0 0 3px; } .hm-send .tg button:last-child { border-radius: 0 3px 3px 0; }
+.hm-send .tg button:first-child { border-radius: 7px 0 0 7px; } .hm-send .tg button:last-child { border-radius: 0 7px 7px 0; }
 .hm-send .tg button.on { color: #0B1C2E; font-weight: 600; background: var(--cyan); border-color: var(--cyan); } .hm-send .tg button:disabled { cursor: not-allowed; opacity: .4; }
 .hm-send label { color: var(--muted); } .hm-send .ins { font-size: 12px; }
-.hm-pic { aspect-ratio: 16 / 9; position: relative; overflow: hidden; border-radius: 4px; }
+.hm-pic { aspect-ratio: 16 / 9; position: relative; overflow: hidden; border-radius: 7px; }
 </style>
