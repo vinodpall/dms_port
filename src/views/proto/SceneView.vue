@@ -6,7 +6,8 @@ import {
   DashboardOutlined, AppstoreOutlined, FundProjectionScreenOutlined,
   ToolOutlined, CalendarOutlined, PlusOutlined, SearchOutlined,
   EditOutlined, MoreOutlined, ExpandOutlined,
-  CheckCircleOutlined, ExclamationCircleOutlined, ArrowRightOutlined,
+  CheckCircleOutlined, ExclamationCircleOutlined,
+  VideoCameraOutlined, SettingOutlined, DownOutlined,
   LeftOutlined, RightOutlined,
 } from '@ant-design/icons-vue'
 import ModuleShell from '@/components/proto/ModuleShell.vue'
@@ -80,8 +81,16 @@ const submitScene   = () => { sceneFormOpen.value = false; message.success(editi
 
 const lcConfirmOpen = ref(false)
 const lcRemark = ref('')
-const nextStatus = computed(() => { const idx = LC_FLOW.indexOf(cur.value.status); return idx >= 0 && idx < LC_FLOW.length - 1 ? LC_FLOW[idx + 1] : null })
-const pushStatus = () => { lcConfirmOpen.value = false; message.success(`状态已更新为「${SCENE_STATUS[nextStatus.value!].t}」（演示）`) }
+const lcTargetStatus = ref<string | null>(null)
+const cameraOpen = ref(false)
+const openChangeStatus = (s: string) => { lcTargetStatus.value = s; lcRemark.value = ''; lcConfirmOpen.value = true }
+const pushStatus = () => {
+  if (!lcTargetStatus.value) return
+  cur.value.status = lcTargetStatus.value as any
+  cur.value.lifecycle.push({ date: new Date().toISOString().slice(0, 10), status: lcTargetStatus.value as any, by: '当前用户', note: lcRemark.value || '手动变更状态' })
+  lcConfirmOpen.value = false
+  message.success(`状态已更新为「${SCENE_STATUS[lcTargetStatus.value].t}」`)
+}
 
 // ── 设施管理 ─────────────────────────────────────────────
 const fScene = ref<Scene>(SCENES[0])
@@ -317,17 +326,23 @@ const cancelBooking  = (b: any) => message.warning(`已取消预约（演示）`
             </div>
             <div class="sc-hd-actions">
               <a-button size="small" @click="planOpen=true"><ExpandOutlined />查看布局</a-button>
+              <a-button size="small" @click="cameraOpen=true"><VideoCameraOutlined />监控视频</a-button>
               <a-button size="small" @click="openEditScene(cur)"><EditOutlined />编辑</a-button>
-              <a-button v-if="nextStatus" size="small" type="primary" @click="lcConfirmOpen=true">推进至「{{ SCENE_STATUS[nextStatus].t }}」<ArrowRightOutlined /></a-button>
               <a-dropdown>
-                <a-button size="small"><MoreOutlined /></a-button>
                 <template #overlay>
                   <a-menu>
+                    <a-menu-item-group title="切换状态">
+                      <a-menu-item v-for="st in LC_FLOW" :key="st" :disabled="st===cur.status" @click="openChangeStatus(st)">
+                        <a-badge :color="SCENE_STATUS[st].c" :text="SCENE_STATUS[st].t" />
+                        <CheckCircleOutlined v-if="st===cur.status" style="margin-left:6px;color:#52c41a" />
+                      </a-menu-item>
+                    </a-menu-item-group>
+                    <a-menu-divider />
                     <a-menu-item @click="tab='facility'; fScene=cur">管理设施</a-menu-item>
                     <a-menu-item @click="tab='booking'; calSceneId=cur.id">查看预约</a-menu-item>
-                    <a-menu-item danger>停用场景</a-menu-item>
                   </a-menu>
                 </template>
+                <a-button size="small"><SettingOutlined />状态管理<DownOutlined /></a-button>
               </a-dropdown>
             </div>
           </div>
@@ -655,13 +670,37 @@ const cancelBooking  = (b: any) => message.warning(`已取消预约（演示）`
       </a-form>
     </a-modal>
 
-    <!-- 弹窗：生命周期推进 -->
-    <a-modal v-model:open="lcConfirmOpen" title="推进生命周期" ok-text="确认推进" @ok="pushStatus">
+    <!-- 弹窗：变更状态 -->
+    <a-modal v-model:open="lcConfirmOpen" title="变更场景状态" ok-text="确认变更" @ok="pushStatus">
       <div style="margin:12px 0 8px">
-        将「{{ cur.name }}」从 <span :style="{ color:SCENE_STATUS[cur.status].c }">{{ SCENE_STATUS[cur.status].t }}</span>
-        推进至 <span v-if="nextStatus" :style="{ color:SCENE_STATUS[nextStatus].c }">{{ SCENE_STATUS[nextStatus].t }}</span>
+        将「{{ cur.name }}」的状态从
+        <span :style="{ color:SCENE_STATUS[cur.status].c }">{{ SCENE_STATUS[cur.status].t }}</span>
+        变更为
+        <span v-if="lcTargetStatus" :style="{ color:SCENE_STATUS[lcTargetStatus].c }">{{ SCENE_STATUS[lcTargetStatus].t }}</span>
       </div>
-      <a-form-item label="备注说明"><a-textarea v-model:value="lcRemark" :rows="3" placeholder="说明推进原因或验收情况（选填）" /></a-form-item>
+      <a-form-item label="备注说明" style="margin-top:12px">
+        <a-textarea v-model:value="lcRemark" :rows="3" placeholder="说明变更原因（选填）" />
+      </a-form-item>
+    </a-modal>
+
+    <!-- 弹窗：监控视频 -->
+    <a-modal v-model:open="cameraOpen" :title="`${cur.name} — 监控视频`" width="760px" :footer="null">
+      <div class="cam-wrap">
+        <div class="cam-tip"><VideoCameraOutlined /> 当前场景暂未接入实时监控流，以下为监控通道示意</div>
+        <div class="cam-grid">
+          <div v-for="i in 4" :key="i" class="cam-cell">
+            <div class="cam-placeholder">
+              <VideoCameraOutlined style="font-size:28px;opacity:.35" />
+              <span>通道 {{ i }} · {{ cur.name }}</span>
+              <small class="mono muted">无信号 / 未接入</small>
+            </div>
+            <div class="cam-label">CAM-{{ String(i).padStart(2,'0') }} &nbsp;·&nbsp; {{ ['正门入口','内部全景','充电区','出口通道'][i-1] }}</div>
+          </div>
+        </div>
+        <div class="cam-footer">
+          <a-tag color="orange">接入真实监控后此处将显示实时视频流</a-tag>
+        </div>
+      </div>
     </a-modal>
 
     <!-- 弹窗：设施编辑 -->
@@ -889,4 +928,13 @@ const cancelBooking  = (b: any) => message.warning(`已取消预约（演示）`
 .bk-day-actions { flex: none; display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
 .bk-day-actions a { font-size: 12px; cursor: pointer; color: var(--accent); }
 .bk-day-actions a.d { color: #FF7A7A; }
+
+/* 监控视频弹窗 */
+.cam-wrap { display: flex; flex-direction: column; gap: 12px; padding: 4px 0; }
+.cam-tip { font-size: 12px; color: var(--muted, #8899aa); display: flex; align-items: center; gap: 6px; }
+.cam-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.cam-cell { display: flex; flex-direction: column; gap: 4px; }
+.cam-placeholder { height: 150px; background: rgba(0,0,0,.35); border: 1px solid rgba(46,211,230,.15); border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: var(--muted, #8899aa); font-size: 12px; }
+.cam-label { font-size: 11px; color: var(--muted, #8899aa); padding: 0 2px; font-family: var(--mono, monospace); }
+.cam-footer { display: flex; justify-content: center; padding-top: 4px; }
 </style>
