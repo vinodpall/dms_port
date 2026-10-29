@@ -35,10 +35,10 @@ const KPIS = [
   { l: '使用中', v: Object.keys(INUSE).length, u: '个' },
   { l: '场地面积', v: SCENES.reduce((a, s) => a + s.area, 0).toLocaleString('en-US'), u: 'm²' },
   { l: '今日预约', v: 14, u: '场' },
-  { l: '累计使用', v: SCENES.reduce((a, s) => a + s.hours, 0).toLocaleString('en-US'), u: 'h' },
+  { l: '累计使用', v: '—', u: 'h' },
 ]
 const byType = SCENE_TYPES.map((t) => ({ label: t, color: TYPE_COLOR[t], value: SCENES.filter((s) => s.type === t).length, area: SCENES.filter((s) => s.type === t).reduce((a, s) => a + s.area, 0) })).filter((x) => x.value)
-const usage = SCENES.filter((s) => s.status !== 'draft').map((s, i) => ({ name: s.name, v: [92, 86, 78, 74, 61, 48, 42][i] ?? 30, c: TYPE_COLOR[s.type] }))
+const usage = SCENES.filter((s) => s.status === 'active' || s.status === 'trial').map((s, i) => ({ name: s.name, v: [92, 86, 78, 74, 61, 48, 42][i] ?? 30, c: TYPE_COLOR[s.type] }))
 
 const r = rng(11)
 const hours = Array.from({ length: 24 }, (_, i) => i)
@@ -189,7 +189,7 @@ const ST = { done: { t: '已结束', c: '#8EA6BE' }, run: { t: '进行中', c: '
 .ss-tag { position: absolute; transform: translate(6px, 6px); padding: 4px 10px; background: rgba(13,30,52,.82); border: 1px solid color-mix(in srgb, var(--c) 60%, transparent); border-left: 3px solid var(--c); display: flex; flex-direction: column; line-height: 1.35; pointer-events: none; }
 .ss-tag b { font-size: 15px; color: #fff; } .ss-tag span { font-size: 12px; color: #B6CADC; }
 .ss-tag.on { box-shadow: 0 0 16px rgba(77,232,176,.35); } .ss-tag.on span { color: #45E3A8; }
-.ss-tag.maint span { color: #FFC15C; } .ss-tag.draft { opacity: .75; }
+.ss-tag.maint span { color: #FFC15C; } .ss-tag.planning { opacity: .75; }
 .ss-map-hd { position: absolute; right: 0; top: 0; display: flex; gap: 10px; align-items: center; padding: 8px 18px; font-size: 16px; letter-spacing: 2px; background: linear-gradient(270deg, rgba(13,30,52,.92), transparent); }
 .ss-map-hd em { font: 600 11px var(--mono); font-style: normal; color: #FF7A7A; padding: 1px 6px; border: 1px solid #FF7A7A; animation: ss-blink 1.6s steps(2) infinite; }
 .ss-map-lg { position: absolute; right: 16px; bottom: 12px; display: flex; gap: 16px; padding: 6px 12px; font-size: 13px; color: #B9D4E0; background: rgba(13,30,52,.82); border: 1px solid rgba(46,211,230,.2); }
