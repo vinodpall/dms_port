@@ -260,16 +260,22 @@
   .drawer-foot { flex: none; display: flex; gap: 10px; justify-content: flex-end; padding: 14px 24px; border-top: 1px solid var(--line); }
 
   .pop { position: absolute; z-index: 40; min-width: 240px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow-pop); animation: pop .14s ease both; overflow: hidden; }
-  .pop-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid var(--line); font-weight: 600; }
+  .pop-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px 11px; border-bottom: 1px solid var(--line); }
+  .pop-head > span { font-weight: 600; font-size: 14px; }
+  .pop-head .btn.ghost.sm { background: none; border: none; color: var(--muted); font-size: 12px; padding: 2px 4px; cursor: pointer; transition: color .12s; }
+  .pop-head .btn.ghost.sm:hover { color: var(--accent-text); }
   .menu-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 14px; border: 0; background: none; text-align: left; }
   .menu-item:hover, .menu-item.act { background: var(--surface-3); }
   .menu-item[aria-checked="true"] { color: var(--accent-text); font-weight: 500; }
   .menu-sep { height: 1px; background: var(--line); }
-  .notif { display: flex; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
-  .notif.unread { background: var(--accent-soft); }
+  .notif { display: flex; gap: 10px; padding: 11px 14px; border-bottom: 1px solid var(--line); cursor: pointer; transition: background .12s; position: relative; }
+  .notif:hover { background: var(--surface-3); }
+  .notif.unread { background: transparent; }
+  .notif.unread::before { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 3px; height: 60%; background: var(--accent); border-radius: 0 2px 2px 0; }
   .notif:last-child { border-bottom: 0; }
-  .notif p { font-size: 13px; line-height: 1.45; }
-  .notif small { color: var(--muted); }
+  .notif p { font-size: 13px; line-height: 1.45; margin: 0 0 3px; color: var(--text); }
+  .notif.unread p { font-weight: 500; }
+  .notif small { color: var(--muted); font-size: 11.5px; line-height: 1.4; }
 
   .toasts { position: fixed; right: 20px; bottom: 20px; z-index: 80; display: flex; flex-direction: column; gap: 10px; align-items: flex-end; pointer-events: none; }
   .toast { pointer-events: auto; display: flex; align-items: center; gap: 10px; min-width: 260px; max-width: min(420px, 92vw); padding: 11px 14px; border-radius: 10px; background: #213252; color: #F2F6FB; box-shadow: var(--shadow-pop); animation: pop .18s ease both; font-size: 13.5px; }
@@ -338,11 +344,11 @@
   .li .grow { flex: 1; min-width: 0; }
   .li .tt { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .li .ss { font-size: 12.5px; color: var(--muted); }
-  .alert-ico { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; flex: none; }
-  .alert-ico.crit { background: var(--crit-soft); color: var(--crit); }
-  .alert-ico.warn { background: var(--warn-soft); color: var(--warn); }
-  .alert-ico.info { background: var(--accent-soft); color: var(--accent-text); }
-  .alert-ico.good { background: var(--good-soft); color: var(--good); }
+  .alert-ico { width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center; flex: none; font-size: 13px; }
+  .alert-ico.crit { background: rgba(255,100,80,.12); color: var(--crit); border: 1px solid rgba(255,100,80,.2); }
+  .alert-ico.warn { background: rgba(245,180,60,.1); color: var(--warn); border: 1px solid rgba(245,180,60,.2); }
+  .alert-ico.info { background: rgba(46,211,230,.1); color: var(--accent-text); border: 1px solid rgba(46,211,230,.2); }
+  .alert-ico.good { background: rgba(100,220,150,.1); color: var(--good); border: 1px solid rgba(100,220,150,.2); }
 
   .pipe { display: flex; gap: 0; align-items: stretch; overflow-x: auto; }
   .pipe-stage { flex: 1; min-width: 120px; position: relative; padding: 12px 14px 12px 18px; border: 1px solid var(--line); border-right: 0; background: var(--surface); text-align: left; }
