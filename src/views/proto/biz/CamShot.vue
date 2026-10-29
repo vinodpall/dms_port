@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { rng } from '@/utils'
 /** 摄像头画面占位（原型）：可见光 / 红外两种风格 + AI 识别框 */
-const props = withDefaults(defineProps<{ seed?: number; ir?: boolean; box?: string; boxColor?: string; hud?: boolean }>(), { seed: 1, ir: false, box: '', boxColor: '#FF7A7A', hud: false })
+const props = withDefaults(defineProps<{ seed?: number; ir?: boolean; box?: string; boxColor?: string; hud?: boolean; fit?: boolean }>(), { fit: false, seed: 1, ir: false, box: '', boxColor: '#FF7A7A', hud: false })
 const uid = Math.random().toString(36).slice(2, 7)
 const s = computed(() => {
   const r = rng(props.seed * 13 + 5)
@@ -13,7 +13,7 @@ const s = computed(() => {
 })
 </script>
 <template>
-  <svg class="cs" viewBox="0 0 160 90" preserveAspectRatio="xMidYMid slice">
+  <svg class="cs" viewBox="0 0 160 90" :preserveAspectRatio="fit ? 'xMidYMid meet' : 'xMidYMid slice'">
     <defs>
       <linearGradient :id="`bg-${uid}`" x1="0" y1="0" x2="0" y2="1"><stop offset="0" :stop-color="ir ? '#1B0B3A' : '#353F52'" /><stop offset="1" :stop-color="ir ? '#0A0420' : '#192331'" /></linearGradient>
       <radialGradient :id="`hot-${uid}`"><stop offset="0" stop-color="#FFF6A0" /><stop offset=".35" stop-color="#FF9A2E" /><stop offset=".7" stop-color="#C2185B" stop-opacity=".6" /><stop offset="1" stop-color="#4A148C" stop-opacity="0" /></radialGradient>

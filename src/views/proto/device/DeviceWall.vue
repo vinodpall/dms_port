@@ -148,7 +148,7 @@ const clock = computed(() => now.value.toTimeString().slice(0, 8))
           <div v-for="(c, i) in cells" :key="c.key" class="dw-cell" :class="{ act: active === c.key, main: featured && !maxKey && i === 0 }"
             :style="featured && !maxKey && i === 0 ? { gridColumn: `span ${grid.m}`, gridRow: `span ${grid.m}` } : undefined"
             @click="active = c.key" @dblclick="dbl(c.key)">
-            <CamShot v-if="c.status === 'online'" :seed="c.seed" :ir="c.ir" />
+            <CamShot v-if="c.status === 'online'" :seed="c.seed" :ir="c.ir" fit />
             <div v-else class="dw-off">{{ c.status === 'fault' ? '设备故障' : '设备离线' }}<small>无视频信号</small></div>
             <div class="dw-hud"><span><i :style="{ background: STATUS[c.status].c }" />{{ c.name }} · {{ c.cam }}</span><em class="mono">{{ String(i + 1 + (maxKey ? 0 : page * cap)).padStart(2, '0') }}</em></div>
             <div class="dw-act" @click.stop @dblclick.stop>
@@ -189,7 +189,7 @@ const clock = computed(() => now.value.toTimeString().slice(0, 8))
 .dw-none { height: 100%; display: grid; place-items: center; color: var(--faint); font-size: 13px; }
 .dw-grid { width: 100%; height: 100%; display: grid; grid-auto-flow: dense; }
 .dw-cell { position: relative; overflow: hidden; background: #0A1424; border: 1px solid rgba(46,211,230,.14); border-radius: 8px; cursor: pointer; }
-.dw-cell :deep(svg.cs) { display: block; width: 100%; height: 100%; }
+.dw-cell :deep(svg.cs) { display: block; width: 100%; height: 100%; background: #000; }
 .dw-cell.act { border-color: #2ED3E6; box-shadow: 0 0 0 1px #2ED3E6; }
 .dw-cell.main { border-color: rgba(255,193,92,.6); }
 .dw-cell.empty { display: grid; place-items: center; font-size: 12px; color: rgba(142,166,190,.5); cursor: default; border-style: dashed; }

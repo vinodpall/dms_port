@@ -7,6 +7,9 @@ import { useClock, usePop, usePortal } from '@/composables/entry'
 import { ICONS } from './art'
 import { prefetchModules, routeLoading } from '@/router'
 import './cyber.css'
+import { useRouter } from 'vue-router'
+import { SettingOutlined } from '@ant-design/icons-vue'
+const sysRouter = useRouter()
 
 const { session, ok, enter, logout } = usePortal()
 const { open, root } = usePop()
@@ -143,9 +146,9 @@ const stageStyle = computed(() => ({
           <circle :cx="CX" :cy="CY" r="96" fill="rgba(13,28,47,.85)" stroke="#2ED3E6" stroke-width="1" opacity=".9" />
           <polygon :points="hexPts(70)" fill="none" stroke="#2ED3E6" stroke-width="1.2" opacity=".5" />
           <polygon :points="hexPts(54)" fill="rgba(46,211,230,.08)" stroke="#2ED3E6" stroke-width="1" opacity=".35" />
-          <circle class="beat" :cx="CX" :cy="CY" r="8" fill="#2ED3E6" />
         </svg>
 
+        <button type="button" class="cy-sys" :style="{ left: `${CX}px`, top: `${CY}px` }" title="系统管理" @click="sysRouter.push('/m/system')"><SettingOutlined /></button>
         <!-- 五大模块 -->
         <button
           v-for="(m, i) in MODULES"
@@ -236,6 +239,12 @@ const stageStyle = computed(() => ({
 .beat { filter: drop-shadow(0 0 10px #2ED3E6); animation: pt-beat 2.6s ease-in-out infinite; transform-origin: 800px 505px; transform-box: view-box; }
 @keyframes pt-beat { 50% { opacity: .55; transform: scale(.8); } }
 .core-t { font: 11px var(--mono); letter-spacing: 3px; fill: rgba(46,211,230,.6); }
+
+/* 中心：系统管理 */
+.cy-sys { position: absolute; z-index: 4; width: 108px; height: 108px; translate: -50% -50%; border: 0; border-radius: 50%; background: radial-gradient(circle, rgba(46,211,230,.18), rgba(46,211,230,0) 70%); color: #7FF3FF; font-size: 60px; display: grid; place-items: center; cursor: pointer; transition: all .3s; filter: drop-shadow(0 0 10px rgba(46,211,230,.6)); }
+.cy-sys :deep(svg) { transition: transform .6s; }
+.cy-sys:hover { color: #fff; filter: drop-shadow(0 0 18px #2ED3E6); }
+.cy-sys:hover :deep(svg) { transform: rotate(90deg); }
 
 /* 模块节点：六边形底板中心 = 五边形顶点 */
 .mod-node { position: absolute; width: var(--pw); height: var(--ph); translate: -50% -50%; padding: 0; border: 0; background: none; text-align: center; cursor: pointer;

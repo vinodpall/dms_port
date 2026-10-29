@@ -55,6 +55,7 @@ export const router = createRouter({
       children: (Object.keys(COLLECT_VIEWS) as PageKey[]).map((k) => ({ path: k, name: k, component: COLLECT_VIEWS[k] as never, meta: { page: k } })),
     },
     { path: '/m/sim', name: 'sim', component: SimView },
+    { path: '/m/system', name: 'system', component: () => import('@/views/proto/SystemView.vue') },
     { path: '/m/scene', name: 'scene', component: SceneView },
     { path: '/m/scene/screen', name: 'scene-screen', component: () => import('@/views/proto/SceneScreen.vue') },
     { path: '/:pathMatch(.*)*', redirect: '/portal' },
