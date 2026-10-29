@@ -201,65 +201,64 @@ const cancelBooking  = (b: any) => message.warning(`已取消预约（演示）`
 
     <!-- ═══════════════ 场景总览 ═══════════════ -->
     <template v-if="tab === 'overview'">
-      <div class="pp-head">
-        <div><h2>场景总览</h2><p>全部训练场景的状态概况与设施异常提示</p></div>
-        <div class="r"><a-button type="primary" @click="tab = 'lib'; openAddScene()"><PlusOutlined />新建场景</a-button></div>
-      </div>
+      <div class="ov-page">
 
-      <div class="ov-kpis">
-        <div v-for="k in KPIS" :key="k.l" class="ov-kpi" :style="{ '--k': k.k }">
-          <small>{{ k.l }}</small><b>{{ k.v }}<em>{{ k.u }}</em></b><span class="kpi-line" />
+        <!-- 顶部标题 + KPI 行 -->
+        <div class="ov-top">
+          <div class="ov-title-row">
+            <div><h2 style="margin:0;font-size:18px">场景总览</h2><p style="margin:2px 0 0;font-size:12px;color:var(--muted)">全部训练场景的状态概况与设施异常提示</p></div>
+            <a-button type="primary" size="small" @click="tab = 'lib'; openAddScene()"><PlusOutlined />新建场景</a-button>
+          </div>
+          <div class="ov-kpis">
+            <div v-for="k in KPIS" :key="k.l" class="ov-kpi" :style="{ '--k': k.k }">
+              <small>{{ k.l }}</small><b>{{ k.v }}<em>{{ k.u }}</em></b><span class="kpi-line" />
+            </div>
+          </div>
         </div>
-      </div>
 
-      <div class="ov-body">
-        <div class="ov-left">
-          <div class="pp-panel">
+        <!-- 主体三列网格 -->
+        <div class="ov-grid">
+
+          <!-- 左列：场景类型分布 -->
+          <div class="pp-panel ov-col">
             <div class="pp-panel-h"><h3>场景类型分布</h3></div>
             <div class="ov-typelist">
               <div v-for="x in typeStats" :key="x.t" class="ov-typerow" :style="{ '--c': x.c }">
                 <div class="ov-typerow-label"><i :style="{ background: x.c }" />{{ x.t }}</div>
                 <div class="ov-typerow-bar"><div class="fill" :style="{ width: (x.n / SCENES.length * 100) + '%' }" /></div>
-                <div class="ov-typerow-val">{{ x.n }} 个 · {{ x.area.toLocaleString() }} m²</div>
+                <div class="ov-typerow-val">{{ x.n }}个 · {{ x.area.toLocaleString() }}m²</div>
               </div>
             </div>
-          </div>
-          <div class="pp-panel">
-            <div class="pp-panel-h"><h3>生命周期分布</h3><a class="r" style="font-size:12px;cursor:pointer" @click="tab='lib'">查看全部场景 →</a></div>
+            <div class="pp-panel-h" style="margin-top:auto;padding-top:10px;border-top:1px solid var(--line)"><h3>生命周期分布</h3><a class="r" style="font-size:12px;cursor:pointer" @click="tab='lib'">查看全部 →</a></div>
             <div class="ov-stages">
               <button v-for="st in LC_FLOW" :key="st" type="button" class="ov-stage" :style="{ '--c': SCENE_STATUS[st].c }" @click="tab='lib'; f.status = st">
                 <small>{{ SCENE_STATUS[st].t }}</small>
                 <b>{{ SCENES.filter(x => x.status === st).length }}<em>个</em></b>
-                <div class="ov-stage-names">
-                  <span v-for="x in SCENES.filter(x => x.status === st).slice(0,2)" :key="x.id">{{ x.name }}</span>
-                  <span v-if="SCENES.filter(x => x.status === st).length > 2" class="muted">等 {{ SCENES.filter(x => x.status === st).length }} 个</span>
-                  <span v-if="!SCENES.some(x => x.status === st)" class="muted">—</span>
-                </div>
               </button>
             </div>
           </div>
-        </div>
 
-        <div class="ov-right">
-          <div class="pp-panel">
+          <!-- 中列：设施异常 -->
+          <div class="pp-panel ov-col">
             <div class="pp-panel-h">
               <h3>设施异常</h3>
-              <a-badge v-if="damagedFacilities.length" :count="damagedFacilities.length" color="#FFA940" style="margin-left:8px" />
+              <a-badge v-if="damagedFacilities.length" :count="damagedFacilities.length" color="#FFA940" style="margin-left:6px" />
               <a class="r" style="font-size:12px;cursor:pointer" @click="tab='facility'">进入管理 →</a>
             </div>
             <div v-if="damagedFacilities.length" class="ov-alerts">
               <div v-for="f in damagedFacilities" :key="f.id" class="ov-alert" :class="f.status==='damaged'?'bad':'warn'">
-                <ExclamationCircleOutlined />
+                <ExclamationCircleOutlined style="flex:none;margin-top:2px" />
                 <div><b>{{ f.scene }} · {{ f.name }}</b><span>{{ FACILITY_STATUS[f.status].t }}{{ f.remark ? ' — '+f.remark : '' }}</span></div>
               </div>
             </div>
             <div v-else class="ov-empty"><CheckCircleOutlined style="color:#45E3A8;font-size:20px" /><span>所有设施状态正常</span></div>
           </div>
 
-          <div class="pp-panel">
+          <!-- 右列：近期预约 -->
+          <div class="pp-panel ov-col">
             <div class="pp-panel-h"><h3>近期预约</h3><a class="r" style="font-size:12px;cursor:pointer" @click="tab='booking'">查看全部 →</a></div>
             <div class="ov-bks">
-              <div v-for="b in allUpcomingBookings" :key="b.id" class="ov-bk" :style="{ '--c': BOOK_STATUS[b.status].c }">
+              <div v-for="b in allUpcomingBookings.slice(0,6)" :key="b.id" class="ov-bk" :style="{ '--c': BOOK_STATUS[b.status].c }">
                 <div class="ov-bk-date"><b>{{ b.date.slice(8) }}</b><small>{{ +b.date.slice(5,7) }}月</small></div>
                 <div class="ov-bk-main">
                   <div class="ov-bk-t"><b>{{ b.purpose }}</b><em>{{ BOOK_STATUS[b.status].t }}</em></div>
@@ -269,6 +268,7 @@ const cancelBooking  = (b: any) => message.warning(`已取消预约（演示）`
               <div v-if="!allUpcomingBookings.length" class="bz-empty">暂无预约记录</div>
             </div>
           </div>
+
         </div>
       </div>
     </template>
@@ -745,56 +745,60 @@ const cancelBooking  = (b: any) => message.warning(`已取消预约（演示）`
 
 <style scoped>
 /* ── KPI ── */
-.ov-kpis { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 20px; }
-.ov-kpi { position: relative; padding: 14px 18px 10px; background: rgba(22,40,64,.7); border: 1px solid var(--line); border-top: 2px solid var(--k); border-radius: 4px; overflow: hidden; }
-.ov-kpi small { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
-.ov-kpi b { font-size: 26px; font-weight: 600; color: var(--title); }
-.ov-kpi em { font-style: normal; font-size: 12px; color: var(--muted); margin-left: 3px; }
+/* ── 总览一屏布局 ── */
+.ov-page { display: flex; flex-direction: column; gap: 12px; height: calc(100vh - 108px); }
+.ov-top { flex: none; display: flex; flex-direction: column; gap: 10px; }
+.ov-title-row { display: flex; align-items: flex-start; justify-content: space-between; }
+.ov-kpis { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+.ov-kpi { position: relative; padding: 10px 14px 8px; background: rgba(22,40,64,.7); border: 1px solid var(--line); border-top: 2px solid var(--k); border-radius: 4px; overflow: hidden; }
+.ov-kpi small { display: block; font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+.ov-kpi b { font-size: 22px; font-weight: 600; color: var(--title); line-height: 1.2; }
+.ov-kpi em { font-style: normal; font-size: 11px; color: var(--muted); margin-left: 3px; }
 .kpi-line { position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--k), transparent); opacity: .35; }
 
-/* ── 总览 ── */
-.ov-body { display: grid; grid-template-columns: 1fr 380px; gap: 16px; align-items: start; }
-.ov-left, .ov-right { display: flex; flex-direction: column; gap: 16px; }
-.ov-typelist { padding: 4px 16px 14px; display: flex; flex-direction: column; gap: 12px; }
-.ov-typerow { display: grid; grid-template-columns: 110px 1fr 160px; align-items: center; gap: 12px; }
-.ov-typerow-label { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--text); }
-.ov-typerow-label i { width: 7px; height: 7px; border-radius: 1px; flex: none; }
-.ov-typerow-bar { height: 6px; background: rgba(46,211,230,.08); border-radius: 3px; overflow: hidden; }
+.ov-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.ov-col { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+
+/* 类型分布 */
+.ov-typelist { padding: 4px 16px 10px; display: flex; flex-direction: column; gap: 10px; }
+.ov-typerow { display: grid; grid-template-columns: 90px 1fr 110px; align-items: center; gap: 10px; }
+.ov-typerow-label { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text); }
+.ov-typerow-label i { width: 6px; height: 6px; border-radius: 1px; flex: none; }
+.ov-typerow-bar { height: 5px; background: rgba(46,211,230,.08); border-radius: 3px; overflow: hidden; }
 .ov-typerow-bar .fill { height: 100%; background: var(--c); border-radius: 3px; transition: width .6s; }
-.ov-typerow-val { font-size: 12px; color: var(--muted); text-align: right; }
-.ov-stages { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 4px 16px 16px; }
-.ov-stage { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; font: inherit; text-align: left; color: var(--text); cursor: pointer; background: rgba(46,211,230,.04); border: 1px solid rgba(46,211,230,.15); border-left: 3px solid var(--c); border-radius: 4px; transition: all .2s; }
-.ov-stage:hover { border-color: var(--c); background: rgba(46,211,230,.08); }
-.ov-stage small { font-size: 12px; color: var(--muted); }
-.ov-stage b { font-size: 22px; color: var(--c); font-family: var(--mono, monospace); }
-.ov-stage b em { font-style: normal; font-size: 12px; color: var(--muted); margin-left: 3px; }
-.ov-stage-names { display: flex; flex-wrap: wrap; gap: 4px 8px; font-size: 12px; min-height: 18px; overflow: hidden; white-space: nowrap; }
-.ov-bks { padding: 0 16px 12px; display: flex; flex-direction: column; gap: 8px; max-height: 360px; overflow-y: auto; }
-.ov-bk { display: flex; gap: 12px; align-items: center; padding: 8px 10px; background: rgba(46,211,230,.04); border: 1px solid rgba(46,211,230,.12); border-radius: 4px; }
-.ov-bk-date { flex: none; width: 44px; display: flex; flex-direction: column; align-items: center; padding: 4px 0; background: rgba(46,211,230,.1); border-radius: 4px; }
-.ov-bk-date b { font-size: 18px; line-height: 1.1; color: var(--title); }
-.ov-bk-date small { font-size: 11px; color: var(--muted); }
-.ov-bk-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.ov-bk-main small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
-.ov-bk-t { display: flex; align-items: center; gap: 8px; }
-.ov-bk-t b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 500; }
-.ov-bk-t em { flex: none; font-style: normal; font-size: 12px; color: var(--c); }
-.ov-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 4px 16px 14px; }
-.ov-card { display: flex; flex-direction: column; padding: 0; font: inherit; text-align: left; cursor: pointer; background: rgba(46,211,230,.04); border: 1px solid rgba(46,211,230,.15); border-radius: 6px; overflow: hidden; transition: all .2s; }
-.ov-card:hover { border-color: var(--c); }
-.ov-card-plan { aspect-ratio: 16/9; overflow: hidden; border-bottom: 1px solid rgba(46,211,230,.1); }
-.ov-card-body { padding: 8px 10px; }
-.ov-card-row { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
-.ov-card-row b { flex: 1; font-size: 13px; color: var(--title); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ov-card-row :deep(.ant-badge-status-text) { font-size: 11px; color: var(--muted); }
-.ov-card small { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 4px; }
-.ov-card small i { width: 6px; height: 6px; border-radius: 1px; }
-.ov-alerts { padding: 0 16px 12px; display: flex; flex-direction: column; gap: 8px; }
-.ov-alert { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border-radius: 4px; font-size: 13px; }
+.ov-typerow-val { font-size: 11.5px; color: var(--muted); text-align: right; }
+
+/* 生命周期分布 */
+.ov-stages { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 8px 16px 14px; }
+.ov-stage { display: flex; flex-direction: column; gap: 3px; padding: 9px 12px; font: inherit; text-align: left; color: var(--text); cursor: pointer; background: rgba(46,211,230,.04); border: 1px solid rgba(46,211,230,.12); border-left: 3px solid var(--c); border-radius: 4px; transition: all .2s; }
+.ov-stage:hover { background: rgba(46,211,230,.08); }
+.ov-stage small { font-size: 11px; color: var(--muted); }
+.ov-stage b { font-size: 18px; color: var(--c); font-family: var(--mono, monospace); line-height: 1.2; }
+.ov-stage b em { font-style: normal; font-size: 11px; color: var(--muted); margin-left: 2px; }
+
+/* 设施异常 */
+.ov-alerts { padding: 0 16px 12px; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; flex: 1; }
+.ov-alert { display: flex; align-items: flex-start; gap: 10px; padding: 9px 12px; border-radius: 4px; font-size: 13px; }
 .ov-alert.bad  { background: rgba(255,122,122,.07); border: 1px solid rgba(255,122,122,.3); color: #FF7A7A; }
 .ov-alert.warn { background: rgba(255,193,92,.07);  border: 1px solid rgba(255,193,92,.3);  color: #FFA940; }
-.ov-alert > div { flex: 1; } .ov-alert b { display: block; margin-bottom: 2px; } .ov-alert span { font-size: 12px; opacity: .85; }
+.ov-alert > div { flex: 1; } .ov-alert b { display: block; margin-bottom: 2px; font-size: 13px; } .ov-alert span { font-size: 12px; opacity: .85; }
 .ov-empty { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 20px; color: var(--muted); font-size: 13px; }
+
+/* 近期预约 */
+.ov-bks { padding: 0 14px 12px; display: flex; flex-direction: column; gap: 7px; overflow-y: auto; flex: 1; }
+.ov-bk { display: flex; gap: 10px; align-items: center; padding: 8px 10px; background: rgba(46,211,230,.04); border: 1px solid rgba(46,211,230,.12); border-radius: 4px; }
+.ov-bk-date { flex: none; width: 40px; display: flex; flex-direction: column; align-items: center; padding: 3px 0; background: rgba(46,211,230,.1); border-radius: 4px; }
+.ov-bk-date b { font-size: 16px; line-height: 1.1; color: var(--title); }
+.ov-bk-date small { font-size: 10px; color: var(--muted); }
+.ov-bk-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ov-bk-main small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; }
+.ov-bk-t { display: flex; align-items: center; gap: 8px; }
+.ov-bk-t b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 500; }
+.ov-bk-t em { flex: none; font-style: normal; font-size: 11px; color: var(--c); }
+
+/* 已废弃旧布局（保留空规则防止引用报错） */
+.ov-body {} .ov-left {} .ov-right {}
+.ov-cards {} .ov-card {} .ov-card-plan {} .ov-card-body {} .ov-card-row {} .ov-stage-names {}
 
 /* ── 通用列表行（对齐业务模块风格） ── */
 .lg-rows { display: flex; flex-direction: column; }
