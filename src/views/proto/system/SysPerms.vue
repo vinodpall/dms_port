@@ -12,7 +12,7 @@ const dirty = computed(() => cur.value && (draft.value.size !== cur.value.perms.
 const mod = ref(CATALOG[0].key)
 const curMod = computed(() => CATALOG.find((m) => m.key === mod.value)!)
 const stat = (k: string) => { const l = leafOf(k); const n = l.filter((x) => draft.value.has(x)).length; return { n, all: l.length, on: n === l.length && n > 0, half: n > 0 && n < l.length } }
-const toggle = (k: string, v: boolean) => { const s = new Set(draft.value); leafOf(k).forEach((x) => (v ? s.add(x) : s.delete(x))); if (v && !k.endsWith('.view') && k.split('.').length === 3) s.add(k.split('.').slice(0, 2).join('.') + '.view'); draft.value = s }
+const toggle = (k: string, v: boolean) => { const s = new Set(draft.value); leafOf(k).forEach((x) => (v ? s.add(x) : s.delete(x)));  draft.value = s }
 const toggleBtn = (p: PermNode, b: PermNode, v: boolean) => {
   const s = new Set(draft.value)
   if (b.key.endsWith('.view') && !v) leafOf(p.key).forEach((x) => s.delete(x)) // 取消查看 = 页面不可见
@@ -24,7 +24,7 @@ const users = (id: string) => sys.users.filter((u) => u.roleIds.includes(id)).le
 </script>
 <template>
   <div class="pp-head">
-    <div><h2>权限配置</h2><p>按角色勾选五大模块的页面访问与按钮操作权限；取消“查看”即隐藏该页面</p></div>
+    <div><h2>权限配置</h2><p>按“模块 → 菜单 → 子页面 → 按钮”逐级勾选权限；勾选按钮会自动勾选所在页的“查看”，取消“查看”即隐藏该页面</p></div>
     <div class="r" style="margin-left:auto; display:flex; gap:8px">
       <a-button :disabled="!dirty" @click="draft = new Set(cur.perms)">还原</a-button>
       <a-button type="primary" :disabled="!dirty || cur.builtin" @click="save">保存</a-button>
@@ -48,11 +48,16 @@ const users = (id: string) => sys.users.filter((u) => u.roleIds.includes(id)).le
       </div>
       <div v-if="cur.builtin" class="sp-tip">内置管理员角色默认拥有全部权限，不可修改</div>
       <div class="sp-body">
-        <div class="sp-row sp-hd"><span>页面</span><span>按钮权限</span></div>
-        <div v-for="p in curMod.children" :key="p.key" class="sp-row">
-          <a-checkbox :checked="stat(p.key).on" :indeterminate="stat(p.key).half" :disabled="cur.builtin" @change="(e: any) => toggle(p.key, e.target.checked)">{{ p.title }}</a-checkbox>
-          <div class="sp-btns">
-            <a-checkbox v-for="b in p.children" :key="b.key" :checked="draft.has(b.key)" :disabled="cur.builtin" @change="(e: any) => toggleBtn(p, b, e.target.checked)">{{ b.title }}</a-checkbox>
+        <div v-for="mn in curMod.children" :key="mn.key" class="sp-menu">
+          <div class="sp-mh">
+            <a-checkbox :checked="stat(mn.key).on" :indeterminate="stat(mn.key).half" :disabled="cur.builtin" @change="(e: any) => toggle(mn.key, e.target.checked)"><b>{{ mn.title }}</b></a-checkbox>
+            <em class="mono">{{ stat(mn.key).n }}/{{ stat(mn.key).all }}</em>
+          </div>
+          <div v-for="p in mn.children" :key="p.key" class="sp-row">
+            <a-checkbox :checked="stat(p.key).on" :indeterminate="stat(p.key).half" :disabled="cur.builtin" @change="(e: any) => toggle(p.key, e.target.checked)">{{ mn.children!.length > 1 || p.title !== mn.title ? p.title : '页面' }}</a-checkbox>
+            <div class="sp-btns">
+              <a-checkbox v-for="b in p.children" :key="b.key" :checked="draft.has(b.key)" :disabled="cur.builtin" @change="(e: any) => toggleBtn(p, b, e.target.checked)">{{ b.title }}</a-checkbox>
+            </div>
           </div>
         </div>
       </div>
@@ -75,8 +80,11 @@ const users = (id: string) => sys.users.filter((u) => u.roleIds.includes(id)).le
 .sp-mod.on { border-color: rgba(46,211,230,.6); background: rgba(46,211,230,.1); color: var(--title); }
 .sp-tip { margin-top: 12px; color: var(--muted); font-size: 12px; }
 .sp-body { flex: 1; overflow: auto; margin-top: 6px; }
-.sp-row { display: grid; grid-template-columns: 200px minmax(0, 1fr); align-items: center; gap: 16px; padding: 14px 8px; border-bottom: 1px dashed var(--line); }
-.sp-hd { color: var(--muted); font-size: 12px; padding: 10px 8px; border-bottom-style: solid; }
+.sp-menu { margin-top: 14px; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.sp-mh { display: flex; align-items: center; padding: 10px 14px; background: rgba(46,211,230,.06); border-bottom: 1px solid var(--line); }
+.sp-mh b { color: var(--title); font-weight: 500; } .sp-mh em { margin-left: auto; font-style: normal; font-size: 12px; color: var(--muted); }
+.sp-row { display: grid; grid-template-columns: 180px minmax(0, 1fr); align-items: start; gap: 16px; padding: 12px 14px 12px 38px; border-bottom: 1px dashed var(--line); }
+.sp-row:last-child { border-bottom: 0; }
 .sp-btns { display: flex; flex-wrap: wrap; gap: 10px 4px; }
-.sp-btns :deep(.ant-checkbox-wrapper) { min-width: 110px; margin-inline-start: 0; }
+.sp-btns :deep(.ant-checkbox-wrapper) { min-width: 128px; margin-inline-start: 0; }
 </style>
