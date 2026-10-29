@@ -83,9 +83,10 @@ const grid = computed(() => {
   for (let c = 1; c <= n; c++) { const r = Math.ceil(n / c); const w = fit(c, r); if (w > best.w + 0.5) best = { c, r, m: 1, w } }
   return best
 })
-const gridStyle = computed(() => ({ gridTemplateColumns: `repeat(${grid.value.c}, ${grid.value.w}px)`, gridAutoRows: `${(grid.value.w * 9) / 16}px`, gap: `${GAP}px` }))
+/* 画面铺满容器：行列等分，画面以 cover 方式裁切填充，侧栏展开 / 收起均无留边 */
+const gridStyle = computed(() => ({ gridTemplateColumns: `repeat(${grid.value.c}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${grid.value.r}, minmax(0, 1fr))`, gap: `${GAP}px` }))
 const cells = computed(() => (maxKey.value ? shown.value.filter((c) => c.key === maxKey.value).concat(channels.value.filter((c) => c.key === maxKey.value && !shown.value.some((s) => s.key === c.key))).slice(0, 1) : shown.value))
-const empties = computed(() => (maxKey.value || layout.value === 'auto' || featured.value ? 0 : Math.max(0, grid.value.c * grid.value.r - cells.value.length)))
+const empties = computed(() => { if (maxKey.value) return 0; const used = featured.value && cells.value.length > 1 ? cells.value.length - 1 + grid.value.m ** 2 : cells.value.length; return Math.max(0, grid.value.c * grid.value.r - used) })
 
 const active = ref('')
 const setMain = (k: string) => { mainKey.value = k; featured.value = true; maxKey.value = '' }
@@ -184,9 +185,9 @@ const clock = computed(() => now.value.toTimeString().slice(0, 8))
 .dw-bar .lb { font-size: 12.5px; color: var(--muted); } .dw-bar .sp { flex: 1; }
 .dw-bar .sw { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); }
 .dw-bar .pg { display: flex; align-items: center; gap: 2px; } .dw-bar .pg b { font-size: 12px; min-width: 40px; text-align: center; }
-.dw-wall { position: relative; flex: 1; min-height: 0; margin: 10px; padding: 8px; background: #081220; border-radius: 10px; display: grid; place-items: center; overflow: hidden; }
-.dw-none { color: var(--faint); font-size: 13px; }
-.dw-grid { display: grid; justify-content: center; align-content: center; grid-auto-flow: dense; }
+.dw-wall { position: relative; flex: 1; min-height: 0; margin: 10px; padding: 6px; background: #081220; border-radius: 10px; overflow: hidden; }
+.dw-none { height: 100%; display: grid; place-items: center; color: var(--faint); font-size: 13px; }
+.dw-grid { width: 100%; height: 100%; display: grid; grid-auto-flow: dense; }
 .dw-cell { position: relative; overflow: hidden; background: #0A1424; border: 1px solid rgba(46,211,230,.14); border-radius: 8px; cursor: pointer; }
 .dw-cell :deep(svg.cs) { display: block; width: 100%; height: 100%; }
 .dw-cell.act { border-color: #2ED3E6; box-shadow: 0 0 0 1px #2ED3E6; }
