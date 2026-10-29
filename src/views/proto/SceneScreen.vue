@@ -57,7 +57,7 @@ const EVENTS = [
   { lv: 'warn', t: '09:08:39', s: '复杂地形区', m: '起伏地形块 #4 位移待复位' },
 ]
 const events = computed(() => Array.from({ length: 6 }, (_, i) => EVENTS[(evOff.value + i) % EVENTS.length]))
-const CAMS = ['SC-002', 'SC-004', 'SC-006', 'SC-003'].map((id, i) => ({ s: SCENES.find((x) => x.id === id)!, n: `CAM-${pad([1, 4, 9, 7][i])}` }))
+const CAMS = SCENES.filter((s) => s.plan?.length).slice(0, 4).map((s, i) => ({ s, n: `CAM-${pad([1, 4, 9, 7][i])}` }))
 const BOOK = [
   { t: '08:30–10:00', s: '楼梯攀爬区', team: '二组', st: 'done' }, { t: '09:00–11:30', s: '综合训练场 A', team: '一组', st: 'run' },
   { t: '09:30–11:00', s: '巡检模拟区', team: '三组', st: 'run' }, { t: '09:30–12:00', s: '水域救援池', team: '应急组', st: 'run' },

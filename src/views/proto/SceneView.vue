@@ -164,6 +164,8 @@ const openNewBooking = (date?: string) => {
   bookingFormOpen.value = true
 }
 const submitBooking = () => {
+  if (!bookingForm.sceneId || !bookingForm.date || !bookingForm.timeStart || !bookingForm.timeEnd) { message.warning('请完整选择场景、日期和时间段'); return }
+  if (bookingForm.timeEnd <= bookingForm.timeStart) { message.warning('结束时间需晚于开始时间'); return }
   if (bookingConflict.value) { message.error('该时段已有预约，存在冲突，请调整时间'); return }
   bookingFormOpen.value = false
   message.success('预约已提交，等待确认（演示）')
@@ -214,13 +216,15 @@ const cancelBooking  = (b: any) => message.warning(`已取消预约（演示）`
             </div>
           </div>
           <div class="pp-panel">
-            <div class="pp-panel-h"><h3>场景列表</h3><a class="r" style="font-size:12px;cursor:pointer" @click="tab='lib'">查看全部 →</a></div>
-            <div class="ov-cards">
-              <button v-for="s in SCENES.slice(0,6)" :key="s.id" type="button" class="ov-card" :style="{ '--c': TYPE_COLOR[s.type] }" @click="tab='lib'; cur=s">
-                <div class="ov-card-plan"><ScenePlan :items="s.plan" :labels="false" :anim="false" :dim="['planning','building'].includes(s.status)" /></div>
-                <div class="ov-card-body">
-                  <div class="ov-card-row"><b>{{ s.name }}</b><a-badge :status="SCENE_STATUS[s.status].b" :text="SCENE_STATUS[s.status].t" /></div>
-                  <small><i :style="{ background: TYPE_COLOR[s.type] }" />{{ s.type }} · {{ s.area }} m²</small>
+            <div class="pp-panel-h"><h3>生命周期分布</h3><a class="r" style="font-size:12px;cursor:pointer" @click="tab='lib'">查看全部场景 →</a></div>
+            <div class="ov-stages">
+              <button v-for="st in LC_FLOW" :key="st" type="button" class="ov-stage" :style="{ '--c': SCENE_STATUS[st].c }" @click="tab='lib'; f.status = st">
+                <small>{{ SCENE_STATUS[st].t }}</small>
+                <b>{{ SCENES.filter(x => x.status === st).length }}<em>个</em></b>
+                <div class="ov-stage-names">
+                  <span v-for="x in SCENES.filter(x => x.status === st).slice(0,2)" :key="x.id">{{ x.name }}</span>
+                  <span v-if="SCENES.filter(x => x.status === st).length > 2" class="muted">等 {{ SCENES.filter(x => x.status === st).length }} 个</span>
+                  <span v-if="!SCENES.some(x => x.status === st)" class="muted">—</span>
                 </div>
               </button>
             </div>
@@ -245,13 +249,13 @@ const cancelBooking  = (b: any) => message.warning(`已取消预约（演示）`
 
           <div class="pp-panel">
             <div class="pp-panel-h"><h3>近期预约</h3><a class="r" style="font-size:12px;cursor:pointer" @click="tab='booking'">查看全部 →</a></div>
-            <div class="lg-rows">
-              <div v-for="b in allUpcomingBookings" :key="b.id" class="lg-row">
-                <span class="mono muted lg-col-date">{{ b.date.slice(5) }}</span>
-                <span class="mono lg-col-time">{{ b.timeStart }}–{{ b.timeEnd }}</span>
-                <span class="lg-col-scene muted" :title="b.sceneName">{{ b.sceneName }}</span>
-                <b class="lg-col-purpose">{{ b.purpose }}</b>
-                <em class="lg-col-st" :style="{ color: BOOK_STATUS[b.status].c }">{{ BOOK_STATUS[b.status].t }}</em>
+            <div class="ov-bks">
+              <div v-for="b in allUpcomingBookings" :key="b.id" class="ov-bk" :style="{ '--c': BOOK_STATUS[b.status].c }">
+                <div class="ov-bk-date"><b>{{ b.date.slice(8) }}</b><small>{{ +b.date.slice(5,7) }}月</small></div>
+                <div class="ov-bk-main">
+                  <div class="ov-bk-t"><b>{{ b.purpose }}</b><em>{{ BOOK_STATUS[b.status].t }}</em></div>
+                  <small class="muted"><span class="mono">{{ b.timeStart }}–{{ b.timeEnd }}</span> · {{ b.sceneName }}</small>
+                </div>
               </div>
               <div v-if="!allUpcomingBookings.length" class="bz-empty">暂无预约记录</div>
             </div>
@@ -539,7 +543,7 @@ const cancelBooking  = (b: any) => message.warning(`已取消预约（演示）`
             <div class="bk-cal-grid">
               <div v-for="(cell,i) in calDays" :key="i"
                 class="bk-cell"
-                :class="{ empty: !cell.date, today: cell.date && isToday(cell.date), selected: cell.date===selectedDate, weekend: (i%7)>=5 }"
+                :class="{ empty: !cell.date, today: cell.date && isToday(cell.date), selected: !!cell.date && cell.date===selectedDate, weekend: (i%7)>=5 }"
                 @click="cell.date && (selectedDate = selectedDate===cell.date ? null : cell.date)">
                 <span class="bk-cell-day">{{ cell.day || '' }}</span>
                 <div class="bk-cell-events">
@@ -607,7 +611,7 @@ const cancelBooking  = (b: any) => message.warning(`已取消预约（演示）`
               <a-select v-model:value="bkFilter.status" :options="['全部','已确认','待审核','已取消'].map(v=>({value:v,label:v}))" />
             </div>
             <div class="rc-f"><span>日期</span>
-              <a-input v-model:value="bkFilter.date" allow-clear placeholder="YYYY-MM-DD" />
+              <a-date-picker v-model:value="bkFilter.date" value-format="YYYY-MM-DD" allow-clear style="width:100%" placeholder="选择日期" />
             </div>
             <div class="rc-btns" style="grid-column:span 3">
               <a-button @click="Object.assign(bkFilter,{sceneId:'',status:'全部',date:''})">重置</a-button>
@@ -667,7 +671,7 @@ const cancelBooking  = (b: any) => message.warning(`已取消预约（演示）`
           <a-col :span="14"><a-form-item label="设施名称" required><a-input v-model:value="facilityForm.name" /></a-form-item></a-col>
           <a-col :span="10"><a-form-item label="分类"><a-select v-model:value="facilityForm.category" :options="FACILITY_CATEGORIES.map(v=>({value:v,label:v}))" /></a-form-item></a-col>
           <a-col :span="8"><a-form-item label="数量"><a-input-number v-model:value="facilityForm.qty" :min="1" style="width:100%" /></a-form-item></a-col>
-          <a-col :span="8"><a-form-item label="安装日期"><a-input v-model:value="facilityForm.installedAt" placeholder="YYYY-MM-DD" /></a-form-item></a-col>
+          <a-col :span="8"><a-form-item label="安装日期"><a-date-picker v-model:value="facilityForm.installedAt" value-format="YYYY-MM-DD" style="width:100%" /></a-form-item></a-col>
         </a-row>
         <a-form-item label="规格说明"><a-input v-model:value="facilityForm.spec" /></a-form-item>
         <a-form-item label="备注"><a-textarea v-model:value="facilityForm.remark" :rows="2" /></a-form-item>
@@ -684,9 +688,9 @@ const cancelBooking  = (b: any) => message.warning(`已取消预约（演示）`
             :options="SCENES.filter(s=>['active','trial'].includes(s.status)).map(s=>({value:s.id,label:s.name}))" />
         </a-form-item>
         <a-row :gutter="16">
-          <a-col :span="12"><a-form-item label="日期" required><a-input v-model:value="bookingForm.date" placeholder="YYYY-MM-DD" /></a-form-item></a-col>
-          <a-col :span="6"><a-form-item label="开始时间"><a-input v-model:value="bookingForm.timeStart" placeholder="09:00" /></a-form-item></a-col>
-          <a-col :span="6"><a-form-item label="结束时间"><a-input v-model:value="bookingForm.timeEnd" placeholder="11:00" /></a-form-item></a-col>
+          <a-col :span="12"><a-form-item label="日期" required><a-date-picker v-model:value="bookingForm.date" value-format="YYYY-MM-DD" style="width:100%" placeholder="选择日期" /></a-form-item></a-col>
+          <a-col :span="6"><a-form-item label="开始时间"><a-time-picker v-model:value="bookingForm.timeStart" value-format="HH:mm" format="HH:mm" :minute-step="15" style="width:100%" placeholder="开始" /></a-form-item></a-col>
+          <a-col :span="6"><a-form-item label="结束时间"><a-time-picker v-model:value="bookingForm.timeEnd" value-format="HH:mm" format="HH:mm" :minute-step="15" style="width:100%" placeholder="结束" /></a-form-item></a-col>
           <a-col :span="12"><a-form-item label="使用单位" required><a-input v-model:value="bookingForm.team" /></a-form-item></a-col>
           <a-col :span="12"><a-form-item label="用途" required><a-input v-model:value="bookingForm.purpose" /></a-form-item></a-col>
         </a-row>
@@ -719,6 +723,23 @@ const cancelBooking  = (b: any) => message.warning(`已取消预约（演示）`
 .ov-typerow-bar { height: 6px; background: rgba(46,211,230,.08); border-radius: 3px; overflow: hidden; }
 .ov-typerow-bar .fill { height: 100%; background: var(--c); border-radius: 3px; transition: width .6s; }
 .ov-typerow-val { font-size: 12px; color: var(--muted); text-align: right; }
+.ov-stages { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 4px 16px 16px; }
+.ov-stage { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; font: inherit; text-align: left; color: var(--text); cursor: pointer; background: rgba(46,211,230,.04); border: 1px solid rgba(46,211,230,.15); border-left: 3px solid var(--c); border-radius: 4px; transition: all .2s; }
+.ov-stage:hover { border-color: var(--c); background: rgba(46,211,230,.08); }
+.ov-stage small { font-size: 12px; color: var(--muted); }
+.ov-stage b { font-size: 22px; color: var(--c); font-family: var(--mono, monospace); }
+.ov-stage b em { font-style: normal; font-size: 12px; color: var(--muted); margin-left: 3px; }
+.ov-stage-names { display: flex; flex-wrap: wrap; gap: 4px 8px; font-size: 12px; min-height: 18px; overflow: hidden; white-space: nowrap; }
+.ov-bks { padding: 0 16px 12px; display: flex; flex-direction: column; gap: 8px; max-height: 360px; overflow-y: auto; }
+.ov-bk { display: flex; gap: 12px; align-items: center; padding: 8px 10px; background: rgba(46,211,230,.04); border: 1px solid rgba(46,211,230,.12); border-radius: 4px; }
+.ov-bk-date { flex: none; width: 44px; display: flex; flex-direction: column; align-items: center; padding: 4px 0; background: rgba(46,211,230,.1); border-radius: 4px; }
+.ov-bk-date b { font-size: 18px; line-height: 1.1; color: var(--title); }
+.ov-bk-date small { font-size: 11px; color: var(--muted); }
+.ov-bk-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.ov-bk-main small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.ov-bk-t { display: flex; align-items: center; gap: 8px; }
+.ov-bk-t b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 500; }
+.ov-bk-t em { flex: none; font-style: normal; font-size: 12px; color: var(--c); }
 .ov-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 4px 16px 14px; }
 .ov-card { display: flex; flex-direction: column; padding: 0; font: inherit; text-align: left; cursor: pointer; background: rgba(46,211,230,.04); border: 1px solid rgba(46,211,230,.15); border-radius: 6px; overflow: hidden; transition: all .2s; }
 .ov-card:hover { border-color: var(--c); }
