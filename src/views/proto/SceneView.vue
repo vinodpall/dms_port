@@ -275,22 +275,34 @@ const cancelBooking  = (b: any) => message.warning(`已取消预约（演示）`
 
     <!-- ═══════════════ 场景列表 ═══════════════ -->
     <template v-else-if="tab === 'lib'">
-      <div class="pp-head">
-        <div><h2>场景列表</h2><p>管理全部训练场景档案与生命周期</p></div>
-        <div class="r"><a-button type="primary" @click="openAddScene"><PlusOutlined />新建场景</a-button></div>
-      </div>
-      <div class="sc">
+      <div class="sc-page">
         <div class="pp-panel sc-list">
-          <div class="pp-panel-h"><h3>场景</h3><span class="muted" style="font-size:12px">{{ list.length }}/{{ SCENES.length }}</span></div>
-          <div class="sc-filter">
-            <a-input v-model:value="f.kw" allow-clear placeholder="搜索名称 / 编号"><template #prefix><SearchOutlined class="muted" /></template></a-input>
+          <!-- 标题行 -->
+          <div class="sc-list-hd">
+            <span class="sc-list-title">场景<em>{{ list.length }}/{{ SCENES.length }}</em></span>
+            <a-button type="primary" size="small" @click="openAddScene"><PlusOutlined />新建</a-button>
+          </div>
+          <!-- 搜索 -->
+          <div class="sc-search">
+            <a-input v-model:value="f.kw" allow-clear placeholder="搜索名称 / 编号" size="small">
+              <template #prefix><SearchOutlined class="muted" /></template>
+            </a-input>
+          </div>
+          <!-- 类型筛选 -->
+          <div class="sc-filter-group">
+            <span class="sc-filter-label">类型</span>
             <div class="sc-tags">
               <button v-for="t in ['全部',...SCENE_TYPES]" :key="t" type="button" :class="{ on: f.type===t }" @click="f.type=t">{{ t }}</button>
             </div>
+          </div>
+          <!-- 状态筛选 -->
+          <div class="sc-filter-group">
+            <span class="sc-filter-label">状态</span>
             <div class="sc-tags">
               <button v-for="s in ['全部','正式启用','试运行','建设中','规划中','维护中','已停用']" :key="s" type="button" :class="{ on: f.status===s }" @click="f.status=s">{{ s }}</button>
             </div>
           </div>
+          <!-- 场景列表 -->
           <div class="sc-items">
             <button v-for="s in list" :key="s.id" type="button" class="sc-item" :class="{ on: cur.id===s.id }" :style="{ '--c': TYPE_COLOR[s.type] }" @click="cur=s; detailTab='base'">
               <span class="sc-mini"><ScenePlan :items="s.plan" :labels="false" :anim="false" :dim="['planning','building'].includes(s.status)" /></span>
@@ -299,6 +311,7 @@ const cancelBooking  = (b: any) => message.warning(`已取消预约（演示）`
                 <small><i :style="{ background: TYPE_COLOR[s.type] }" />{{ s.type }} · {{ s.area }} m² · {{ s.location }}</small>
               </span>
             </button>
+            <div v-if="!list.length" class="sc-empty">暂无匹配场景</div>
           </div>
         </div>
 
@@ -810,25 +823,31 @@ const cancelBooking  = (b: any) => message.warning(`已取消预约（演示）`
 .lg-col-purpose { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lg-col-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* ── 场景列表 ── */
-.sc { display: grid; grid-template-columns: 290px 1fr; gap: 16px; align-items: start; }
-.sc-list { position: sticky; top: 0; }
-.sc-filter { padding: 10px 12px 6px; display: flex; flex-direction: column; gap: 2px; }
-.sc-tags { display: flex; flex-wrap: wrap; gap: 5px; margin: 6px 0 2px; }
-.sc-tags button { padding: 2px 9px; font: inherit; font-size: 12px; color: var(--muted); cursor: pointer; background: rgba(46,211,230,.05); border: 1px solid var(--line); border-radius: 4px; transition: all .15s; }
+/* ── 场景列表一屏布局 ── */
+.sc-page { display: grid; grid-template-columns: 270px 1fr; gap: 14px; height: calc(100vh - 108px); }
+.sc-list { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.sc-list-hd { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px 8px; flex: none; }
+.sc-list-title { font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 6px; }
+.sc-list-title em { font-style: normal; font-size: 12px; color: var(--muted); font-weight: 400; }
+.sc-search { padding: 0 10px 6px; flex: none; }
+.sc-filter-group { padding: 4px 10px 2px; flex: none; }
+.sc-filter-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; display: block; }
+.sc-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 2px; }
+.sc-tags button { padding: 2px 8px; font: inherit; font-size: 11.5px; color: var(--muted); cursor: pointer; background: rgba(46,211,230,.04); border: 1px solid var(--line); border-radius: 3px; transition: all .15s; }
 .sc-tags button.on { color: #fff; border-color: var(--accent); background: var(--accent-soft); }
-.sc-items { padding: 4px 8px 10px; max-height: calc(100vh - 300px); overflow-y: auto; }
-.sc-item { width: 100%; display: flex; gap: 10px; align-items: center; padding: 9px 10px; margin-top: 4px; font: inherit; color: var(--text); text-align: left; cursor: pointer; background: transparent; border: 1px solid transparent; border-radius: 6px; transition: all .18s; }
+.sc-items { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 8px 8px; }
+.sc-item { width: 100%; display: flex; gap: 10px; align-items: center; padding: 8px 10px; margin-top: 4px; font: inherit; color: var(--text); text-align: left; cursor: pointer; background: transparent; border: 1px solid transparent; border-radius: 6px; transition: all .18s; }
 .sc-item:hover { background: rgba(46,211,230,.05); }
 .sc-item.on { background: linear-gradient(90deg, color-mix(in srgb, var(--c) 15%, transparent), rgba(27,51,82,.4)); border-color: color-mix(in srgb, var(--c) 50%, transparent); }
-.sc-mini { width: 68px; height: 42px; flex: none; border: 1px solid rgba(46,211,230,.18); border-radius: 3px; overflow: hidden; }
+.sc-mini { width: 64px; height: 40px; flex: none; border: 1px solid rgba(46,211,230,.18); border-radius: 3px; overflow: hidden; }
 .sc-item-b { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .sc-item-t { display: flex; align-items: center; gap: 6px; }
 .sc-item-t b { font-size: 13px; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sc-item-t :deep(.ant-badge-status-text) { font-size: 11px; color: var(--muted); }
 .sc-item small { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sc-item small i { width: 6px; height: 6px; border-radius: 1px; flex: none; }
-.sc-detail { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.sc-empty { padding: 20px; text-align: center; color: var(--muted); font-size: 13px; }
+.sc-detail { display: flex; flex-direction: column; gap: 12px; min-height: 0; overflow: hidden; }
 .sc-hd { padding: 16px 20px; background: linear-gradient(120deg, color-mix(in srgb, var(--c) 14%, rgba(22,42,69,.9)), rgba(19,38,63,.85) 55%) !important; }
 .sc-hd-top { display: flex; gap: 20px; align-items: flex-start; }
 .sc-hd-info { flex: 1; }
@@ -839,7 +858,9 @@ const cancelBooking  = (b: any) => message.warning(`已取消预约（演示）`
 .sc-hd-meta small { display: block; font-size: 11px; color: rgba(255,255,255,.5); margin-bottom: 2px; }
 .sc-hd-meta b { font-size: 13px; color: #fff; font-weight: 500; }
 .sc-hd-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
-.sc-body { padding: 0; overflow: hidden; }
+.sc-body { padding: 0; overflow: hidden; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.sc-body > .sc-tabs { flex: none; }
+.sc-body > .sc-tab-pane, .sc-body > div[class^="sc-tab"] { flex: 1; min-height: 0; overflow-y: auto; }
 .sc-tabs { display: flex; border-bottom: 1px solid rgba(46,211,230,.15); padding: 0 16px; }
 .sc-tabs button { padding: 11px 14px; font: inherit; font-size: 13px; color: var(--muted); background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; transition: all .18s; margin-bottom: -1px; }
 .sc-tabs button.on { color: var(--accent); border-bottom-color: var(--accent); }
