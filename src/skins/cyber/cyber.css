@@ -56,20 +56,22 @@
 .cy-hero { --h: min(80vh, calc((100vw - 420px) / 1.54)); position: absolute; z-index: 0; left: 2vw; top: calc(50% + 30px); height: var(--h); aspect-ratio: 1800 / 1168;
   translate: 0 -50%; transform-origin: 30% 50%; pointer-events: none; user-select: none;
   animation: cy-hero-in 1.2s cubic-bezier(.2,.7,.2,1) both, cy-zoom 30s ease-in-out 1.2s infinite alternate; }
-.cy-hero img { display: block; width: 100%; height: 100%; }
+.cy-hero img { display: block; width: 100%; height: 100%; filter: brightness(1.15) contrast(1.12) saturate(1.2); }
 @keyframes cy-hero-in { from { opacity: 0; transform: translateY(24px) scale(.98); } }
 @keyframes cy-zoom { from { transform: scale(1); } to { transform: scale(1.03); } }
 .cy-hero-fx { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-.fx-route { fill: none; stroke: #7FF3FF; stroke-width: 2.5; stroke-dasharray: 14 16; opacity: .75; animation: fx-dash 2.4s linear infinite; }
+.fx-route { fill: none; stroke: #7FF3FF; stroke-width: 3.5; stroke-dasharray: 16 14; opacity: .95;
+  filter: drop-shadow(0 0 3px rgba(127,243,255,.7)); animation: fx-dash 2.2s linear infinite; }
 @keyframes fx-dash { to { stroke-dashoffset: -60; } }
-.fx-ping { fill: none; stroke: #7FF3FF; stroke-width: 2; transform-box: fill-box; transform-origin: center; animation: fx-ping 4.5s ease-out infinite; }
-@keyframes fx-ping { 0% { opacity: .9; transform: scale(.6); } 70%, 100% { opacity: 0; transform: scale(2.2); } }
-.fx-pad { mix-blend-mode: screen; opacity: .1; animation: fx-breathe 6s cubic-bezier(.45,0,.55,1) infinite; }
-@keyframes fx-breathe { 0%, 100% { opacity: .08; } 45%, 55% { opacity: .7; } }
-.fx-holo { fill: rgba(127,243,255,.28); animation: fx-holo 6s linear infinite; }
+.fx-ping { fill: none; stroke: #7FF3FF; stroke-width: 2.5; transform-box: fill-box; transform-origin: center;
+  filter: drop-shadow(0 0 4px #7FF3FF); animation: fx-ping 4s ease-out infinite; }
+@keyframes fx-ping { 0% { opacity: 1; transform: scale(.5); } 65%, 100% { opacity: 0; transform: scale(2.6); } }
+.fx-pad { mix-blend-mode: screen; opacity: .15; animation: fx-breathe 5s cubic-bezier(.45,0,.55,1) infinite; }
+@keyframes fx-breathe { 0%, 100% { opacity: .12; } 45%, 55% { opacity: .85; } }
+.fx-holo { fill: rgba(127,243,255,.45); animation: fx-holo 5s linear infinite; }
 @keyframes fx-holo { from { transform: translateY(-40px); } to { transform: translateY(210px); } }
-.fx-led { fill: #5CFFC1; filter: drop-shadow(0 0 4px #5CFFC1); animation: fx-led 5s ease-in-out infinite; }
-@keyframes fx-led { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
+.fx-led { fill: #5CFFC1; filter: drop-shadow(0 0 6px #5CFFC1) drop-shadow(0 0 12px rgba(92,255,193,.5)); animation: fx-led 4.5s ease-in-out infinite; }
+@keyframes fx-led { 0%, 100% { opacity: .3; } 50% { opacity: 1; } }
 
 /* 入场 */
 .cy-title { animation: cy-fade-down .8s .2s both; }
@@ -155,20 +157,22 @@
 /* ================= 登录页：背景与「数采管理平台」登录页一致 ================= */
 /* 插画已去掉自带的深色底块（原先四周像被雾包裹），直接落在等距网格地面上 */
 .cy-login { --bg: #10233a; background: var(--bg); }
-.cy-login-bg { background: #10233a; overflow: hidden; }
+.cy-login-bg { background: #0e1f33; overflow: hidden; }
 .cy-lfloor { position: absolute; left: 34%; top: 54%; width: 3200px; height: 3200px; margin: -1600px 0 0 -1600px;
   transform: rotateX(57deg) rotateZ(45deg); transform-origin: 50% 50%;
   background:
-    linear-gradient(rgba(46,211,230,.13) 1px, transparent 1px) 0 0 / 160px 160px,
-    linear-gradient(90deg, rgba(46,211,230,.13) 1px, transparent 1px) 0 0 / 160px 160px,
-    linear-gradient(rgba(46,211,230,.045) 1px, transparent 1px) 0 0 / 40px 40px,
-    linear-gradient(90deg, rgba(46,211,230,.045) 1px, transparent 1px) 0 0 / 40px 40px;
-  -webkit-mask-image: radial-gradient(closest-side, #000 30%, transparent 75%); mask-image: radial-gradient(closest-side, #000 30%, transparent 75%); }
+    linear-gradient(rgba(46,211,230,.32) 1px, transparent 1px) 0 0 / 160px 160px,
+    linear-gradient(90deg, rgba(46,211,230,.32) 1px, transparent 1px) 0 0 / 160px 160px,
+    linear-gradient(rgba(46,211,230,.12) 1px, transparent 1px) 0 0 / 40px 40px,
+    linear-gradient(90deg, rgba(46,211,230,.12) 1px, transparent 1px) 0 0 / 40px 40px;
+  -webkit-mask-image: radial-gradient(closest-side, #000 40%, transparent 80%); mask-image: radial-gradient(closest-side, #000 40%, transparent 80%);
+  animation: cy-grid-drift 24s linear infinite; }
+@keyframes cy-grid-drift { from { background-position: 0 0, 0 0, 0 0, 0 0; } to { background-position: 160px 160px, 160px 160px, 40px 40px, 40px 40px; } }
 .cy-login-fade { background:
-    radial-gradient(ellipse 60% 70% at 32% 52%, transparent 55%, rgba(16,35,58,.75) 100%),
-    linear-gradient(90deg, transparent 55%, rgba(16,35,58,.55) 72%, rgba(16,35,58,.8)),
-    linear-gradient(rgba(46,211,230,.045) 1px, transparent 1px) 0 0 / 48px 48px,
-    linear-gradient(90deg, rgba(46,211,230,.045) 1px, transparent 1px) 0 0 / 48px 48px; }
+    radial-gradient(ellipse 60% 70% at 32% 52%, transparent 50%, rgba(14,31,51,.8) 100%),
+    linear-gradient(90deg, transparent 52%, rgba(14,31,51,.6) 70%, rgba(14,31,51,.85)),
+    linear-gradient(rgba(46,211,230,.10) 1px, transparent 1px) 0 0 / 48px 48px,
+    linear-gradient(90deg, rgba(46,211,230,.10) 1px, transparent 1px) 0 0 / 48px 48px; }
 
 /* ================= 登录卡片：通透玻璃（与数采登录页一致） ================= */
 .cy-card { padding: 46px 44px 36px; border-radius: 30px; border: 1px solid rgba(255,255,255,.06);
