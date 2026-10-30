@@ -447,10 +447,14 @@ const cancelBooking  = (b: any) => message.warning(`已取消预约（演示）`
 
     <!-- ═══════════════ 设施管理 ═══════════════ -->
     <template v-else-if="tab === 'facility'">
+      <!-- 页头 -->
       <div class="pp-head">
-        <div><h2>设施管理</h2><p>管理各场景内的固定设施档案与状态</p></div>
-        <div class="r">
-          <a-select :value="fScene.id" style="width:180px;margin-right:12px"
+        <div>
+          <h2>设施管理</h2>
+          <p>管理各场景内的固定设施档案与状态，共 {{ fScene.facilities.length }} 项设施，在线 {{ fScene.facilities.filter(f=>f.status==='normal').length }} 台正常</p>
+        </div>
+        <div class="r" style="display:flex;align-items:center;gap:10px">
+          <a-select :value="fScene.id" style="width:180px"
             :options="SCENES.map(s=>({value:s.id,label:s.name}))"
             @change="(v:any)=>{ fScene=SCENES.find(s=>s.id===v)??SCENES[0] }">
             <template #option="{ label, value: sid }">
@@ -463,63 +467,79 @@ const cancelBooking  = (b: any) => message.warning(`已取消预约（演示）`
         </div>
       </div>
 
-      <div class="pp-panel fac-scene-bar">
-        <div class="fac-scene-info">
-          <span class="mono muted" style="font-size:12px">{{ fScene.id }}</span>
-          <b style="font-size:16px;margin-left:10px">{{ fScene.name }}</b>
-          <a-tag :style="{ marginLeft:'10px', color:TYPE_COLOR[fScene.type], borderColor:TYPE_COLOR[fScene.type]+'55', background:TYPE_COLOR[fScene.type]+'15' }">{{ fScene.type }}</a-tag>
-          <a-badge :status="SCENE_STATUS[fScene.status].b" :text="SCENE_STATUS[fScene.status].t" style="margin-left:10px" />
-        </div>
-        <div class="fac-scene-kpis">
-          <div v-for="item in [{l:'设施总数',v:fScene.facilities.length,c:'#2ED3E6'},{l:'正常',v:fScene.facilities.filter(f=>f.status==='normal').length,c:'#45E3A8'},{l:'异常',v:fScene.facilities.filter(f=>f.status!=='normal').length,c:'#FF7A7A'}]" :key="item.l" class="fac-kpi">
-            <small>{{ item.l }}</small><b :style="{ color:item.c }">{{ item.v }}</b>
+      <div class="pp-panel fac-page">
+        <!-- 场景信息条 + KPI -->
+        <div class="fac-scene-bar">
+          <div class="fac-scene-info">
+            <span class="mono muted" style="font-size:12px">{{ fScene.id }}</span>
+            <b style="font-size:15px;margin-left:10px;color:var(--title)">{{ fScene.name }}</b>
+            <a-tag :style="{ marginLeft:'10px', color:TYPE_COLOR[fScene.type], borderColor:TYPE_COLOR[fScene.type]+'55', background:TYPE_COLOR[fScene.type]+'15', fontSize:'12px' }">{{ fScene.type }}</a-tag>
+            <a-badge :status="SCENE_STATUS[fScene.status].b" :text="SCENE_STATUS[fScene.status].t" style="margin-left:10px" />
+          </div>
+          <div class="fac-scene-kpis">
+            <div v-for="item in [{l:'设施总数',v:fScene.facilities.length,c:'#2ED3E6'},{l:'正常',v:fScene.facilities.filter(f=>f.status==='normal').length,c:'#45E3A8'},{l:'异常',v:fScene.facilities.filter(f=>f.status!=='normal').length,c:'#FF7A7A'}]" :key="item.l" class="fac-kpi">
+              <small>{{ item.l }}</small><b :style="{ color:item.c }">{{ item.v }}</b>
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- 筛选栏（对齐 BizRecords rc-filter 样式） -->
-      <div class="pp-panel" style="padding:0;margin-bottom:0">
-        <div class="rc-filter">
-          <div class="rc-f"><span>设施分类</span>
-            <a-select v-model:value="fFilter.category" :options="['全部',...FACILITY_CATEGORIES].map(v=>({value:v,label:v}))" />
-          </div>
-          <div class="rc-f"><span>状态</span>
-            <a-select v-model:value="fFilter.status" :options="['全部','正常','损坏','维修中','已报废'].map(v=>({value:v,label:v}))" />
-          </div>
-          <div class="rc-f"><span>关键词</span>
-            <a-input v-model:value="fFilter.kw" allow-clear placeholder="搜索设施名称" />
-          </div>
-          <div class="rc-btns" style="grid-column:span 3">
-            <a-button @click="Object.assign(fFilter,{category:'全部',status:'全部',kw:''})">重置</a-button>
-          </div>
+        <!-- 筛选栏 -->
+        <div class="fac-filter">
+          <a-input v-model:value="fFilter.kw" allow-clear placeholder="名称 / 编号" style="width:200px" size="small">
+            <template #prefix><SearchOutlined class="muted" /></template>
+          </a-input>
+          <a-select v-model:value="fFilter.category" size="small" style="width:130px"
+            :options="['全部',...FACILITY_CATEGORIES].map(v=>({value:v,label:v}))" placeholder="设施分类" />
+          <a-select v-model:value="fFilter.status" size="small" style="width:110px"
+            :options="['全部','正常','损坏','维修中','已报废'].map(v=>({value:v,label:v}))" placeholder="状态" />
+          <a-button size="small" @click="Object.assign(fFilter,{category:'全部',status:'全部',kw:''})">重置</a-button>
+          <span class="fac-total">共 {{ facilityList.length }} 项</span>
         </div>
-      </div>
 
-      <div class="pp-panel" style="padding:0;overflow:hidden">
-        <a-table :data-source="facilityList" row-key="id" size="middle" :pagination="{ pageSize:12, showSizeChanger:false, showTotal:(t:number)=>`共 ${t} 项` }"
-          :locale="{ emptyText:'该场景暂无设施记录' }"
-          :columns="[{title:'编号',dataIndex:'id',width:110},{title:'设施名称',dataIndex:'name',ellipsis:true},{title:'分类',dataIndex:'category',width:90},{title:'数量',dataIndex:'qty',width:60,align:'right'},{title:'规格说明',dataIndex:'spec',ellipsis:true},{title:'安装日期',dataIndex:'installedAt',width:100},{title:'状态',key:'status',width:90},{title:'备注',dataIndex:'remark',ellipsis:true},{title:'操作',key:'action',width:110,fixed:'right'}]">
-          <template #bodyCell="{ column, record }">
-            <template v-if="column.key==='status'">
+        <!-- 表头 -->
+        <div class="fac-thead">
+          <span class="fac-col-id">编号</span>
+          <span class="fac-col-name">设施名称</span>
+          <span class="fac-col-cat">分类</span>
+          <span class="fac-col-qty">数量</span>
+          <span class="fac-col-spec">规格说明</span>
+          <span class="fac-col-date">安装日期</span>
+          <span class="fac-col-status">状态</span>
+          <span class="fac-col-remark">备注</span>
+          <span class="fac-col-ops">操作</span>
+        </div>
+
+        <!-- 数据行 -->
+        <div class="fac-rows">
+          <div v-for="record in facilityList" :key="record.id" class="fac-row">
+            <span class="fac-col-id mono muted" style="font-size:12px">{{ record.id }}</span>
+            <span class="fac-col-name"><b>{{ record.name }}</b></span>
+            <span class="fac-col-cat">{{ record.category }}</span>
+            <span class="fac-col-qty muted">{{ record.qty }}</span>
+            <span class="fac-col-spec muted" style="font-size:12.5px">{{ record.spec }}</span>
+            <span class="fac-col-date mono muted" style="font-size:12px">{{ record.installedAt }}</span>
+            <span class="fac-col-status">
               <a-dropdown trigger="click">
-                <span :style="{ color:FACILITY_STATUS[record.status].c, cursor:'pointer' }">{{ FACILITY_STATUS[record.status].t }} ▾</span>
+                <span :style="{ color:FACILITY_STATUS[record.status].c, cursor:'pointer', fontSize:'13px' }">
+                  {{ FACILITY_STATUS[record.status].t }} <span style="font-size:10px;opacity:.7">▾</span>
+                </span>
                 <template #overlay>
                   <a-menu>
-                    <a-menu-item v-for="(meta,key) in FACILITY_STATUS" :key="key" :disabled="key===record.status" @click="changeStatus(record,key)">
+                    <a-menu-item v-for="(meta,key) in FACILITY_STATUS" :key="key" :disabled="key===record.status" @click="changeStatus(record, key as string)">
                       <span :style="{ color:meta.c }">{{ meta.t }}</span>
                     </a-menu-item>
                   </a-menu>
                 </template>
               </a-dropdown>
-            </template>
-            <template v-else-if="column.key==='action'">
-              <span class="bz-ops">
-                <a @click="openEditFacility(record)">编辑</a>
-                <a class="d" @click="message.warning('删除功能演示中')">删除</a>
-              </span>
-            </template>
-          </template>
-        </a-table>
+            </span>
+            <span class="fac-col-remark muted" style="font-size:12.5px">{{ record.remark || '—' }}</span>
+            <span class="fac-col-ops bz-ops">
+              <a @click="openEditFacility(record)">编辑</a>
+              <a class="d" @click="message.warning('删除功能演示中')">删除</a>
+            </span>
+          </div>
+          <div v-if="!facilityList.length" class="fac-empty">该场景暂无设施记录</div>
+        </div>
       </div>
     </template>
 
@@ -889,12 +909,39 @@ const cancelBooking  = (b: any) => message.warning(`已取消预约（演示）`
 .lc-rec-remark { margin: 0; font-size: 13px; color: var(--muted); }
 
 /* ── 设施管理 ── */
-.fac-scene-bar { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; margin-bottom: 0; }
-.fac-scene-info { display: flex; align-items: center; }
-.fac-scene-kpis { display: flex; gap: 24px; }
-.fac-kpi { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.fac-page { padding: 0; display: flex; flex-direction: column; overflow: hidden; }
+.fac-scene-bar { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px 10px; border-bottom: 1px solid var(--line); flex: none; }
+.fac-scene-info { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+.fac-scene-kpis { display: flex; gap: 28px; flex: none; }
+.fac-kpi { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
 .fac-kpi small { font-size: 11px; color: var(--muted); }
-.fac-kpi b { font-size: 22px; font-weight: 600; }
+.fac-kpi b { font-size: 22px; font-weight: 700; line-height: 1.1; }
+
+/* 筛选栏 */
+.fac-filter { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--line); flex: none; flex-wrap: wrap; }
+.fac-total { margin-left: auto; font-size: 12px; color: var(--muted); }
+
+/* 表格 */
+.fac-thead { display: grid; grid-template-columns: var(--fac-cols); padding: 0 20px; gap: 0; background: rgba(46,211,230,.04); border-bottom: 1px solid var(--line); flex: none; }
+.fac-thead span { padding: 9px 8px; font-size: 12px; color: var(--muted); font-weight: 500; }
+.fac-rows { flex: 1; overflow-y: auto; }
+.fac-row { display: grid; grid-template-columns: var(--fac-cols); padding: 0 20px; gap: 0; border-bottom: 1px solid rgba(46,211,230,.07); transition: background .12s; align-items: center; }
+.fac-row:hover { background: rgba(46,211,230,.04); }
+.fac-row:last-child { border-bottom: none; }
+.fac-row span { padding: 12px 8px; font-size: 13px; }
+.fac-empty { padding: 40px; text-align: center; color: var(--muted); font-size: 13px; }
+
+/* 列宽定义 */
+.fac-page { --fac-cols: 100px 1fr 90px 55px 200px 100px 80px 1fr 100px; }
+.fac-col-id    { grid-column: 1; }
+.fac-col-name  { grid-column: 2; }
+.fac-col-cat   { grid-column: 3; }
+.fac-col-qty   { grid-column: 4; }
+.fac-col-spec  { grid-column: 5; }
+.fac-col-date  { grid-column: 6; }
+.fac-col-status{ grid-column: 7; }
+.fac-col-remark{ grid-column: 8; }
+.fac-col-ops   { grid-column: 9; }
 
 /* 对齐业务模块 rc-filter 样式 */
 .rc-filter { display: grid; grid-template-columns: repeat(6, minmax(0,1fr)); gap: 10px 16px; padding: 14px 16px; border-bottom: 1px solid rgba(46,211,230,.1); font-size: 13px; color: var(--muted); }
