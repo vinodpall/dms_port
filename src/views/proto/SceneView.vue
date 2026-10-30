@@ -102,6 +102,14 @@ const facilityList = computed(() =>
     (!fFilter.kw || f.name.includes(fFilter.kw))
   )
 )
+const facPage = ref(1)
+const facPageSize = 10
+const facilityPageList = computed(() => {
+  const start = (facPage.value - 1) * facPageSize
+  return facilityList.value.slice(start, start + facPageSize)
+})
+watch(fFilter, () => { facPage.value = 1 })
+watch(fScene, () => { facPage.value = 1 })
 const facilityFormOpen = ref(false)
 const editingFacility = ref<SceneFacility | null>(null)
 const facilityForm = reactive({ name: '', category: '障碍设施', qty: 1, spec: '', installedAt: '', remark: '' })
@@ -468,18 +476,13 @@ const cancelBooking  = (b: any) => message.warning(`已取消预约（演示）`
       </div>
 
       <div class="pp-panel fac-page">
-        <!-- 场景信息条 + KPI -->
+        <!-- 场景信息条（仅标识，无统计） -->
         <div class="fac-scene-bar">
           <div class="fac-scene-info">
             <span class="mono muted" style="font-size:12px">{{ fScene.id }}</span>
             <b style="font-size:15px;margin-left:10px;color:var(--title)">{{ fScene.name }}</b>
             <a-tag :style="{ marginLeft:'10px', color:TYPE_COLOR[fScene.type], borderColor:TYPE_COLOR[fScene.type]+'55', background:TYPE_COLOR[fScene.type]+'15', fontSize:'12px' }">{{ fScene.type }}</a-tag>
             <a-badge :status="SCENE_STATUS[fScene.status].b" :text="SCENE_STATUS[fScene.status].t" style="margin-left:10px" />
-          </div>
-          <div class="fac-scene-kpis">
-            <div v-for="item in [{l:'设施总数',v:fScene.facilities.length,c:'#2ED3E6'},{l:'正常',v:fScene.facilities.filter(f=>f.status==='normal').length,c:'#45E3A8'},{l:'异常',v:fScene.facilities.filter(f=>f.status!=='normal').length,c:'#FF7A7A'}]" :key="item.l" class="fac-kpi">
-              <small>{{ item.l }}</small><b :style="{ color:item.c }">{{ item.v }}</b>
-            </div>
           </div>
         </div>
 
@@ -511,7 +514,7 @@ const cancelBooking  = (b: any) => message.warning(`已取消预约（演示）`
 
         <!-- 数据行 -->
         <div class="fac-rows">
-          <div v-for="record in facilityList" :key="record.id" class="fac-row">
+          <div v-for="record in facilityPageList" :key="record.id" class="fac-row">
             <span class="fac-col-id mono muted" style="font-size:12px">{{ record.id }}</span>
             <span class="fac-col-name"><b>{{ record.name }}</b></span>
             <span class="fac-col-cat">{{ record.category }}</span>
@@ -539,6 +542,19 @@ const cancelBooking  = (b: any) => message.warning(`已取消预约（演示）`
             </span>
           </div>
           <div v-if="!facilityList.length" class="fac-empty">该场景暂无设施记录</div>
+        </div>
+
+        <!-- 分页 -->
+        <div class="fac-footer">
+          <span class="muted" style="font-size:12px">共 {{ facilityList.length }} 项</span>
+          <a-pagination
+            v-model:current="facPage"
+            :total="facilityList.length"
+            :page-size="facPageSize"
+            :show-size-changer="false"
+            size="small"
+            :show-quick-jumper="facilityList.length > facPageSize * 3"
+          />
         </div>
       </div>
     </template>
@@ -880,7 +896,10 @@ const cancelBooking  = (b: any) => message.warning(`已取消预约（演示）`
 .sc-hd-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
 .sc-body { padding: 0; overflow: hidden; flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .sc-body > .sc-tabs { flex: none; }
-.sc-body > .sc-tab-pane, .sc-body > div[class^="sc-tab"] { flex: 1; min-height: 0; overflow-y: auto; }
+.sc-body > .sc-tab-pane,
+.sc-body > .sc-base-pane,
+.sc-body > div[class*="sc-tab"],
+.sc-body > div[class*="sc-base"] { flex: 1; min-height: 0; overflow-y: auto; }
 .sc-tabs { display: flex; border-bottom: 1px solid rgba(46,211,230,.15); padding: 0 16px; }
 .sc-tabs button { padding: 11px 14px; font: inherit; font-size: 13px; color: var(--muted); background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; transition: all .18s; margin-bottom: -1px; }
 .sc-tabs button.on { color: var(--accent); border-bottom-color: var(--accent); }
@@ -910,12 +929,8 @@ const cancelBooking  = (b: any) => message.warning(`已取消预约（演示）`
 
 /* ── 设施管理 ── */
 .fac-page { padding: 0; display: flex; flex-direction: column; overflow: hidden; }
-.fac-scene-bar { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px 10px; border-bottom: 1px solid var(--line); flex: none; }
+.fac-scene-bar { display: flex; align-items: center; padding: 11px 20px 10px; border-bottom: 1px solid var(--line); flex: none; }
 .fac-scene-info { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
-.fac-scene-kpis { display: flex; gap: 28px; flex: none; }
-.fac-kpi { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
-.fac-kpi small { font-size: 11px; color: var(--muted); }
-.fac-kpi b { font-size: 22px; font-weight: 700; line-height: 1.1; }
 
 /* 筛选栏 */
 .fac-filter { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--line); flex: none; flex-wrap: wrap; }
@@ -924,7 +939,8 @@ const cancelBooking  = (b: any) => message.warning(`已取消预约（演示）`
 /* 表格 */
 .fac-thead { display: grid; grid-template-columns: var(--fac-cols); padding: 0 20px; gap: 0; background: rgba(46,211,230,.04); border-bottom: 1px solid var(--line); flex: none; }
 .fac-thead span { padding: 9px 8px; font-size: 12px; color: var(--muted); font-weight: 500; }
-.fac-rows { flex: 1; overflow-y: auto; }
+.fac-rows { flex: 1; min-height: 0; overflow-y: auto; }
+.fac-footer { flex: none; display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; border-top: 1px solid var(--line); }
 .fac-row { display: grid; grid-template-columns: var(--fac-cols); padding: 0 20px; gap: 0; border-bottom: 1px solid rgba(46,211,230,.07); transition: background .12s; align-items: center; }
 .fac-row:hover { background: rgba(46,211,230,.04); }
 .fac-row:last-child { border-bottom: none; }
