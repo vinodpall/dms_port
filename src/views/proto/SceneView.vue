@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import {
@@ -87,9 +87,9 @@ const openChangeStatus = (s: string) => { lcTargetStatus.value = s; lcRemark.val
 const pushStatus = () => {
   if (!lcTargetStatus.value) return
   cur.value.status = lcTargetStatus.value as any
-  cur.value.lifecycle.push({ date: new Date().toISOString().slice(0, 10), status: lcTargetStatus.value as any, by: '当前用户', note: lcRemark.value || '手动变更状态' })
+  cur.value.lifecycle.push({ date: new Date().toISOString().slice(0, 10), status: lcTargetStatus.value as any, operator: '当前用户', remark: lcRemark.value || '手动变更状态' })
   lcConfirmOpen.value = false
-  message.success(`状态已更新为「${SCENE_STATUS[lcTargetStatus.value].t}」`)
+  message.success(`状态已更新为「${(SCENE_STATUS as any)[lcTargetStatus.value].t}」`)
 }
 
 // ── 设施管理 ─────────────────────────────────────────────
@@ -102,6 +102,7 @@ const facilityList = computed(() =>
     (!fFilter.kw || f.name.includes(fFilter.kw))
   )
 )
+const setFScene = (id: string) => { fScene.value = SCENES.find(s => s.id === id) ?? SCENES[0] }
 const facPage = ref(1)
 const facPageSize = 10
 const facilityPageList = computed(() => {
@@ -190,11 +191,11 @@ const submitBooking = () => {
 
 // 列表视图
 const bkView = ref<'cal' | 'list'>('cal')
-const bkFilter = reactive({ sceneId: '', status: '全部', date: '' })
+const bkFilter = reactive({ sceneName: '', status: '全部', date: '' })
 const bkList = computed(() =>
   SCENES.flatMap(s => s.bookings.map(b => ({ ...b, sceneName: s.name, sceneColor: TYPE_COLOR[s.type] })))
     .filter(b =>
-      (!bkFilter.sceneId || b.sceneId === bkFilter.sceneId) &&
+      (!bkFilter.sceneName || b.sceneName === bkFilter.sceneName) &&
       (bkFilter.status === '全部' || BOOK_STATUS[b.status].t === bkFilter.status) &&
       (!bkFilter.date || b.date === bkFilter.date)
     )
@@ -464,7 +465,7 @@ const cancelBooking  = (b: any) => message.warning(`已取消预约（演示）`
         <div class="r" style="display:flex;align-items:center;gap:10px">
           <a-select :value="fScene.id" style="width:180px"
             :options="SCENES.map(s=>({value:s.id,label:s.name}))"
-            @change="(v:any)=>{ fScene=SCENES.find(s=>s.id===v)??SCENES[0] }">
+            @change="setFScene">
             <template #option="{ label, value: sid }">
               <div style="display:flex;align-items:center;gap:8px">
                 <i :style="{ width:'7px',height:'7px',borderRadius:'1px',background:TYPE_COLOR[SCENES.find(s=>s.id===sid)?.type??'综合'],display:'inline-block' }" />{{ label }}
@@ -668,8 +669,8 @@ const cancelBooking  = (b: any) => message.warning(`已取消预约（演示）`
         <div class="pp-panel" style="padding:0;margin-bottom:0">
           <div class="rc-filter">
             <div class="rc-f"><span>场景</span>
-              <a-select v-model:value="bkFilter.sceneId" allow-clear placeholder="全部场景"
-                :options="SCENES.map(s=>({value:s.id,label:s.name}))" />
+              <a-select v-model:value="bkFilter.sceneName" allow-clear placeholder="全部场景"
+                :options="SCENES.map(s=>({value:s.name,label:s.name}))" />
             </div>
             <div class="rc-f"><span>状态</span>
               <a-select v-model:value="bkFilter.status" :options="['全部','已确认','待审核','已取消'].map(v=>({value:v,label:v}))" />
@@ -725,7 +726,7 @@ const cancelBooking  = (b: any) => message.warning(`已取消预约（演示）`
         将「{{ cur.name }}」的状态从
         <span :style="{ color:SCENE_STATUS[cur.status].c }">{{ SCENE_STATUS[cur.status].t }}</span>
         变更为
-        <span v-if="lcTargetStatus" :style="{ color:SCENE_STATUS[lcTargetStatus].c }">{{ SCENE_STATUS[lcTargetStatus].t }}</span>
+        <span v-if="lcTargetStatus" :style="{ color:(SCENE_STATUS as any)[lcTargetStatus].c }">{{ (SCENE_STATUS as any)[lcTargetStatus].t }}</span>
       </div>
       <a-form-item label="备注说明" style="margin-top:12px">
         <a-textarea v-model:value="lcRemark" :rows="3" placeholder="说明变更原因（选填）" />
