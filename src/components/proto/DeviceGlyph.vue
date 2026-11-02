@@ -27,6 +27,11 @@ const img = computed(() => TYPE_META[props.type]?.img)
       <ellipse cx="13" cy="17" rx="8" ry="2.5" /><ellipse cx="51" cy="17" rx="8" ry="2.5" /><ellipse cx="13" cy="45" rx="8" ry="2.5" /><ellipse cx="51" cy="45" rx="8" ry="2.5" />
       <path d="M28 36l-3 8M36 36l3 8M24 44h16" opacity=".6" />
     </template>
+    <template v-else-if="icon === 'service'">
+      <rect x="20" y="6" width="24" height="18" rx="7" /><path d="M27 14h.01M37 14h.01" stroke-width="3.4" /><path d="M28 19c2.5 1.6 5.5 1.6 8 0" opacity=".7" />
+      <path d="M18 30h28l-3 22H21z" /><rect x="25" y="35" width="14" height="8" rx="2" opacity=".6" /><path d="M18 33l-7 9M46 33l7 9" />
+      <ellipse cx="32" cy="56" rx="15" ry="3" />
+    </template>
     <template v-else-if="icon === 'generic'">
       <rect x="16" y="18" width="32" height="26" rx="6" /><path d="M32 18v-8M28 10h8" /><circle cx="25" cy="30" r="3" /><circle cx="39" cy="30" r="3" />
       <path d="M26 38h12" opacity=".6" /><path d="M22 44v10M42 44v10M18 54h8M38 54h8" />

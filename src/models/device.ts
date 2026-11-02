@@ -1,4 +1,5 @@
 import { reactive } from 'vue'
+import { descriptorOf } from '@/plugins/catalog'
 
 /**
  * 机器人设备数据模型（设备管理模块）
@@ -7,7 +8,7 @@ import { reactive } from 'vue'
 /** 设备类型 ID：内置 4 种，可在「设备类型」中增删 */
 export type DeviceType = string
 /** 类型图标 */
-export type GlyphKey = 'quadruped' | 'ugv' | 'uav' | 'humanoid' | 'generic'
+export type GlyphKey = 'quadruped' | 'ugv' | 'uav' | 'humanoid' | 'service' | 'generic'
 export type DeviceStatus = 'online' | 'offline' | 'fault'
 
 /** 实时指标（详情页按类型取用） */
@@ -18,7 +19,7 @@ export interface DeviceModel {
   type: DeviceType
   name: string
   vendor: string
-  protocol: 'ROS2' | 'SDK' | 'MAVLink'
+  protocol: 'ROS2' | 'SDK' | 'MAVLink' | 'HTTP' | 'WebSocket'
   cameras: string[]
   image?: string           // 型号图片（详情页展示，已裁边）
   spec: { speed: string; endurance: string; payload: string; weight: string }
@@ -52,6 +53,8 @@ export interface Device {
   commissioned: string
   lastSeen: string
   remark?: string
+  /** 插件声明的接入参数（如 ROS 域、MQTT 主题、Token 等） */
+  conn?: Record<string, string | number>
   tm: Telemetry
 }
 
@@ -62,6 +65,7 @@ export const TYPE_META = reactive<Record<DeviceType, TypeMeta>>({
   ugv: { label: '无人车', color: '#45E3A8', teleop: true, metrics: ['battery', 'speed', 'latency'], icon: 'ugv' },
   uav: { label: '无人机', color: '#B48CFF', teleop: true, metrics: ['battery', 'speed', 'alt', 'latency'], icon: 'uav' },
   humanoid: { label: '人形机器人', color: '#2ED3E6', teleop: false, metrics: ['battery', 'joint', 'latency'], icon: 'humanoid' },
+  service: { label: '服务机器人', color: '#FF9F6B', teleop: false, metrics: ['battery', 'latency'], icon: 'service' },
 })
 export const TYPES = reactive<DeviceType[]>(Object.keys(TYPE_META))
 export const typeMeta = (t: DeviceType): TypeMeta => TYPE_META[t] ?? { label: t, color: '#2ED3E6', teleop: false, metrics: ['battery', 'latency'], icon: 'generic' }
@@ -75,8 +79,10 @@ export const STATUSES = Object.keys(STATUS_META) as DeviceStatus[]
 
 /** 在线 = 非离线（故障设备仍能上报状态） */
 export const isOnline = (d: Device) => d.status !== 'offline'
-/** 可遥操作：类型支持且设备在线、无故障 */
-export const canTeleop = (d: Device) => typeMeta(d.type).teleop && d.status === 'online'
+/** 是否具备遥操作能力：由插件上报的设备描述决定（capabilities 含 teleop） */
+export const hasTeleop = (d: Device) => descriptorOf(d.modelId).capabilities.includes('teleop')
+/** 可遥操作：具备能力且设备在线、无故障 */
+export const canTeleop = (d: Device) => hasTeleop(d) && d.status === 'online'
 
 /** 所属区域（响应式，可在「所属区域」中增删改） */
-export const AREAS = reactive<string[]>(['A 区 · 室内训练场', 'B 区 · 越野场地', 'C 区 · 室外道路', 'D 区 · 停机坪'])
+export const AREAS = reactive<string[]>(['A 区 · 室内训练场', 'B 区 · 越野场地', 'C 区 · 室外道路', 'D 区 · 停机坪', 'E 区 · 服务展厅'])

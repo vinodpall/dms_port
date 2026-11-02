@@ -8,13 +8,14 @@ import imgKnight from '@/assets/models/knight.webp'
 import imgWeeder from '@/assets/models/weeder.webp'
 import imgDock from '@/assets/models/dock3.webp'
 
-const VOLT: Record<DeviceType, [number, number]> = { quadruped: [42, 58.8], ugv: [22, 29.4], uav: [44.4, 52.8], humanoid: [43.2, 54.6] }
+const VOLT: Record<DeviceType, [number, number]> = { quadruped: [42, 58.8], ugv: [22, 29.4], uav: [44.4, 52.8], humanoid: [43.2, 54.6], service: [22, 25.2] }
 const SIZE: Record<string, string> = {
   'qd-b2': '1098×450×645', 'qd-go2': '700×310×400', 'qd-x30': '1000×470×760', 'qd-lite3': '610×370×450', 'qd-spot': '1100×500×840',
   'ug-scout': '930×699×349', 'ug-hunter': '820×640×310', 'ug-bunker': '660×584×281',
   'ua-m350': '810×670×430', 'ua-m30t': '470×585×215', 'ua-m3e': '347×283×108', 'ua-m4t': '307×388×149', 'ua-x500': '410×410×300',
   'hm-walker': '560×370×1720', 'hm-h1': '570×220×1800',
   'qd-zsl1': '720×400×520', 'hm-x2': '450×280×1310', 'ug-knight': '1150×780×860', 'ug-weeder': '1250×800×900', 'ua-dock3': '1760×890×1080',
+  'sv-coffee': '1200×800×1900', 'sv-greeter': '520×480×1350', 'sv-chess': '900×700×1100',
 }
 
 const M = (id: string, type: DeviceType, name: string, vendor: string, protocol: DeviceModel['protocol'], cameras: string[], spec: DeviceModel['spec'], image?: string): DeviceModel =>
@@ -41,12 +42,16 @@ export const MODELS: DeviceModel[] = [
   M('ug-knight', 'ugv', '骑士巡逻', '待补充', 'ROS2', ['云台', '前视', '后视'], { speed: '2 m/s', endurance: '6 h', payload: '60 kg', weight: '120 kg' }, imgKnight),
   M('ug-weeder', 'ugv', '除草机器人', '待补充', 'ROS2', ['云台', '前视'], { speed: '1.2 m/s', endurance: '5 h', payload: '—', weight: '150 kg' }, imgWeeder),
   M('ua-dock3', 'uav', '机场 3', '大疆', 'MAVLink', ['广角', '变焦', '红外'], { speed: '21 m/s', endurance: '54 min', payload: '—', weight: '1.4 kg' }, imgDock),
+  M('sv-coffee', 'service', '咖啡机器人 C1', '平台内置', 'HTTP', [], { speed: '—', endurance: '外接电源', payload: '—', weight: '180 kg' }),
+  M('sv-greeter', 'service', '迎宾机器人 W2', '平台内置', 'WebSocket', ['头部'], { speed: '1 m/s', endurance: '8 h', payload: '—', weight: '45 kg' }),
+  M('sv-chess', 'service', '下棋机器人 K1', '平台内置', 'WebSocket', [], { speed: '—', endurance: '外接电源', payload: '—', weight: '35 kg' }),
 ]
 
-const COUNT = [3, 4, 2, 2, 1, 3, 2, 2, 2, 3, 2, 1, 2, 3, 2, 2, 1, 2, 1, 2]
-const CODE: Record<DeviceType, string> = { quadruped: 'QD', ugv: 'UG', uav: 'UA', humanoid: 'HM' }
-const NAME: Record<DeviceType, string> = { quadruped: '机器狗', ugv: '无人车', uav: '无人机', humanoid: '人形' }
-const AREA: Record<DeviceType, number[]> = { quadruped: [0, 1], ugv: [2, 1], uav: [3], humanoid: [0] }
+const COUNT = [3, 4, 2, 2, 1, 3, 2, 2, 2, 3, 2, 1, 2, 3, 2, 2, 1, 2, 1, 2, 2, 2, 1]
+const CODE: Record<DeviceType, string> = { quadruped: 'QD', ugv: 'UG', uav: 'UA', humanoid: 'HM', service: 'SV' }
+const NAME: Record<DeviceType, string> = { quadruped: '机器狗', ugv: '无人车', uav: '无人机', humanoid: '人形', service: '服务' }
+const SVC_NAME: Record<string, string> = { 'sv-coffee': '咖啡', 'sv-greeter': '迎宾', 'sv-chess': '下棋' }
+const AREA: Record<DeviceType, number[]> = { quadruped: [0, 1], ugv: [2, 1], uav: [3], humanoid: [0], service: [4] }
 const CYCLE: DeviceStatus[] = ['online', 'online', 'online', 'online', 'online', 'offline', 'online', 'online', 'fault', 'online', 'online']
 const GAITS = ['行走', '小跑', '爬楼']
 
@@ -54,7 +59,7 @@ let seed = 11
 const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280 }
 const r1 = (n: number) => Math.round(n * 10) / 10
 
-const seq: Record<DeviceType, number> = { quadruped: 0, ugv: 0, uav: 0, humanoid: 0 }
+const seq: Record<DeviceType, number> = { quadruped: 0, ugv: 0, uav: 0, humanoid: 0, service: 0 }
 let k = 0
 export const DEVICES: Device[] = MODELS.flatMap((m, mi) =>
   Array.from({ length: COUNT[mi] }, () => {
@@ -68,13 +73,13 @@ export const DEVICES: Device[] = MODELS.flatMap((m, mi) =>
     return {
       id: `${CODE[t]}-${no}`,
       sn: `${CODE[t]}24${String(10350 + n * 37 + mi * 11).padStart(6, '0')}`,
-      name: `${NAME[t]}-${no}`,
+      name: t === 'service' ? `${SVC_NAME[m.id]}机器人-${no}` : `${NAME[t]}-${no}`,
       type: t, modelId: m.id, status,
       battery: off ? 0 : 25 + Math.round(rnd() * 74),
-      ip: `10.20.${['quadruped', 'ugv', 'uav', 'humanoid'].indexOf(t) + 1}.${10 + n}`,
+      ip: `10.20.${['quadruped', 'ugv', 'uav', 'humanoid', 'service'].indexOf(t) + 1}.${10 + n}`,
       area: AREAS[ai],
       publicIp: n % 3 === 0 ? `112.64.${20 + mi}.${100 + n}` : undefined,
-      cameraIps: m.cameras.map((_, ci) => `10.20.${['quadruped', 'ugv', 'uav', 'humanoid'].indexOf(t) + 1}.${100 + n * 4 + ci}`),
+      cameraIps: m.cameras.map((_, ci) => `10.20.${['quadruped', 'ugv', 'uav', 'humanoid', 'service'].indexOf(t) + 1}.${100 + n * 4 + ci}`),
       firmware: n % 4 === 1 && mi % 3 !== 2 ? `v${2 + (mi % 2)}.${(mi * 3) % 9}.${mi % 4}` : `v${2 + (mi % 2)}.${(mi * 3) % 9 + 1}.${(mi * 2) % 5}`,
       commissioned: `2025-${String(1 + ((n * 5 + mi) % 12)).padStart(2, '0')}-${String(3 + ((n * 7) % 25)).padStart(2, '0')}`,
       lastSeen: off ? `${2 + n} 小时前` : '刚刚',
