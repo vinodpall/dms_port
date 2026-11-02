@@ -4,6 +4,8 @@ import { message, Modal } from 'ant-design-vue'
 import { ROBOTS, BAGS, MAPS, ROUTES, PUBS, GROUPS, MULTI, SCHEDULES, RECORDS, ROUNDS, ALARMS, INS_ORIGINS, GAITS, newPid, type TaskGroup, type BizRoute, type TaskPoint } from '@/mock/biz'
 import { routeAt, nearestF, toReal, toFrame, dist } from './geo'
 import { pad } from '@/utils'
+import { descriptorOf } from '@/plugins/catalog'
+import { ensure } from '@/plugins/runtime'
 
 export interface Running { kind: '循迹任务' | '发布点任务' | '多任务组'; name: string; route?: string; group: string; progress: number; obs: string; gait: string; start: string; circle: number; laps: number }
 export interface Rt {
@@ -243,3 +245,19 @@ setInterval(() => {
     }
   }
 }, 1000)
+
+export const descOfRobot = (id: string) => {
+  const r = ROBOTS.find((x) => x.id === id)!
+  return descriptorOf(r.modelCode)
+}
+export const desc = computed(() => descOfRobot(robot.value.id))
+export const hasCap = (cap: string) => desc.value.capabilities.includes(cap as import('@/plugins/types').Capability)
+
+// Bootstrap plugin runtime state for biz robots
+ROBOTS.forEach((r) => {
+  const d = descOfRobot(r.id)
+  ensure(r.id, r.modelCode ?? r.model, {
+    online: r.online,
+    values: { battery: Math.round(60 + Math.random() * 35), latency: Math.round(10 + Math.random() * 40) },
+  })
+})

@@ -2,22 +2,22 @@
 import { rng, pad } from '@/utils'
 import { ROUTE_SET, routeAt, toReal } from '@/views/proto/biz/geo'
 
-export type BizRobotKind = 'dog' | 'car'
+export type BizRobotKind = 'dog' | 'car' | 'svc'
 /** 定位方式：激光雷达 SLAM / INS（RTK 组合导航） */
 export type LocMode = 'lidar' | 'ins'
-export interface BizRobot { id: string; name: string; kind: BizRobotKind; model: string; loc: LocMode; rtk: boolean; online: boolean; battery: number; mileage: number; latency: number; ip: string; site: string }
-export const KIND_META: Record<BizRobotKind, { t: string; glyph: 'quadruped' | 'ugv'; c: string }> = {
-  dog: { t: '机器狗', glyph: 'quadruped', c: '#5B9BFF' }, car: { t: '无人车', glyph: 'ugv', c: '#45E3A8' },
+export interface BizRobot { id: string; name: string; modelCode?: string; kind: BizRobotKind; model: string; loc: LocMode; rtk: boolean; online: boolean; battery: number; mileage: number; latency: number; ip: string; site: string }
+export const KIND_META: Record<BizRobotKind, { t: string; glyph: 'quadruped' | 'ugv' | 'service'; c: string }> = {
+  dog: { t: '机器狗', glyph: 'quadruped', c: '#5B9BFF' }, car: { t: '无人车', glyph: 'ugv', c: '#45E3A8' }, svc: { t: '服务机器人', glyph: 'service' as const, c: '#FF9F6B' },
 }
 export const LOC_META: Record<LocMode, { t: string; s: string; c: string }> = {
   lidar: { t: '激光雷达 SLAM', s: '激光', c: '#5B9BFF' }, ins: { t: 'INS 组合导航', s: 'INS', c: '#45E3A8' },
 }
 export const ROBOTS: BizRobot[] = [
-  { id: 'DOG-001', name: '巡检狗 01', kind: 'dog', model: 'X30 Pro', loc: 'lidar', rtk: false, online: true, battery: 76, mileage: 1286.4, latency: 38, ip: '10.12.3.101', site: '综合楼' },
-  { id: 'DOG-002', name: '巡检狗 02', kind: 'dog', model: 'X30 Pro', loc: 'lidar', rtk: true, online: true, battery: 91, mileage: 964.2, latency: 46, ip: '10.12.3.102', site: '地下管廊' },
-  { id: 'DOG-003', name: '巡检狗 03', kind: 'dog', model: 'B2', loc: 'lidar', rtk: false, online: true, battery: 64, mileage: 102.8, latency: 41, ip: '10.12.3.103', site: '综合楼二层（新部署）' },
-  { id: 'CAR-001', name: '巡检车 01', kind: 'car', model: 'Scout 2.0', loc: 'ins', rtk: true, online: true, battery: 88, mileage: 3210.5, latency: 29, ip: '10.12.3.111', site: '室外园区' },
-  { id: 'CAR-002', name: '巡检车 02', kind: 'car', model: 'Hunter SE', loc: 'ins', rtk: true, online: false, battery: 0, mileage: 2480.1, latency: 0, ip: '10.12.3.112', site: '室外园区' },
+  { id: 'DOG-001', modelCode: 'qd-x30', name: '巡检狗 01', kind: 'dog', model: 'X30 Pro', loc: 'lidar', rtk: false, online: true, battery: 76, mileage: 1286.4, latency: 38, ip: '10.12.3.101', site: '综合楼' },
+  { id: 'DOG-002', modelCode: 'qd-x30', name: '巡检狗 02', kind: 'dog', model: 'X30 Pro', loc: 'lidar', rtk: true, online: true, battery: 91, mileage: 964.2, latency: 46, ip: '10.12.3.102', site: '地下管廊' },
+  { id: 'DOG-003', modelCode: 'qd-b2', name: '巡检狗 03', kind: 'dog', model: 'B2', loc: 'lidar', rtk: false, online: true, battery: 64, mileage: 102.8, latency: 41, ip: '10.12.3.103', site: '综合楼二层（新部署）' },
+  { id: 'CAR-001', modelCode: 'ug-scout', name: '巡检车 01', kind: 'car', model: 'Scout 2.0', loc: 'ins', rtk: true, online: true, battery: 88, mileage: 3210.5, latency: 29, ip: '10.12.3.111', site: '室外园区' },
+  { id: 'CAR-002', modelCode: 'ug-hunter', name: '巡检车 02', kind: 'car', model: 'Hunter SE', loc: 'ins', rtk: true, online: false, battery: 0, mileage: 2480.1, latency: 0, ip: '10.12.3.112', site: '室外园区' },
 ]
 
 /** 步态（对齐任务点 gait 1-9） */
@@ -206,5 +206,9 @@ export const SENSORS = [
   { en: 'O2', cn: '氧气', unit: '%VOL', lo: 19.5, hi: 23.5, v: 20.8, on: true }, { en: 'EX', cn: '可燃气体', unit: '%LEL', lo: null, hi: 10, v: 2.1, on: true },
   { en: 'H2S', cn: '硫化氢', unit: 'ppm', lo: null, hi: 10, v: 0.4, on: true }, { en: 'CO', cn: '一氧化碳', unit: 'ppm', lo: null, hi: 24, v: 3.2, on: true },
   { en: 'TEMP', cn: '环境温度', unit: '℃', lo: -10, hi: 45, v: 26.4, on: true }, { en: 'HUMI', cn: '环境湿度', unit: '%RH', lo: null, hi: 85, v: 61, on: true },
+
+  { id: 'COF-001', modelCode: 'sv-coffee', name: '咖啡助手 #1', kind: 'svc', model: 'sv-coffee', loc: 'ins', rtk: false, online: true,  battery: 85, mileage: 0, latency: 12, ip: '10.5.1.20', site: 'E 区 · 服务展厅' },
+  { id: 'WEL-001', modelCode: 'sv-greeter', name: '迎宾机器人 #1', kind: 'svc', model: 'sv-greeter', loc: 'ins', rtk: false, online: false, battery: 60, mileage: 0, latency: 15, ip: '10.5.1.21', site: 'E 区 · 服务展厅' },
+  { id: 'CHS-001', modelCode: 'sv-chess',   name: '棋手机器人 #1', kind: 'svc', model: 'sv-chess',   loc: 'ins', rtk: false, online: true,  battery: 92, mileage: 0, latency: 8,  ip: '10.5.1.22', site: 'E 区 · 服务展厅' },
 ]
 export { ROUTE_SET }

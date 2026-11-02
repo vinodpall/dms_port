@@ -5,6 +5,9 @@ import { HomeOutlined, EnvironmentOutlined, ScheduleOutlined, ProfileOutlined, S
 import ModuleShell from '@/components/proto/ModuleShell.vue'
 import './biz/biz.css'
 import BizHome from './biz/BizHome.vue'
+import BizSvcHome from './biz/BizSvcHome.vue'
+import CmdList from '@/components/plugin/CmdList.vue'
+import LogList from '@/components/plugin/LogList.vue'
 import BizNav from './biz/BizNav.vue'
 import BizRoutes from './biz/BizRoutes.vue'
 import BizTasks from './biz/BizTasks.vue'
@@ -14,22 +17,29 @@ import TaskLaunch from './biz/TaskLaunch.vue'
 import BizMap from './biz/BizMap.vue'
 import { activeSlot } from './biz/mapHost'
 import { ROBOTS, LOC_META } from '@/mock/biz'
-import { robot, rts, switching, curId, isIns, selectRobot } from './biz/store'
+import { robot, rts, switching, curId, isIns, selectRobot, desc, hasCap, descOfRobot } from './biz/store'
+import { busyOf, execute } from '@/plugins/runtime'
 
 document.title = '机器人业务管理 · 具身智能训练场'
-const MENU = [
+const ALL_MENU = [
   { key: 'home', label: '首页', icon: HomeOutlined, group: '概览' },
   { key: 'nav', label: '导航管理', icon: EnvironmentOutlined, group: '巡检作业' },
   { key: 'task', label: '任务管理', icon: ScheduleOutlined, group: '巡检作业' },
   { key: 'log', label: '日志管理', icon: ProfileOutlined, group: '记录' },
 ]
+const NEED: Record<string, string> = { nav: 'navigation', task: 'task' }
+const MENU = computed(() => ALL_MENU.filter((m: any) => !NEED[m.key] || hasCap(NEED[m.key])))
+const patrol = computed(() => hasCap('navigation'))
+
 const PAGES = computed<Record<string, { t: string; d: string; tabs: { k: string; t: string }[] }>>(() => ({
   nav: {
     t: '导航管理', d: isIns.value ? 'INS 机器人使用 GPS 坐标，完成 INS 初始化并开启定位后即可录制路线' : '录包建图 → 生成栅格地图 → 开启导航定位，为录制路线做准备',
     tabs: isIns.value ? [{ k: 'build', t: '录包建图' }, { k: 'loc', t: '导航定位' }, { k: 'file', t: '文件管理' }] : [{ k: 'build', t: '录包建图' }, { k: 'loc', t: '导航定位' }, { k: 'edit', t: '地图编辑' }, { k: 'file', t: '文件管理' }],
   },
   task: { t: '任务管理', d: '录制循迹路线、在路线上配置任务点，并编排多任务组与定时任务；任务从首页「任务下发」或路线列表下发', tabs: [{ k: 'route', t: '循迹路线' }, { k: 'pub', t: '发布点任务' }, { k: 'multi', t: '多任务组' }, { k: 'sched', t: '定时任务' }] },
-  log: { t: '日志管理', d: '巡检结果、告警处置与业务操作记录', tabs: [{ k: 'rec', t: '警情记录' }, { k: 'op', t: '操作日志' }] },
+  get log() { return patrol.value
+    ? { t: '日志管理', d: '巡检结果、告警处置与业务操作记录', tabs: [...(hasCap('alarm') ? [{ k: 'rec', t: '警情记录' }] : []), { k: 'op', t: '操作日志' }, { k: 'cmd', t: '指令记录' }] }
+    : { t: '日志管理', d: '技能指令执行回执与插件上报日志', tabs: [{ k: 'cmd', t: '指令记录' }, { k: 'dlog', t: '设备日志' }] } },
 }))
 const tab = ref('home')
 const sub = ref('')
@@ -38,10 +48,20 @@ const go = (t: string, s?: string) => { if (t === tab.value) sub.value = s ?? ''
 watch(tab, () => { sub.value = next; next = '' })
 const page = computed(() => PAGES.value[tab.value])
 const cur = computed({ get: () => (page.value?.tabs.some((x) => x.k === sub.value) ? sub.value : page.value?.tabs[0].k ?? ''), set: (v) => { sub.value = v } })
-watch(curId, () => { if (!page.value?.tabs.some((x) => x.k === sub.value)) sub.value = '' })
+watch(curId, () => {
+  if (!(MENU.value as any[]).some((m: any) => m.key === tab.value)) tab.value = 'home'
+  if (!page.value?.tabs.some((x) => x.k === sub.value)) sub.value = ''
+})
 
-const state = (id: string) => { const r = ROBOTS.find((x) => x.id === id)!; return !r.online ? { t: '离线', c: '#8EA6BE' } : rts[id].run ? { t: '任务中', c: '#26C6DA' } : { t: '在线', c: '#45E3A8' } }
-const estop = () => message.error(`${robot.value.name} 已触发软件急停`)
+const state = (id: string) => { const r = ROBOTS.find((x) => x.id === id)!; return !r.online ? { t: '离线', c: '#8EA6BE' } : rts[id]?.run ? { t: '任务中', c: '#26C6DA' } : busyOf(id) ? { t: '执行中', c: '#26C6DA' } : { t: '在线', c: '#45E3A8' } }
+const estopCtl = computed(() => desc.value.controls.find((c) => c.key === 'estop'))
+const tagOf = (id: string) => { const r = ROBOTS.find((x) => x.id === id)!; return descOfRobot(id).capabilities.includes('navigation') ? (LOC_META as any)[(r as any).loc]?.s ?? '服务' : '服务' }
+const estop = () => {
+  const c = estopCtl.value
+  if (c) execute(robot.value.id, c, undefined, { operator: '业务操作员', silent: true })
+  if (rts[curId.value]?.run) rts[curId.value].run = null
+  message.error(`${robot.value.name} 已触发软件急停`)
+}
 </script>
 
 <template>
@@ -50,21 +70,23 @@ const estop = () => message.error(`${robot.value.name} 已触发软件急停`)
       <div class="bv-rb">
         <i :style="{ background: state(curId).c }" />
         <a-select :value="curId" :bordered="false" :dropdown-match-select-width="300" :options="ROBOTS.map((r) => ({ value: r.id, label: `${r.id} · ${r.name}`, r }))" @change="(v: any) => selectRobot(String(v))">
-          <template #option="{ r }"><div class="bv-opt"><i :style="{ background: state(r.id).c }" /><b class="mono">{{ r.id }}</b><span>{{ r.name }}</span><em>{{ LOC_META[r.loc as 'lidar' | 'ins'].s }}</em><small>{{ state(r.id).t }}</small></div></template>
+          <template #option="{ r }"><div class="bv-opt"><i :style="{ background: state(r.id).c }" /><b class="mono">{{ r.id }}</b><span>{{ r.name }}</span><em>{{ tagOf(r.id) }}</em><small>{{ state(r.id).t }}</small></div></template>
         </a-select>
       </div>
-      <a-button type="primary" danger size="small" class="bv-stop" :disabled="!robot.online" @click="estop">急停</a-button>
+      <a-button v-if="estopCtl" type="primary" danger size="small" class="bv-stop" :disabled="!robot.online" @click="estop">急停</a-button>
     </template>
 
     <div :style="{ '--off': !robot.online && tab !== 'log' ? '52px' : '0px' }"><a-spin :spinning="switching" tip="机器人切换中...">
       <a-alert v-if="!robot.online && tab !== 'log'" class="bv-off" type="warning" show-icon banner :message="`${robot.name}（${robot.id}）当前离线，无法下发控制指令与任务，仅可查看数据`" />
-      <BizHome v-if="tab === 'home'" :key="curId" @go="go" />
+      <template v-if="tab === 'home'"><BizHome v-if="patrol" :key="curId" @go="go" /><BizSvcHome v-else :key="curId" /></template>
       <template v-else-if="page">
         <a-tabs v-model:activeKey="cur" class="bv-tabs"><a-tab-pane v-for="x in page.tabs" :key="x.k" :tab="x.t" /></a-tabs>
         <BizNav v-if="tab === 'nav'" v-model:sub="cur" @go="go" />
         <BizRoutes v-else-if="tab === 'task' && (cur === 'route' || cur === 'pub')" v-model:sub="cur" @go="go" />
         <BizTasks v-else-if="tab === 'task'" :sub="cur" />
         <BizRecords v-else-if="cur === 'rec'" :key="curId" />
+        <section v-else-if="cur === 'cmd'" class="pp-panel bv-pl"><CmdList :key="curId" :device-id="curId" /></section>
+        <section v-else-if="cur === 'dlog'" class="pp-panel bv-pl"><LogList :key="curId" :device-id="curId" /></section>
         <BizLogs v-else :key="curId" />
       </template>
     </a-spin></div>
@@ -76,6 +98,7 @@ const estop = () => message.error(`${robot.value.name} 已触发软件急停`)
 
 <style scoped>
 .bv-off { margin-bottom: 14px; }
+.bv-pl { padding: 8px 16px 12px; }
 .bv-park { display: none; }
 .bv-rb { display: flex; align-items: center; height: 30px; padding-left: 10px; margin-right: 8px; background: rgba(46,211,230,.06); border: 1px solid var(--line-strong); border-radius: 7px; }
 .bv-rb:hover { border-color: rgba(46,211,230,.6); }

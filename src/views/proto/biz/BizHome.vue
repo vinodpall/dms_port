@@ -61,7 +61,7 @@ const si = ref(0)
 const sensor = computed(() => SENSORS[si.value])
 const stepS = (d: number) => { si.value = (si.value + d + SENSORS.length) % SENSORS.length }
 const hist = ref<number[]>([])
-const tick = () => { const v = sensor.value.v; const n = hist.value.length ? hist.value[hist.value.length - 1] : v; hist.value = [...hist.value.slice(-29), +(n + (v - n) * 0.3 + (Math.random() - 0.5) * Math.max(0.2, v * 0.04)).toFixed(2)] }
+const tick = () => { const v = sensor.value.v; const n = hist.value.length ? hist.value[hist.value.length - 1] ?? v : v; hist.value = [...hist.value.slice(-29), +(n! + (v! - n!) * 0.3 + (Math.random() - 0.5) * Math.max(0.2, v! * 0.04)).toFixed(2)] }
 watch(si, () => { hist.value = []; for (let i = 0; i < 30; i++) tick() }, { immediate: true })
 const tm2 = setInterval(tick, 1500); onBeforeUnmount(() => clearInterval(tm2))
 const chart = computed(() => {
