@@ -5,8 +5,17 @@ import { Modal, message } from 'ant-design-vue'
 import { ArrowLeftOutlined, ControlOutlined, EditOutlined, MoreOutlined } from '@ant-design/icons-vue'
 import DeviceGlyph from '@/components/proto/DeviceGlyph.vue'
 import CamShot from '@/views/proto/biz/CamShot.vue'
-import { STATUS_META, TYPE_META, canTeleop, isOnline, type Device, type MetricKey } from '@/models/device'
-import { fleet, modelOf, removeDevice } from './store'
+import CapTags from '@/components/plugin/CapTags.vue'
+import TelemetryGrid from '@/components/plugin/TelemetryGrid.vue'
+import ControlPanel from '@/components/plugin/ControlPanel.vue'
+import ChessBoard from '@/components/plugin/ChessBoard.vue'
+import CmdList from '@/components/plugin/CmdList.vue'
+import LogList from '@/components/plugin/LogList.vue'
+import { STATUS_META, TYPE_META, canTeleop, hasTeleop, isOnline, type Device } from '@/models/device'
+import { descriptorOf, pluginOf } from '@/plugins/catalog'
+import { pluginRunning } from '@/plugins/runtime'
+import { GROUP_META } from '@/plugins/types'
+import { fleet, modelOf, removeDevice, rtOf } from './store'
 
 const props = defineProps<{ id: string }>()
 const emit = defineEmits<{ back: []; teleop: [Device]; edit: [Device] }>()
@@ -17,22 +26,23 @@ const on = computed(() => !!d.value && isOnline(d.value))
 const cam = ref(0)
 watch(() => props.id, () => { cam.value = 0 })
 
-const METRIC: Record<MetricKey, { label: string; val: (x: Device) => string; unit?: string; warn?: (x: Device) => boolean }> = {
-  battery: { label: '电量', val: (x) => String(x.battery), unit: '%', warn: (x) => x.battery < 30 },
-  speed: { label: '速度', val: (x) => x.tm.speed.toFixed(1), unit: 'm/s' },
-  alt: { label: '相对高度', val: (x) => (x.tm.alt ?? 0).toFixed(1), unit: 'm' },
-  gait: { label: '步态', val: (x) => x.tm.gait ?? '—' },
-  joint: { label: '关节状态', val: (x) => x.tm.joint ?? '—', warn: (x) => x.tm.joint === '异常' },
-  latency: { label: '网络延迟', val: (x) => String(x.tm.latency), unit: 'ms', warn: (x) => x.tm.latency > 120 },
-}
-const metrics = computed(() => (d.value ? TYPE_META[d.value.type].metrics.map((k) => ({ k, ...METRIC[k] })) : []))
-
-const LOGS = [
-  { t: '今天 09:12', c: '周工 遥操作 12 分钟' },
-  { t: '昨天 16:40', c: '赵工 修改所属区域' },
-  { t: '10-18 10:05', c: '固件升级至当前版本' },
-  { t: '10-12 14:30', c: '设备接入平台' },
-]
+const desc = computed(() => descriptorOf(d.value?.modelId))
+const plugin = computed(() => pluginOf(desc.value.pluginId))
+const rt = computed(() => (d.value ? rtOf(d.value) : undefined))
+const has = (c: string) => desc.value.capabilities.includes(c as never)
+const cams = computed(() => desc.value.video?.map((v) => ({ label: v.label, ir: !!v.ir })) ?? m.value?.cameras.map((c) => ({ label: c, ir: c === '红外' })) ?? [])
+const showCam = computed(() => has('video') && cams.value.length > 0)
+const chess = computed(() => has('custom:chess'))
+/** 设备管理范围内可用控件（导航/任务/遥操作归其他页面） */
+const ctrlCount = computed(() => desc.value.controls.filter((c) => c.kind !== 'joystick' && !['teleop', 'navigation', 'task'].includes(c.group)).length)
+/** 首屏左侧主区：有视频放视频，下棋放棋盘，否则直接放控制卡片 */
+const lead = computed<'cam' | 'chess' | 'ctrl' | 'none'>(() => (showCam.value ? 'cam' : chess.value ? 'chess' : ctrlCount.value ? 'ctrl' : 'none'))
+const pose = computed(() => rt.value?.values.pose as { x: number; y: number; yaw: number } | undefined)
+const tab = ref('info')
+watch(() => props.id, () => { tab.value = 'info' })
+const KIND_LABEL: Record<string, string> = { button: '按钮', toggle: '开关', select: '选择', slider: '滑块', joystick: '摇杆' }
+const TYPE_LABEL: Record<string, string> = { number: '数值', percent: '百分比', string: '文本', boolean: '布尔', enum: '枚举', duration: '时长', pose2d: '位姿', gps: 'GPS' }
+const P_STATUS: Record<string, { t: string; b: 'success' | 'default' | 'error' }> = { running: { t: '运行中', b: 'success' }, stopped: { t: '已停止', b: 'default' }, error: { t: '异常', b: 'error' } }
 
 function del() {
   const x = d.value!
@@ -48,10 +58,12 @@ function del() {
       <span class="dd-ic"><DeviceGlyph :type="d.type" :size="34" :color="TYPE_META[d.type].color" /></span>
       <div class="dd-t">
         <div><b>{{ d.name }}</b><a-badge :status="STATUS_META[d.status].badge" :text="STATUS_META[d.status].label" /></div>
-        <small class="muted">{{ TYPE_META[d.type].label }} · {{ m.name }} · <span class="mono">{{ d.ip }}</span></small>
+        <small class="muted">{{ TYPE_META[d.type].label }} · {{ m.name }} · <span class="mono">{{ d.ip }}</span>
+          <template v-if="plugin"> · 插件 <a-badge :status="P_STATUS[plugin.status].b" />{{ plugin.name }}</template></small>
+        <CapTags class="dd-caps" :caps="desc.capabilities" scope="device" small />
       </div>
       <div class="dd-op">
-        <a-tooltip v-if="TYPE_META[d.type].teleop" :title="canTeleop(d) ? '' : '设备离线或故障，暂不可遥操作'">
+        <a-tooltip v-if="hasTeleop(d)" :title="canTeleop(d) ? '' : '设备离线或故障，暂不可遥操作'">
           <a-button type="primary" :disabled="!canTeleop(d)" @click="emit('teleop', d)"><ControlOutlined />遥操作</a-button>
         </a-tooltip>
         <a-button @click="emit('edit', d)"><EditOutlined />编辑</a-button>
@@ -62,17 +74,26 @@ function del() {
     </div>
 
     <div class="dd-grid">
-      <!-- 摄像头 -->
-      <section class="pp-panel dd-campanel">
-        <div class="pp-panel-h"><h3>摄像头</h3>
-          <div class="r"><a-radio-group v-model:value="cam" size="small" button-style="solid"><a-radio-button v-for="(c, i) in m.cameras" :key="c" :value="i">{{ c }}</a-radio-button></a-radio-group></div>
+      <!-- 首屏主区：按能力切换 -->
+      <section v-if="lead === 'cam'" class="pp-panel dd-campanel">
+        <div class="pp-panel-h"><h3>实时画面</h3>
+          <div class="r"><a-radio-group v-model:value="cam" size="small" button-style="solid"><a-radio-button v-for="(c, i) in cams" :key="c.label" :value="i">{{ c.label }}</a-radio-button></a-radio-group></div>
         </div>
         <div class="dd-cam">
-          <CamShot v-if="on" :seed="cam + d.id.length * 3" :ir="m.cameras[cam] === '红外'" />
-          <div v-else class="dd-empty">设备离线，暂无画面</div>
-          <span v-if="on" class="dd-live"><i />LIVE · {{ m.cameras[cam] }}</span>
+          <CamShot v-if="on" :seed="cam + d.id.length * 3" :ir="cams[cam]?.ir" />
+          <div v-else class="dd-empty">{{ pluginRunning(d.modelId) ? '设备离线，暂无画面' : '接入插件未运行，暂无画面' }}</div>
+          <span v-if="on" class="dd-live"><i />LIVE · {{ cams[cam]?.label }}</span>
         </div>
       </section>
+      <section v-else-if="lead === 'chess'" class="pp-panel dd-campanel">
+        <div class="pp-panel-h"><h3>棋局</h3><span class="r muted" style="font-size:12px">由插件扩展面板渲染</span></div>
+        <div class="dd-chess"><ChessBoard :state="rt" :size="360" /></div>
+      </section>
+      <section v-else-if="lead === 'ctrl'" class="pp-panel dd-campanel">
+        <div class="pp-panel-h"><h3>设备控制</h3><span class="r muted" style="font-size:12px">控件由插件声明</span></div>
+        <div class="dd-ctrl"><ControlPanel :device-id="d.id" :desc="desc" variant="cards" :cols="3" /></div>
+      </section>
+      <section v-else class="pp-panel dd-campanel"><div class="dd-empty">该型号插件未声明画面与控制能力</div></section>
 
       <div class="dd-side">
         <!-- 型号图片：不同来源的图尺寸不一，统一按等比缩放居中于固定舞台 -->
@@ -88,29 +109,33 @@ function del() {
         <!-- 关键指标 -->
         <section class="pp-panel">
           <div class="pp-panel-h"><h3>实时状态</h3><span class="r muted" style="font-size:12px">{{ on ? '刚刚更新' : `最后在线 ${d.lastSeen}` }}</span></div>
-          <div class="dd-metrics">
-            <div v-for="x in metrics" :key="x.k" :class="{ warn: on && x.warn?.(d) }"><small>{{ x.label }}</small><b class="mono">{{ on ? x.val(d) : '—' }}<em v-if="on && x.unit">{{ x.unit }}</em></b></div>
-          </div>
+          <TelemetryGrid :desc="desc" :state="rt" display="detail" />
         </section>
-        <!-- 位置 -->
-        <section class="pp-panel">
+        <!-- 位置：仅声明定位能力的设备显示 -->
+        <section v-if="has('location')" class="pp-panel">
           <div class="pp-panel-h"><h3>位置</h3><span class="r muted" style="font-size:12px">{{ d.area }}</span></div>
           <div class="dd-loc">
             <svg viewBox="0 0 60 40" class="dd-map" preserveAspectRatio="xMidYMid slice">
               <defs><pattern id="dd-g" width="5" height="5" patternUnits="userSpaceOnUse"><path d="M5 0H0V5" fill="none" stroke="rgba(46,211,230,.12)" stroke-width=".2" /></pattern></defs>
               <rect width="60" height="40" fill="url(#dd-g)" /><rect x=".3" y=".3" width="59.4" height="39.4" fill="none" stroke="rgba(46,211,230,.3)" stroke-width=".3" />
-              <g v-if="on" :transform="`translate(${d.tm.x} ${d.tm.y})`">
-                <circle r="2.6" fill="rgba(46,211,230,.18)" /><path :transform="`rotate(${d.tm.yaw})`" d="M0 -2.2 L1.4 1.4 L0 .6 L-1.4 1.4 Z" fill="#2ED3E6" />
+              <g v-if="on && pose" :transform="`translate(${pose.x} ${pose.y})`">
+                <circle r="2.6" fill="rgba(46,211,230,.18)" /><path :transform="`rotate(${pose.yaw})`" d="M0 -2.2 L1.4 1.4 L0 .6 L-1.4 1.4 Z" fill="#2ED3E6" />
               </g>
             </svg>
-            <div class="dd-xy mono"><span>X {{ on ? d.tm.x.toFixed(1) : '—' }}</span><span>Y {{ on ? d.tm.y.toFixed(1) : '—' }}</span><span>航向 {{ on ? d.tm.yaw + '°' : '—' }}</span></div>
+            <div class="dd-xy mono"><span>X {{ on && pose ? pose.x.toFixed(1) : '—' }}</span><span>Y {{ on && pose ? pose.y.toFixed(1) : '—' }}</span><span>航向 {{ on && pose ? Math.round(pose.yaw) + '°' : '—' }}</span></div>
           </div>
         </section>
       </div>
     </div>
 
+    <!-- 设备控制：主区已被画面/棋盘占用时，控制面板放到下方 -->
+    <section v-if="(lead === 'cam' || lead === 'chess') && ctrlCount" class="pp-panel dd-ctlsec">
+      <div class="pp-panel-h"><h3>设备控制</h3><span class="r muted" style="font-size:12px">控件由插件声明，不可用时悬停查看原因</span></div>
+      <div class="dd-ctrl"><ControlPanel :device-id="d.id" :desc="desc" :variant="lead === 'chess' ? 'cards' : 'panel'" :cols="4" /></div>
+    </section>
+
     <section class="pp-panel dd-more">
-      <a-tabs size="small">
+      <a-tabs v-model:active-key="tab" size="small">
         <a-tab-pane key="info" tab="基本信息">
           <a-descriptions :column="3" size="small" class="dd-desc">
             <a-descriptions-item label="序列号"><span class="mono">{{ d.sn }}</span></a-descriptions-item>
@@ -132,12 +157,48 @@ function del() {
             <a-descriptions-item label="重量">{{ m.spec.weight }}</a-descriptions-item>
             <a-descriptions-item label="电压范围"><span class="mono">{{ m.voltMin != null && m.voltMax != null ? `${m.voltMin} – ${m.voltMax} V` : '—' }}</span></a-descriptions-item>
             <a-descriptions-item label="尺寸"><span class="mono">{{ m.size ? `${m.size} mm` : '—' }}</span></a-descriptions-item>
-            <a-descriptions-item label="摄像头">{{ m.cameras.join('、') }}</a-descriptions-item>
+            <a-descriptions-item label="摄像头">{{ cams.length ? cams.map((c) => c.label).join('、') : '无' }}</a-descriptions-item>
           </a-descriptions>
         </a-tab-pane>
-        <a-tab-pane key="log" tab="操作日志">
-          <ul class="dd-log"><li v-for="l in LOGS" :key="l.t"><span class="mono muted">{{ l.t }}</span>{{ l.c }}</li></ul>
+        <a-tab-pane key="plugin" tab="插件与能力">
+          <div class="dd-plug">
+            <a-descriptions v-if="plugin" :column="3" size="small" class="dd-desc">
+              <a-descriptions-item label="接入插件">{{ plugin.name }} <span class="mono muted">v{{ plugin.version }}</span></a-descriptions-item>
+              <a-descriptions-item label="运行状态"><a-badge :status="P_STATUS[plugin.status].b" :text="P_STATUS[plugin.status].t" /></a-descriptions-item>
+              <a-descriptions-item label="通信方式">{{ plugin.transport }}</a-descriptions-item>
+              <a-descriptions-item label="厂商 SDK">{{ plugin.sdk }}</a-descriptions-item>
+              <a-descriptions-item label="型号编码"><span class="mono">{{ desc.model.code || d.modelId }}</span></a-descriptions-item>
+              <a-descriptions-item label="描述版本"><span class="mono">schema {{ desc.schemaVersion }}</span></a-descriptions-item>
+            </a-descriptions>
+            <a-alert v-else type="warning" show-icon message="该型号暂无接入插件，仅展示基础档案信息" style="margin:6px 0 12px" />
+            <h4>设备能力</h4><CapTags :caps="desc.capabilities" />
+            <div class="dd-plug-cols">
+              <div><h4>上报字段 <em>{{ desc.telemetry.length }}</em></h4>
+                <a-table size="small" :pagination="false" :data-source="desc.telemetry" row-key="key" :scroll="{ y: 240 }"
+                  :columns="[{ title: '字段', dataIndex: 'label' }, { title: '标识', dataIndex: 'key' }, { title: '类型', dataIndex: 'type' }, { title: '单位', dataIndex: 'unit' }, { title: '告警阈值', dataIndex: 'warn' }]">
+                  <template #bodyCell="{ column, record, text }">
+                    <span v-if="column.dataIndex === 'key'" class="mono muted">{{ text }}</span>
+                    <span v-else-if="column.dataIndex === 'type'">{{ TYPE_LABEL[record.type] ?? text }}</span>
+                    <span v-else-if="column.dataIndex === 'warn'" class="mono">{{ text || '—' }}</span>
+                    <template v-else>{{ text ?? '—' }}</template>
+                  </template>
+                </a-table></div>
+              <div><h4>控制指令 <em>{{ desc.controls.length }}</em></h4>
+                <a-table size="small" :pagination="false" :data-source="desc.controls" row-key="key" :scroll="{ y: 240 }"
+                  :columns="[{ title: '指令', dataIndex: 'label' }, { title: '标识', dataIndex: 'key' }, { title: '分组', dataIndex: 'group' }, { title: '控件', dataIndex: 'kind' }, { title: '确认', dataIndex: 'confirm' }]">
+                  <template #bodyCell="{ column, record, text }">
+                    <span v-if="column.dataIndex === 'key'" class="mono muted">{{ text }}</span>
+                    <span v-else-if="column.dataIndex === 'group'">{{ GROUP_META[record.group as keyof typeof GROUP_META]?.label ?? text }}</span>
+                    <span v-else-if="column.dataIndex === 'kind'">{{ KIND_LABEL[text] ?? text }}</span>
+                    <span v-else-if="column.dataIndex === 'confirm'">{{ record.confirm || record.danger ? '需确认' : '—' }}</span>
+                    <template v-else>{{ text }}</template>
+                  </template>
+                </a-table></div>
+            </div>
+          </div>
         </a-tab-pane>
+        <a-tab-pane key="cmd" tab="执行记录"><CmdList :device-id="d.id" /></a-tab-pane>
+        <a-tab-pane key="log" tab="设备日志"><LogList :device-id="d.id" /></a-tab-pane>
       </a-tabs>
     </section>
   </div>
@@ -177,6 +238,14 @@ function del() {
 .dd-map { width: 100%; height: 200px; display: block; border-radius: 4px; background: rgba(11,23,38,.6); }
 .dd-xy { display: flex; gap: 16px; margin-top: 8px; font-size: 12.5px; color: var(--muted); }
 .dd-more { padding: 0 16px 6px; }
+.dd-caps { margin-top: 6px; }
+.dd-ctlsec { margin-bottom: 16px; }
+.dd-ctrl { padding: 14px 16px; }
+.dd-chess { flex: 1; display: grid; place-items: center; padding: 16px; min-height: 360px; }
+.dd-plug { padding-bottom: 10px; }
+.dd-plug h4 { margin: 14px 0 8px; font-size: 13px; color: var(--title); font-weight: 600; }
+.dd-plug h4 em { font-style: normal; color: var(--muted); font-weight: 400; margin-left: 4px; }
+.dd-plug-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .dd-desc { margin-top: 4px; }
 .dd-log { list-style: none; margin: 4px 0 10px; padding: 0; }
 .dd-log li { display: flex; gap: 16px; padding: 8px 0; font-size: 13px; border-bottom: 1px dashed var(--line); }

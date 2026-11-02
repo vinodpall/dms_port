@@ -5,7 +5,7 @@ import { Modal, message } from 'ant-design-vue'
 import { PlusOutlined, SearchOutlined, MoreOutlined, DownOutlined, ImportOutlined, ExportOutlined, EnvironmentOutlined } from '@ant-design/icons-vue'
 import AreaManager from './AreaManager.vue'
 import { useFitRows } from '@/components/proto/fitRows'
-import { AREAS, STATUSES, STATUS_META, TYPES, TYPE_META, canTeleop, isOnline, type Device, type DeviceStatus, type DeviceType } from '@/models/device'
+import { AREAS, STATUSES, STATUS_META, TYPES, TYPE_META, canTeleop, hasTeleop, isOnline, type Device, type DeviceStatus, type DeviceType } from '@/models/device'
 import { fleet, modelOf, removeDevice } from './store'
 
 const areasOpen = ref(false)
@@ -88,7 +88,7 @@ const onMenu = (key: string, d: Device) => (key === 'edit' ? emit('edit', d) : d
           <template v-else-if="column.dataIndex === 'area'"><span class="dl-area">{{ record.area }}</span></template>
           <template v-else-if="column.key === 'op'">
             <div class="pp-op" @click.stop>
-              <a-tooltip v-if="TYPE_META[record.type as DeviceType].teleop" :title="canTeleop(record) ? '' : '设备离线或故障，暂不可遥操作'">
+              <a-tooltip v-if="hasTeleop(record as Device)" :title="canTeleop(record) ? '' : '设备离线或故障，暂不可遥操作'">
                 <a-button type="link" size="small" :disabled="!canTeleop(record)" @click="emit('teleop', record)">遥操作</a-button>
               </a-tooltip>
               <a-dropdown :trigger="['click']"><a-button type="text" size="small"><MoreOutlined /></a-button>

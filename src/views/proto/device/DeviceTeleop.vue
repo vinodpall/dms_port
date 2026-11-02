@@ -5,7 +5,10 @@ import { Modal, message } from 'ant-design-vue'
 import { ArrowLeftOutlined } from '@ant-design/icons-vue'
 import CamShot from '@/views/proto/biz/CamShot.vue'
 import { TYPE_META, type Device } from '@/models/device'
-import { modelOf } from './store'
+import ControlPanel from '@/components/plugin/ControlPanel.vue'
+import { descriptorOf } from '@/plugins/catalog'
+import { execute, fieldsBy, fmtField, teleopOwner } from '@/plugins/runtime'
+import { modelOf, rtOf } from './store'
 
 const props = defineProps<{ device: Device }>()
 const emit = defineEmits<{ exit: [] }>()
@@ -16,7 +19,16 @@ const cam = ref(0)
 /* 速度档：按型号最高速度的比例 */
 const GEARS = [{ k: 0, l: '低速', r: 0.25 }, { k: 1, l: '中速', r: 0.5 }, { k: 2, l: '高速', r: 1 }]
 const gear = ref(0)
-const vmax = computed(() => parseFloat(m.value.spec.speed) || 1)
+const desc = computed(() => descriptorOf(d.value.modelId))
+const rt = computed(() => rtOf(d.value))
+const joy = computed(() => desc.value.controls.find((c) => c.kind === 'joystick'))
+/** 最高速度取插件声明的摇杆上限，未声明时回退型号规格 */
+const vmax = computed(() => joy.value?.maxSpeed ?? (parseFloat(m.value.spec.speed) || 1))
+const cams = computed(() => desc.value.video?.map((x) => ({ label: x.label, ir: !!x.ir })) ?? m.value.cameras.map((c) => ({ label: c, ir: c === '红外' })))
+/** HUD：插件声明 display 含 hud 的字段（速度由摇杆实时计算，单独显示） */
+const hud = computed(() => fieldsBy(desc.value, 'hud').filter((f) => f.key !== 'speed' && f.type !== 'pose2d').map((f) => ({ f, ...fmtField(f, rt.value.values[f.key]) })))
+const estopCtl = computed(() => desc.value.controls.find((c) => c.key === 'estop'))
+const ME = '你'
 
 /* 摇杆向量（-1~1），来自拖拽或键盘 */
 const v = reactive({ x: 0, y: 0 })
@@ -38,14 +50,9 @@ const up = () => { drag = false; v.x = 0; v.y = 0 }
 
 /* 急停 */
 const stopped = ref(false)
-const estop = () => { stopped.value = true; v.x = 0; v.y = 0; keys.clear(); message.error(`${d.value.name} 已急停`) }
+const estop = () => { if (estopCtl.value) execute(d.value.id, estopCtl.value, undefined, { operator: ME, silent: true }); stopped.value = true; v.x = 0; v.y = 0; keys.clear(); message.error(`${d.value.name} 已急停`) }
 const resume = () => { stopped.value = false; message.success('已解除急停') }
 
-/* 类型相关动作（只放最常用的） */
-const standing = ref(true)
-const gait = ref('行走')
-const flying = ref(false)
-const act = (t: string) => message.success(`已发送：${t}`)
 
 const onKey = (e: KeyboardEvent, on: boolean) => {
   if ((e.target as HTMLElement)?.closest('input, textarea')) return
@@ -55,8 +62,8 @@ const onKey = (e: KeyboardEvent, on: boolean) => {
   on ? keys.add(k) : keys.delete(k); fromKeys()
 }
 const kd = (e: KeyboardEvent) => onKey(e, true), ku = (e: KeyboardEvent) => onKey(e, false)
-onMounted(() => { window.addEventListener('keydown', kd); window.addEventListener('keyup', ku) })
-onBeforeUnmount(() => { window.removeEventListener('keydown', kd); window.removeEventListener('keyup', ku) })
+onMounted(() => { teleopOwner[d.value.id] = ME; window.addEventListener('keydown', kd); window.addEventListener('keyup', ku) })
+onBeforeUnmount(() => { delete teleopOwner[d.value.id]; window.removeEventListener('keydown', kd); window.removeEventListener('keyup', ku) })
 
 const exit = () => Modal.confirm({ title: '退出遥操作？', content: '退出后设备将停止运动并释放控制权。', okText: '退出', cancelText: '继续操作', onOk: () => emit('exit') })
 </script>
@@ -66,14 +73,14 @@ const exit = () => Modal.confirm({ title: '退出遥操作？', content: '退出
     <header class="to-top">
       <a-button type="text" class="to-back" @click="exit"><ArrowLeftOutlined />退出遥操作</a-button>
       <b>{{ d.name }}</b><span class="muted">{{ TYPE_META[d.type].label }} · {{ m.name }}</span>
-      <div class="to-st mono"><span>电量 <b :class="{ low: d.battery < 30 }">{{ d.battery }}%</b></span><span>延迟 <b>{{ d.tm.latency }} ms</b></span></div>
+      <div class="to-st mono"><span v-for="h in hud" :key="h.f.key">{{ h.f.label }} <b :class="{ low: h.warn }">{{ h.text }}{{ h.unit ?? '' }}</b></span></div>
       <span class="to-own">控制权：你</span>
     </header>
 
     <main class="to-view">
-      <CamShot :seed="cam + 3" :ir="m.cameras[cam] === '红外'" />
-      <div class="to-cams"><button v-for="(c, i) in m.cameras" :key="c" type="button" :class="{ on: cam === i }" @click="cam = i">{{ c }}</button></div>
-      <div class="to-hud mono"><b>{{ speed.toFixed(1) }}</b><em>m/s</em><template v-if="d.type === 'uav'"><b class="s">{{ (d.tm.alt ?? 0).toFixed(1) }}</b><em>m 高度</em></template></div>
+      <CamShot :seed="cam + 3" :ir="cams[cam]?.ir" />
+      <div class="to-cams"><button v-for="(c, i) in cams" :key="c.label" type="button" :class="{ on: cam === i }" @click="cam = i">{{ c.label }}</button></div>
+      <div class="to-hud mono"><b>{{ speed.toFixed(1) }}</b><em>m/s</em><template v-if="rt.values.alt != null && d.type === 'uav'"><b class="s">{{ Number(rt.values.alt).toFixed(1) }}</b><em>m 高度</em></template></div>
       <div v-if="stopped" class="to-stopped"><b>已急停</b><a-button size="small" @click="resume">解除急停</a-button></div>
     </main>
 
@@ -87,14 +94,7 @@ const exit = () => Modal.confirm({ title: '退出遥操作？', content: '退出
 
       <div class="to-mid">
         <div class="to-row"><span class="muted">速度档</span><a-radio-group v-model:value="gear" button-style="solid"><a-radio-button v-for="g in GEARS" :key="g.k" :value="g.k">{{ g.l }}</a-radio-button></a-radio-group></div>
-        <div v-if="d.type === 'quadruped'" class="to-row">
-          <a-button @click="standing = !standing; act(standing ? '起立' : '趴下')">{{ standing ? '趴下' : '起立' }}</a-button>
-          <a-select v-model:value="gait" style="width: 110px" :options="['行走', '小跑', '爬楼'].map((v) => ({ value: v, label: v }))" @change="act(`步态 ${gait}`)" />
-        </div>
-        <div v-else-if="d.type === 'uav'" class="to-row">
-          <a-button @click="flying = !flying; act(flying ? '起飞' : '降落')">{{ flying ? '降落' : '起飞' }}</a-button>
-          <a-button @click="act('一键返航')">返航</a-button>
-        </div>
+        <ControlPanel class="to-acts" :device-id="d.id" :desc="desc" :groups="['posture', 'flight', 'action', 'charge']" variant="compact" :headers="false" />
       </div>
 
       <div class="to-stop">
@@ -106,7 +106,7 @@ const exit = () => Modal.confirm({ title: '退出遥操作？', content: '退出
 </template>
 
 <style scoped>
-.to { position: fixed; inset: 0; z-index: 1000; display: grid; grid-template-rows: 52px minmax(0, 1fr) 170px; background: #0a1524; color: var(--text); }
+.to { position: fixed; inset: 0; z-index: 1000; display: grid; grid-template-rows: 52px minmax(0, 1fr) auto; background: #0a1524; color: var(--text); }
 .to-top { display: flex; align-items: center; gap: 12px; padding: 0 16px; border-bottom: 1px solid var(--line); }
 .to-top > b { font-size: 15px; color: var(--title); }
 .to-back { color: var(--muted); }
@@ -123,13 +123,16 @@ const exit = () => Modal.confirm({ title: '退出遥操作？', content: '退出
 .to-hud em { font-style: normal; font-size: 12px; color: rgba(255,255,255,.7); }
 .to-stopped { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 12px; background: rgba(120,0,0,.25); }
 .to-stopped b { font-size: 28px; color: #FF8A8A; letter-spacing: 6px; }
-.to-ctl { display: grid; grid-template-columns: 260px 1fr 200px; align-items: center; gap: 24px; padding: 0 32px; border-top: 1px solid var(--line); }
+.to-ctl { display: grid; grid-template-columns: 260px 1fr 200px; align-items: center; gap: 24px; padding: 14px 32px; min-height: 170px; border-top: 1px solid var(--line); }
 .to-stick { display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .pad { position: relative; width: 116px; height: 116px; border-radius: 50%; border: 1px solid rgba(46,211,230,.35); background: radial-gradient(circle, rgba(46,211,230,.08), rgba(46,211,230,.02)); touch-action: none; cursor: grab; display: grid; place-items: center; }
 .pad.dis { opacity: .4; cursor: not-allowed; }
 .pad i { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(180deg, #3fd9ea, #1d9fc0); box-shadow: 0 4px 12px rgba(0,0,0,.4); pointer-events: none; }
 .to-stick small { font-size: 12px; }
 .to-mid { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.to-acts { width: min(100%, 820px); max-height: 236px; overflow: auto; }
+.to-acts.cp { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 10px; align-content: start; }
+.to-acts :deep(.cp-items) { --cols: 3 !important; }
 .to-row { display: flex; align-items: center; gap: 10px; }
 .to-stop { display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .to-stop button { width: 96px; height: 96px; border-radius: 50%; border: 4px solid rgba(255,122,122,.35); background: #D93B3B; color: #fff; font: inherit; font-size: 18px; font-weight: 600; letter-spacing: 2px; cursor: pointer; }
