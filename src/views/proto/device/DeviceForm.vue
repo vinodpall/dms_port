@@ -5,6 +5,7 @@ import { message } from 'ant-design-vue'
 import { SettingOutlined } from '@ant-design/icons-vue'
 import AreaManager from './AreaManager.vue'
 import { AREAS, STATUSES, STATUS_META, type Device, type DeviceStatus } from '@/models/device'
+import { descriptorOf, pluginOf } from '@/plugins/catalog'
 import { fleet, ipTaken, saveDevice } from './store'
 
 const props = defineProps<{ open: boolean; device?: Device | null }>()
@@ -29,6 +30,15 @@ watch(() => props.open, (v) => {
   formRef.value?.clearValidate()
 })
 
+/** 接入参数：由型号对应插件的 descriptor.connection 动态生成 */
+const desc = computed(() => descriptorOf(f.modelId))
+const plugin = computed(() => pluginOf(desc.value.pluginId))
+const connFields = computed(() => (f.modelId ? desc.value.connection.filter((c) => !['ip', 'host'].includes(c.key)) : []))
+const conn = reactive<Record<string, string | number | undefined>>({})
+watch(() => [f.modelId, props.open], () => {
+  Object.keys(conn).forEach((k) => delete conn[k])
+  connFields.value.forEach((c) => { conn[c.key] = props.device?.modelId === f.modelId ? props.device?.conn?.[c.key] ?? c.default : c.default })
+})
 const modelOptions = computed(() => fleet.models.map((m) => ({ value: m.id, label: `${m.name}（${m.vendor}）` })))
 
 const IP_RE = /^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$/
@@ -48,10 +58,12 @@ const rules = {
 
 async function submit() {
   await formRef.value.validate()
+  const miss = connFields.value.find((c) => c.required && (conn[c.key] == null || conn[c.key] === ''))
+  if (miss) { message.warning(`请填写接入参数「${miss.label}」`); return }
   const m = fleet.models.find((x) => x.id === f.modelId)!
   const base = props.device
   const { cams, ...rest } = f
-  const v = { ...rest, modelId: m.id, type: m.type, publicIp: f.publicIp || undefined, cameraIps: splitCams(cams), remark: f.remark || undefined }
+  const v = { ...rest, modelId: m.id, type: m.type, publicIp: f.publicIp || undefined, cameraIps: splitCams(cams), remark: f.remark || undefined, conn: Object.fromEntries(Object.entries(conn).filter(([, x]) => x != null && x !== '')) as Record<string, string | number> }
   const d: Device = base
     ? { ...base, ...v }
     : { id: `D-${Date.now().toString(36).toUpperCase()}`, ...v,
@@ -74,6 +86,19 @@ async function submit() {
         <a-col :span="12"><a-form-item label="内网 IP" name="ip"><a-input v-model:value="f.ip" placeholder="如：10.20.1.15" /></a-form-item></a-col>
         <a-col :span="12"><a-form-item label="外网 IP" name="publicIp"><a-input v-model:value="f.publicIp" placeholder="选填" /></a-form-item></a-col>
       </a-row>
+      <div v-if="f.modelId" class="df-conn">
+        <div class="df-conn-h"><b>接入参数</b><span class="muted">{{ plugin ? `${plugin.name} · ${plugin.transport}` : '该型号无接入插件，仅登记档案' }}</span>
+          <a-tag v-if="plugin && plugin.status !== 'running'" color="warning" :bordered="false">插件{{ plugin.status === 'error' ? '异常' : '未运行' }}</a-tag></div>
+        <a-row v-if="connFields.length" :gutter="12">
+          <a-col v-for="c in connFields" :key="c.key" :span="12"><a-form-item :label="c.label" :required="c.required">
+            <a-select v-if="c.type === 'enum'" v-model:value="conn[c.key]" :options="Object.entries(c.options ?? {}).map(([value, label]) => ({ value, label }))" />
+            <a-input-number v-else-if="c.type === 'number'" v-model:value="conn[c.key] as number" style="width: 100%" :placeholder="c.placeholder" />
+            <a-input-password v-else-if="c.type === 'password'" v-model:value="conn[c.key] as string" :placeholder="c.placeholder ?? '请输入'" />
+            <a-input v-else v-model:value="conn[c.key] as string" :placeholder="c.placeholder ?? '请输入'" />
+          </a-form-item></a-col>
+        </a-row>
+        <p v-else class="muted df-none">该插件无需额外接入参数</p>
+      </div>
       <a-form-item label="相机地址" name="cams" extra="填写 IP 或 rtsp 流地址，多个用分号 ; 分隔">
         <a-input v-model:value="f.cams" placeholder="如：10.20.1.101; rtsp://10.20.1.102/live" />
       </a-form-item>
@@ -92,6 +117,9 @@ async function submit() {
 </template>
 
 <style scoped>
+.df-conn { margin: -4px 0 18px; padding: 12px 14px 0; border: 1px dashed var(--line); border-radius: 6px; background: rgba(46,211,230,.03); }
+.df-conn-h { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 12.5px; } .df-conn-h b { color: var(--title); font-weight: 600; }
+.df-conn :deep(.ant-form-item) { margin-bottom: 12px; } .df-none { margin: 0 0 12px; font-size: 12px; }
 .df-area { display: flex; gap: 8px; } .df-area > :first-child { flex: 1; min-width: 0; }
 .df-st { display: flex; } .df-st :deep(.ant-radio-button-wrapper) { flex: 1; text-align: center; }
 </style>

@@ -3,6 +3,9 @@
 import { computed } from 'vue'
 import DeviceGlyph from '@/components/proto/DeviceGlyph.vue'
 import { STATUSES, STATUS_META, typeMeta, type DeviceModel } from '@/models/device'
+import CapTags from '@/components/plugin/CapTags.vue'
+import { descriptorOf, pluginOf } from '@/plugins/catalog'
+import { GROUP_META } from '@/plugins/types'
 import { fleet } from './store'
 
 const props = defineProps<{ open: boolean; model: DeviceModel | null }>()
@@ -10,6 +13,9 @@ const emit = defineEmits<{ 'update:open': [boolean]; edit: [DeviceModel] }>()
 
 const m = computed(() => props.model)
 const devs = computed(() => fleet.devices.filter((d) => d.modelId === m.value?.id))
+const desc = computed(() => descriptorOf(m.value?.id))
+const plugin = computed(() => pluginOf(desc.value.pluginId))
+const ctrlGroups = computed(() => [...new Set(desc.value.controls.map((c) => c.group))].map((g) => ({ g: GROUP_META[g]?.label ?? g, items: desc.value.controls.filter((c) => c.group === g).map((c) => c.label) })))
 const volt = computed(() => (m.value?.voltMin != null || m.value?.voltMax != null ? `${m.value?.voltMin ?? '—'} ~ ${m.value?.voltMax ?? '—'} V` : '—'))
 const specs = computed(() => m.value ? [
   ['最高速度', m.value.spec.speed], ['续航', m.value.spec.endurance], ['负载', m.value.spec.payload],
@@ -35,6 +41,12 @@ const specs = computed(() => m.value ? [
       </div>
       <h4>规格参数</h4>
       <dl class="md-spec"><div v-for="[k, v] in specs" :key="k"><dt>{{ k }}</dt><dd>{{ v && v !== '—' ? v : '—' }}</dd></div></dl>
+      <h4>接入插件与能力 <span v-if="plugin" class="md-plug">{{ plugin.name }} · v{{ plugin.version }} · {{ plugin.transport }}</span><span v-else class="md-plug warn">未关联插件</span></h4>
+      <div class="md-capbox">
+        <CapTags :caps="desc.capabilities" />
+        <div class="md-ctl"><div v-for="x in ctrlGroups" :key="x.g"><dt>{{ x.g }}</dt><dd>{{ x.items.join('、') }}</dd></div></div>
+        <p class="muted md-tl">上报字段：{{ desc.telemetry.map((f) => f.label).join('、') || '—' }}</p>
+      </div>
       <div class="md-foot"><a-button @click="emit('update:open', false)">关闭</a-button><a-button type="primary" @click="emit('edit', m)">编辑型号</a-button></div>
     </div>
   </a-modal>
@@ -61,5 +73,10 @@ const specs = computed(() => m.value ? [
 .md-spec > div:nth-child(n+4) { border-top: 1px solid var(--line); }
 .md-spec > div:not(:nth-child(3n+1)) { border-left: 1px solid var(--line); }
 .md-spec dt { font-size: 12px; color: var(--muted); } .md-spec dd { margin: 2px 0 0; color: var(--title); font-family: var(--mono); font-size: 13.5px; }
+.md-plug { margin-left: 8px; font-size: 12px; color: var(--faint); font-weight: 400; } .md-plug.warn { color: var(--warn); }
+.md-capbox { padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; }
+.md-ctl { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 18px; margin-top: 12px; font-size: 12.5px; }
+.md-ctl > div { display: flex; gap: 8px; } .md-ctl dt { flex: none; width: 56px; color: var(--muted); } .md-ctl dd { margin: 0; color: var(--text); }
+.md-tl { margin: 10px 0 0; font-size: 12px; }
 .md-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 22px; }
 </style>

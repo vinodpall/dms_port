@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /** 机器人设备管理：设备列表（含详情 / 遥操作）+ 型号管理 */
 import { ref, watch } from 'vue'
-import { DashboardOutlined, DatabaseOutlined, AppstoreOutlined, VideoCameraOutlined } from '@ant-design/icons-vue'
+import { DashboardOutlined, DatabaseOutlined, AppstoreOutlined, VideoCameraOutlined, ApiOutlined } from '@ant-design/icons-vue'
 import ModuleShell from '@/components/proto/ModuleShell.vue'
 import type { Device, DeviceStatus, DeviceType } from '@/models/device'
 import DeviceDash from './device/DeviceDash.vue'
@@ -11,6 +11,7 @@ import DeviceTeleop from './device/DeviceTeleop.vue'
 import DeviceForm from './device/DeviceForm.vue'
 import ModelLib from './device/ModelLib.vue'
 import DeviceWall from './device/DeviceWall.vue'
+import PluginManager from './device/PluginManager.vue'
 
 document.title = '机器人设备管理 · 具身智能训练场'
 const MENU = [
@@ -18,6 +19,7 @@ const MENU = [
   { key: 'wall', label: '监控大屏', icon: VideoCameraOutlined, group: '概览' },
   { key: 'list', label: '设备列表', icon: DatabaseOutlined, group: '设备' },
   { key: 'models', label: '型号管理', icon: AppstoreOutlined, group: '设备' },
+  { key: 'plugins', label: '插件管理', icon: ApiOutlined, group: '接入' },
 ]
 const tab = ref('dash')
 const detailId = ref<string | null>(null)
@@ -44,6 +46,7 @@ const edit = (d: Device) => { editing.value = d; formOpen.value = true }
     </template>
     <DeviceWall v-else-if="tab === 'wall'" />
     <ModelLib v-else-if="tab === 'models'" />
+    <PluginManager v-else-if="tab === 'plugins'" />
 
     <DeviceForm v-model:open="formOpen" :device="editing" />
     <DeviceTeleop v-if="teleop" :device="teleop" @exit="teleop = null" />
