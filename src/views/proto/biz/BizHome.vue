@@ -192,22 +192,31 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
         </div>
       </div>
       <div class="pp-panel hm-alarm">
-        <div class="pp-panel-h"><h3>信息展示</h3>
-          <a-radio-group v-model:value="info" size="small" class="hm-itab"><a-radio-button v-for="t in infoTabs" :key="t.k" :value="t.k">{{ t.t }}</a-radio-button></a-radio-group>
-          <span v-if="info === 'alarm'" class="muted sub">{{ alarms.filter((a) => a.state === '待处理').length }} 条待处理</span>
-          <a class="r more" @click="emit('go', 'log', info === 'alarm' ? 'rec' : info)">查看全部 →</a></div>
-        <div v-if="info === 'cmd'" class="hm-cmds"><CmdList :device-id="robot.id" :limit="8" /></div>
-        <div v-else-if="info === 'dlog'" class="hm-cmds"><LogList :device-id="robot.id" :limit="30" :filter="false" /></div>
-        <a-table v-else size="small" :pagination="false" :data-source="alarms" row-key="id"
-          :columns="[{ title: '报警时间', key: 'time', width: 120 }, { title: '警情类型', key: 'type', width: 110 }, { title: '内容', dataIndex: 'content', ellipsis: true }, { title: '来源', dataIndex: 'src', width: 72 }, { title: '状态', key: 'state', width: 84 }, { title: '图片', key: 'pic', width: 60 }]">
-          <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'time'"><span class="mono">{{ record.time.slice(5) }}</span></template>
-            <template v-else-if="column.key === 'type'"><span class="hm-type"><i :style="{ background: alarmColor(record.type) }" />{{ record.type }}</span></template>
-            <template v-else-if="column.key === 'state'"><a-badge :status="record.state === '待处理' ? 'error' : 'default'" :text="record.state" /></template>
-            <template v-else-if="column.key === 'pic'"><a v-if="record.src === '可见光' || record.src === '红外'" @click="pic = record">查看</a><span v-else class="muted">—</span></template>
-          </template>
-          <template #emptyText><div class="hm-none"><BellOutlined /><span>暂无警情</span></div></template>
-        </a-table>
+        <!-- 巡检狗/巡检车：显示实时警情 + 多 Tab -->
+        <template v-if="patrol">
+          <div class="pp-panel-h"><h3>信息展示</h3>
+            <a-radio-group v-model:value="info" size="small" class="hm-itab"><a-radio-button v-for="t in infoTabs" :key="t.k" :value="t.k">{{ t.t }}</a-radio-button></a-radio-group>
+            <span v-if="info === 'alarm'" class="muted sub">{{ alarms.filter((a) => a.state === '待处理').length }} 条待处理</span>
+            <a class="r more" @click="emit('go', 'log', info === 'alarm' ? 'rec' : info)">查看全部 →</a>
+          </div>
+          <div v-if="info === 'cmd'" class="hm-cmds"><CmdList :device-id="robot.id" :limit="8" /></div>
+          <div v-else-if="info === 'dlog'" class="hm-cmds"><LogList :device-id="robot.id" :limit="30" :filter="false" /></div>
+          <a-table v-else size="small" :pagination="false" :data-source="alarms" row-key="id"
+            :columns="[{ title: '报警时间', key: 'time', width: 120 }, { title: '警情类型', key: 'type', width: 110 }, { title: '内容', dataIndex: 'content', ellipsis: true }, { title: '来源', dataIndex: 'src', width: 72 }, { title: '状态', key: 'state', width: 84 }, { title: '图片', key: 'pic', width: 60 }]">
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'time'"><span class="mono">{{ record.time.slice(5) }}</span></template>
+              <template v-else-if="column.key === 'type'"><span class="hm-type"><i :style="{ background: alarmColor(record.type) }" />{{ record.type }}</span></template>
+              <template v-else-if="column.key === 'state'"><a-badge :status="record.state === '待处理' ? 'error' : 'default'" :text="record.state" /></template>
+              <template v-else-if="column.key === 'pic'"><a v-if="record.src === '可见光' || record.src === '红外'" @click="pic = record">查看</a><span v-else class="muted">—</span></template>
+            </template>
+            <template #emptyText><div class="hm-none"><BellOutlined /><span>暂无警情</span></div></template>
+          </a-table>
+        </template>
+        <!-- 其他设备：只显示设备日志 -->
+        <template v-else>
+          <div class="pp-panel-h"><h3>信息展示</h3><span class="muted sub">设备日志</span><a class="r more" @click="emit('go', 'log', 'dlog')">查看全部 →</a></div>
+          <div class="hm-cmds"><LogList :device-id="robot.id" :limit="40" /></div>
+        </template>
       </div>
     </div>
 
