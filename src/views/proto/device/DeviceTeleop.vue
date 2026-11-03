@@ -6,6 +6,7 @@ import { ArrowLeftOutlined } from '@ant-design/icons-vue'
 import CamShot from '@/views/proto/biz/CamShot.vue'
 import { TYPE_META, type Device } from '@/models/device'
 import ControlPanel from '@/components/plugin/ControlPanel.vue'
+import LogList from '@/components/plugin/LogList.vue'
 import { stateOf } from '@/plugins/runtime'
 import { descriptorOf } from '@/plugins/catalog'
 import { execute, fieldsBy, fmtField, teleopOwner } from '@/plugins/runtime'
@@ -104,15 +105,13 @@ const exit = () => Modal.confirm({ title: '退出遥操作？', content: '退出
       </main>
 
       <aside v-if="ctlN" class="to-side">
-        <section class="to-card">
-          <h4><i />实时状态<small>{{ side.length }} 项</small></h4>
-          <div class="to-kv">
-            <div v-for="x in side" :key="x.f.key" :class="{ warn: x.warn }"><small>{{ x.f.label }}</small><b class="mono">{{ x.text }}<em>{{ x.unit ?? '' }}</em></b></div>
-          </div>
-        </section>
-        <section class="to-card grow">
+        <section class="to-card to-card--ctl">
           <h4><i />设备控制<small>{{ ctlN }} 项</small></h4>
           <div class="to-cp"><ControlPanel :device-id="d.id" :desc="desc" :exclude="['safety']" variant="panel" :cols="2" /></div>
+        </section>
+        <section class="to-card to-card--log">
+          <h4><i class="log" />运行日志</h4>
+          <div class="to-log"><LogList :device-id="d.id" :limit="80" /></div>
         </section>
       </aside>
     </div>
@@ -152,18 +151,20 @@ const exit = () => Modal.confirm({ title: '退出遥操作？', content: '退出
 .to-stop button.long { font-size: 14px; letter-spacing: 0; line-height: 1.25; padding: 0 14px; } .to-stop button:hover { background: #E84848; } .to-stop small { font-size: 12px; color: rgba(255,255,255,.7); }
 .to-stopped { position: absolute; inset: 0; z-index: 3; display: grid; place-content: center; justify-items: center; gap: 12px; background: rgba(120,0,0,.3); }
 .to-stopped b { font-size: 28px; color: #FF8A8A; letter-spacing: 6px; }
-.to-side { display: flex; flex-direction: column; gap: 12px; min-height: 0; padding: 12px; background: #0B1828; border-left: 1px solid var(--line); }
+.to-side { display: flex; flex-direction: column; gap: 10px; min-height: 0; padding: 12px; background: #0B1828; border-left: 1px solid var(--line); overflow: hidden; }
 .to-card { flex: none; padding: 12px 14px 14px; background: linear-gradient(180deg, rgba(46,211,230,.05), rgba(46,211,230,.015)); border: 1px solid var(--line); border-radius: 10px; }
-.to-card.grow { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.to-card--ctl { flex: none; }
+.to-card--log { flex: 1; min-height: 0; display: flex; flex-direction: column; min-height: 120px; }
 .to-card h4 { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; font-size: 13.5px; font-weight: 600; color: var(--title); }
 .to-card h4 i { width: 3px; height: 13px; border-radius: 2px; background: var(--cyan); }
+.to-card h4 i.log { background: linear-gradient(180deg, #7EC8FF, #3A96E8); }
 .to-card h4 small { margin-left: auto; font-size: 11.5px; font-weight: 400; color: var(--faint); }
-.to-kv { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
-.to-kv > div { min-width: 0; padding: 7px 9px; background: rgba(8,18,32,.55); border: 1px solid rgba(46,211,230,.1); border-radius: 7px; }
-.to-kv small { display: block; font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.to-kv b { display: block; margin-top: 2px; font-size: 14px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.to-kv em { font-style: normal; font-size: 10.5px; font-weight: 400; color: var(--muted); margin-left: 2px; }
-.to-kv .warn b { color: #FF8A8A; }
-.to-cp { flex: 1; min-height: 0; overflow: auto; margin-right: -6px; padding-right: 6px; }
+.to-cp { overflow: auto; max-height: 320px; margin-right: -6px; padding-right: 6px; }
 .to-cp :deep(.cp-btn) { height: 36px; }
+.to-cp :deep(.cp-sec:only-child .cp-items) { gap: 8px; }
+.to-cp :deep(.cp-sec:only-child .cp-btn) { height: 42px; font-size: 13.5px; }
+.to-log { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+.to-log :deep(.ll) { flex: 1; min-height: 0; }
+.to-log :deep(.ll ul) { flex: 1; min-height: 0; overflow: auto; max-height: 100%; }
+.to-log :deep(.ll-f) { margin-bottom: 6px; }
 </style>
