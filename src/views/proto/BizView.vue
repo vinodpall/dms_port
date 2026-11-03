@@ -76,6 +76,7 @@ const estop = () => {
 <template>
   <ModuleShell v-model:active="tab" title="机器人业务管理" en="Robot Business" :menu="MENU">
     <template #extra>
+      <div v-if="!robot.online" class="bv-offtip"><i />{{ robot.name }} 离线 · 仅可查看数据，无法下发指令与任务</div>
       <div class="bv-rb">
         <i :style="{ background: state(curId).c }" />
         <a-select :value="curId" :bordered="false" :dropdown-match-select-width="300" :list-height="460" :virtual="false" :options="robotOpts" @change="(v: any) => selectRobot(String(v))">
@@ -85,8 +86,7 @@ const estop = () => {
       <a-button v-if="estopCtl" type="primary" danger size="small" class="bv-stop" :disabled="!robot.online" @click="estop">急停</a-button>
     </template>
 
-    <div :style="{ '--off': !robot.online && tab !== 'log' ? '52px' : '0px' }"><a-spin :spinning="switching" tip="机器人切换中...">
-      <a-alert v-if="!robot.online && tab !== 'log'" class="bv-off" type="warning" show-icon banner :message="`${robot.name}（${robot.id}）当前离线，无法下发控制指令与任务，仅可查看数据`" />
+    <div><a-spin :spinning="switching" tip="机器人切换中...">
       <template v-if="tab === 'home'"><BizHome :key="curId" @go="go" /></template>
       <template v-else-if="page">
         <a-tabs v-model:activeKey="cur" class="bv-tabs"><a-tab-pane v-for="x in page.tabs" :key="x.k" :tab="x.t" /></a-tabs>
@@ -106,7 +106,8 @@ const estop = () => {
 </template>
 
 <style scoped>
-.bv-off { margin-bottom: 14px; }
+.bv-offtip { display: flex; align-items: center; gap: 7px; height: 30px; padding: 0 12px; margin-right: 10px; font-size: 12.5px; color: #FFC15C; background: rgba(255,183,77,.08); border: 1px solid rgba(255,183,77,.35); border-radius: 7px; white-space: nowrap; }
+.bv-offtip i { width: 7px; height: 7px; border-radius: 50%; background: #FFC15C; box-shadow: 0 0 6px #FFC15C; }
 .bv-pl { padding: 8px 16px 12px; }
 .bv-park { display: none; }
 .bv-rb { display: flex; align-items: center; height: 30px; padding-left: 10px; margin-right: 8px; background: rgba(46,211,230,.06); border: 1px solid var(--line-strong); border-radius: 7px; }

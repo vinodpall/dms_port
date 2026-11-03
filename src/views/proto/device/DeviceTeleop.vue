@@ -6,7 +6,6 @@ import { ArrowLeftOutlined } from '@ant-design/icons-vue'
 import CamShot from '@/views/proto/biz/CamShot.vue'
 import { TYPE_META, type Device } from '@/models/device'
 import ControlPanel from '@/components/plugin/ControlPanel.vue'
-import TelemetryGrid from '@/components/plugin/TelemetryGrid.vue'
 import { stateOf } from '@/plugins/runtime'
 import { descriptorOf } from '@/plugins/catalog'
 import { execute, fieldsBy, fmtField, teleopOwner } from '@/plugins/runtime'
@@ -32,6 +31,7 @@ const hud = computed(() => fieldsBy(desc.value, 'hud').filter((f) => f.key !== '
 const estopCtl = computed(() => desc.value.controls.find((c) => c.key === 'estop'))
 const ME = '你'
 const st = computed(() => stateOf(d.value.id))
+const side = computed(() => desc.value.telemetry.filter((f) => f.type !== 'pose2d' && f.type !== 'gps' && f.display.some((x) => x === 'detail' || x === 'card')).slice(0, 9).map((f) => ({ f, ...(st.value?.online ? fmtField(f, st.value.values[f.key]) : { text: '--', unit: f.unit, warn: false }) })))
 /** 侧栏控制分组：按插件声明自动出现（机器狗姿态/步态/动作、无人机飞行、服务机器人技能…） */
 const ctlN = computed(() => desc.value.controls.filter((c) => c.kind !== 'joystick' && !['safety', 'teleop', 'navigation', 'task'].includes(c.group)).length)
 
@@ -104,13 +104,15 @@ const exit = () => Modal.confirm({ title: '退出遥操作？', content: '退出
       </main>
 
       <aside v-if="ctlN" class="to-side">
-        <section>
-          <h4>实时状态</h4>
-          <TelemetryGrid :desc="desc" :state="st" display="detail" :cols="2" dense />
+        <section class="to-card">
+          <h4><i />实时状态<small>{{ side.length }} 项</small></h4>
+          <div class="to-kv">
+            <div v-for="x in side" :key="x.f.key" :class="{ warn: x.warn }"><small>{{ x.f.label }}</small><b class="mono">{{ x.text }}<em>{{ x.unit ?? '' }}</em></b></div>
+          </div>
         </section>
-        <section class="grow">
-          <h4>设备控制<small>{{ ctlN }} 项 · 由插件声明</small></h4>
-          <ControlPanel :device-id="d.id" :desc="desc" :exclude="['safety']" variant="compact" :cols="2" />
+        <section class="to-card grow">
+          <h4><i />设备控制<small>{{ ctlN }} 项</small></h4>
+          <div class="to-cp"><ControlPanel :device-id="d.id" :desc="desc" :exclude="['safety']" variant="panel" :cols="2" /></div>
         </section>
       </aside>
     </div>
@@ -150,7 +152,18 @@ const exit = () => Modal.confirm({ title: '退出遥操作？', content: '退出
 .to-stop button.long { font-size: 14px; letter-spacing: 0; line-height: 1.25; padding: 0 14px; } .to-stop button:hover { background: #E84848; } .to-stop small { font-size: 12px; color: rgba(255,255,255,.7); }
 .to-stopped { position: absolute; inset: 0; z-index: 3; display: grid; place-content: center; justify-items: center; gap: 12px; background: rgba(120,0,0,.3); }
 .to-stopped b { font-size: 28px; color: #FF8A8A; letter-spacing: 6px; }
-.to-side { display: flex; flex-direction: column; min-height: 0; background: #0B1828; border-left: 1px solid var(--line); }
-.to-side section { padding: 14px 16px; border-bottom: 1px solid var(--line); } .to-side section.grow { flex: 1; min-height: 0; overflow: auto; border-bottom: 0; }
-.to-side h4 { display: flex; align-items: baseline; gap: 8px; margin: 0 0 10px; font-size: 13px; font-weight: 600; color: var(--title); } .to-side h4 small { font-size: 11.5px; font-weight: 400; color: var(--faint); }
+.to-side { display: flex; flex-direction: column; gap: 12px; min-height: 0; padding: 12px; background: #0B1828; border-left: 1px solid var(--line); }
+.to-card { flex: none; padding: 12px 14px 14px; background: linear-gradient(180deg, rgba(46,211,230,.05), rgba(46,211,230,.015)); border: 1px solid var(--line); border-radius: 10px; }
+.to-card.grow { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.to-card h4 { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; font-size: 13.5px; font-weight: 600; color: var(--title); }
+.to-card h4 i { width: 3px; height: 13px; border-radius: 2px; background: var(--cyan); }
+.to-card h4 small { margin-left: auto; font-size: 11.5px; font-weight: 400; color: var(--faint); }
+.to-kv { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.to-kv > div { min-width: 0; padding: 7px 9px; background: rgba(8,18,32,.55); border: 1px solid rgba(46,211,230,.1); border-radius: 7px; }
+.to-kv small { display: block; font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.to-kv b { display: block; margin-top: 2px; font-size: 14px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.to-kv em { font-style: normal; font-size: 10.5px; font-weight: 400; color: var(--muted); margin-left: 2px; }
+.to-kv .warn b { color: #FF8A8A; }
+.to-cp { flex: 1; min-height: 0; overflow: auto; margin-right: -6px; padding-right: 6px; }
+.to-cp :deep(.cp-btn) { height: 36px; }
 </style>

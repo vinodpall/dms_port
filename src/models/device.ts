@@ -64,8 +64,8 @@ export const TYPE_META = reactive<Record<DeviceType, TypeMeta>>({
   quadruped: { label: '机器狗', color: '#5B9BFF', teleop: true, metrics: ['battery', 'speed', 'gait', 'latency'], icon: 'quadruped' },
   ugv: { label: '无人车', color: '#45E3A8', teleop: true, metrics: ['battery', 'speed', 'latency'], icon: 'ugv' },
   uav: { label: '无人机', color: '#B48CFF', teleop: true, metrics: ['battery', 'speed', 'alt', 'latency'], icon: 'uav' },
-  humanoid: { label: '人形机器人', color: '#2ED3E6', teleop: false, metrics: ['battery', 'joint', 'latency'], icon: 'humanoid' },
-  service: { label: '服务机器人', color: '#FF9F6B', teleop: false, metrics: ['battery', 'latency'], icon: 'service' },
+  humanoid: { label: '人形机器人', color: '#2ED3E6', teleop: true, metrics: ['battery', 'joint', 'latency'], icon: 'humanoid' },
+  service: { label: '服务机器人', color: '#FF9F6B', teleop: true, metrics: ['battery', 'latency'], icon: 'service' },
 })
 export const TYPES = reactive<DeviceType[]>(Object.keys(TYPE_META))
 export const typeMeta = (t: DeviceType): TypeMeta => TYPE_META[t] ?? { label: t, color: '#2ED3E6', teleop: false, metrics: ['battery', 'latency'], icon: 'generic' }
@@ -80,7 +80,8 @@ export const STATUSES = Object.keys(STATUS_META) as DeviceStatus[]
 /** 在线 = 非离线（故障设备仍能上报状态） */
 export const isOnline = (d: Device) => d.status !== 'offline'
 /** 是否具备遥操作能力：由插件上报的设备描述决定（capabilities 含 teleop） */
-export const hasTeleop = (d: Device) => descriptorOf(d.modelId).capabilities.includes('teleop')
+/** 遥操作控制台：插件声明了遥操作或任意可执行控件即可进入（无摇杆的设备进入技能控制台） */
+export const hasTeleop = (d: Device) => { const x = descriptorOf(d.modelId); return x.capabilities.includes('teleop') || x.controls.some((c) => c.group !== 'navigation' && c.group !== 'task') }
 /** 可遥操作：具备能力且设备在线、无故障 */
 export const canTeleop = (d: Device) => hasTeleop(d) && d.status === 'online'
 

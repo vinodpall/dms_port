@@ -114,7 +114,7 @@ function uav(o: { dock?: boolean; max?: number } = {}): Omit<Descriptor, 'plugin
 function humanoid(): Omit<Descriptor, 'pluginId' | 'model'> {
   return {
     schemaVersion: '1.0',
-    capabilities: ['status', 'telemetry', 'video', 'posture', 'action', 'voice', 'task', 'alarm', 'log'],
+    capabilities: ['status', 'telemetry', 'video', 'teleop', 'posture', 'action', 'voice', 'task', 'alarm', 'log'],
     telemetry: [
       F.battery(), F.uptime(),
       { key: 'joint', label: '关节状态', type: 'enum', options: { ok: '正常', warn: '异常' }, display: ['card', 'detail'], sim: { values: ['ok'] } },
@@ -127,7 +127,7 @@ function humanoid(): Omit<Descriptor, 'pluginId' | 'model'> {
       { key: 'bow', label: '鞠躬', kind: 'button', group: 'action', costMs: 2500 },
       { key: 'shake', label: '握手', kind: 'button', group: 'action', costMs: 3000 },
       { key: 'dance', label: '跳舞', kind: 'button', group: 'action', costMs: 8000 },
-      SPEAK, TASK,
+      SPEAK, TELEOP(1.2, ['vx', 'wz']), TASK,
     ],
     video: [{ key: 'head', label: '头部' }],
     connection: NET,
@@ -158,7 +158,7 @@ const coffee = (): Omit<Descriptor, 'pluginId' | 'model'> => ({
 })
 const greeter = (): Omit<Descriptor, 'pluginId' | 'model'> => ({
   schemaVersion: '1.0',
-  capabilities: ['status', 'telemetry', 'location', 'video', 'skill', 'action', 'voice', 'charge', 'navigation', 'log'],
+  capabilities: ['status', 'telemetry', 'location', 'video', 'teleop', 'skill', 'action', 'voice', 'charge', 'navigation', 'log'],
   telemetry: [
     F.battery(), F.uptime(),
     { key: 'visitors', label: '今日接待', type: 'number', unit: '人次', role: 'count', display: ['kpi', 'card', 'detail'], sim: { min: 40, max: 160, drift: 0 } },
@@ -175,7 +175,7 @@ const greeter = (): Omit<Descriptor, 'pluginId' | 'model'> => ({
     { key: 'patrolWelcome', label: '迎宾模式', kind: 'toggle', group: 'skill', stateKey: 'welcomeOn', desc: '开启后自动识别并迎接来访者', costMs: 800 },
     { key: 'wave', label: '挥手', kind: 'button', group: 'action', costMs: 2000 },
     { key: 'bow', label: '鞠躬', kind: 'button', group: 'action', costMs: 2000 },
-    SPEAK, ...DOCK, NAV,
+    SPEAK, TELEOP(1, ['vx', 'wz']), ...DOCK, NAV,
   ],
   video: [{ key: 'head', label: '头部' }],
   connection: NET,

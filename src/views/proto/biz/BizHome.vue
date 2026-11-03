@@ -78,7 +78,7 @@ const bigF = computed(() => {
   for (const f of tele.value) { if (pick.length >= 3) break; if (!pick.includes(f) && f.type === 'number') pick.push(f) }
   return pick.slice(0, 3)
 })
-const gridF = computed(() => tele.value.filter((f) => !bigF.value.includes(f) && f.display.some((d) => d === 'detail' || d === 'card' || d === 'hud')).slice(0, hasCap('location') ? 6 : 10))
+const gridF = computed(() => tele.value.filter((f) => !bigF.value.includes(f) && f.display.some((d) => d === 'detail' || d === 'card' || d === 'hud')).slice(0, hasCap('location') ? (patrol && isIns ? 1 : 2) : 5))
 const cell = (f: TelemetryField) => (on.value && st.value ? fmtField(f, st.value.values[f.key]) : { text: '--', unit: f.unit, warn: false })
 const SKIP = ['safety', 'navigation', 'task', 'teleop']
 const ctlN = computed(() => desc.value.controls.filter((c) => c.kind !== 'joystick' && !SKIP.includes(c.group)).length)
@@ -87,6 +87,8 @@ const skillTitle = computed(() => (desc.value.controls.some((c) => c.group === '
 const cmdStat = computed(() => { const l = cmdsOf(robot.value.id); return { all: l.length, ok: l.filter((c) => c.status === 'succeeded').length, bad: l.filter((c) => c.status === 'failed' || c.status === 'timeout').length } })
 const chess = computed(() => hasCap('custom:chess'))
 const camI = ref(0)
+const infoTabs = computed(() => [...(patrol.value && hasCap('alarm') ? [{ k: 'alarm', t: '实时警情' }] : []), { k: 'cmd', t: '指令记录' }, ...(hasCap('log') ? [{ k: 'dlog', t: '设备日志' }] : [])])
+const info = ref(infoTabs.value[0].k)
 const charge = (k: string) => act(k)
 const posture = computed(() => (!rt.value.standing ? '趴下' : crawl.value ? '匍匐' : '站立'))
 
@@ -121,7 +123,12 @@ watch(curId, () => {
 const seed = computed(() => myMaps.value.find((m) => m.name === (rt.value.navMap || navSel.value))?.seed ?? 11)
 const streams = computed(() => streamsOf(robot.value.id))
 /* 视频：画面内操作（码流切换 / 重连 / 全屏），对齐 robot_web video-action-group */
-const cams = computed(() => (desc.value.video ?? []).map((v) => ({ k: v.ir ? 'ir' : 'rgb', t: v.label, url: v.ir ? streams.value.ir : streams.value.rgb })))
+/** 左侧固定两路视频：取插件声明的前两路，不足补占位 */
+const cams = computed(() => {
+  const l = (desc.value.video ?? []).slice(0, 2).map((v, i) => ({ k: `c${i}`, t: v.label, url: v.ir ? streams.value.ir : i ? streams.value.ir : streams.value.rgb }))
+  while (l.length < 2) l.push({ k: `c${l.length}`, t: l.length ? '辅助视频' : '主视频', url: '' })
+  return l
+})
 const camBox: Record<string, HTMLDivElement | null> = {}
 const camRef: Record<string, { reconnect: () => void } | null> = {}
 const sub = reactive<Record<string, boolean>>({ rgb: false, ir: false })
@@ -139,12 +146,12 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
   <div class="hm">
     <!-- ============ 左 ============ -->
     <div class="hm-col">
-      <div v-if="cams.length && patrol" class="pp-panel hm-cam">
+      <div class="pp-panel hm-cam">
         <div class="pp-panel-h"><h3>实时视频</h3></div>
         <div class="hm-vlist">
         <div v-for="c in cams" :key="c.k" :ref="(el) => (camBox[c.k] = el as HTMLDivElement)" class="hm-box hm-vbox">
-          <WebRtcVideo v-if="on" :ref="(el) => (camRef[c.k] = el as any)" :url="c.url" :hud="false" />
-          <div v-else class="hm-empty">{{ c.t }} · 设备离线</div>
+          <WebRtcVideo v-if="on && c.url" :ref="(el) => (camRef[c.k] = el as any)" :url="c.url" :hud="false" />
+          <div v-else class="hm-empty">{{ c.t }} · {{ on ? '设备未提供该路视频' : '设备离线' }}</div>
           <div class="hm-vact">
             <a-tooltip :title="`切换到${sub[c.k] ? '主码流' : '子码流'}`"><button type="button" class="tx" :disabled="!on" @click="toggleSub(c.k)">{{ sub[c.k] ? '子' : '主' }}</button></a-tooltip>
             <a-tooltip title="手动重连"><button type="button" :disabled="!on" @click="camRef[c.k]?.reconnect()"><ReloadOutlined /></button></a-tooltip>
@@ -153,23 +160,10 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
         </div>
         </div>
       </div>
-      <div v-if="!patrol" class="pp-panel" :class="{ 'hm-grow': !hasCap('log') }">
-        <div class="pp-panel-h"><h3>执行状态</h3><a-tag v-if="busy" color="cyan" class="r">执行中</a-tag></div>
-        <div class="hm-task" :class="{ idle: !busy }">
-          <div class="nm">{{ busy ? busy.label + (busy.paramText ? ' · ' + busy.paramText : '') : on ? '空闲待命，可下发技能' : '设备离线' }}</div>
-          <div class="hm-exec"><LoadingOutlined v-if="busy" /><span v-else :style="{ color: on ? '#45E3A8' : 'var(--faint)' }">●</span><small>{{ busy ? `开始于 ${busy.at.slice(11)}` : `插件 ${desc.pluginId || '—'}` }}</small></div>
-          <div class="st4"><div><b class="mono">{{ cmdStat.all }}</b><small>今日指令</small></div><div><b class="mono ok">{{ cmdStat.ok }}</b><small>成功</small></div><div><b class="mono bad">{{ cmdStat.bad }}</b><small>失败</small></div><div><b class="mono">{{ desc.controls.filter((c) => c.kind !== 'joystick').length }}</b><small>可用技能</small></div></div>
-          <div class="hm-caps"><span v-for="c in desc.capabilities" :key="c">{{ c }}</span></div>
-        </div>
-      </div>
-      <div v-if="!patrol && hasCap('log')" class="pp-panel hm-grow">
-        <div class="pp-panel-h"><h3>设备日志</h3><span class="muted sub">插件上报</span><a class="r more" @click="emit('go', 'log', 'dlog')">全部日志 →</a></div>
-        <div class="hm-cmds"><LogList :device-id="robot.id" :limit="30" :filter="false" /></div>
-      </div>
-      <div v-else class="pp-panel hm-grow">
+      <div class="pp-panel hm-grow">
         <div class="pp-panel-h"><h3>任务统计</h3><a-tag v-if="run" :color="rt.pause ? 'orange' : 'cyan'" class="r">{{ rt.pause ? '已暂停' : run.kind }}</a-tag></div>
         <div class="hm-task" :class="{ idle: !run }">
-          <div class="nm" :title="run?.name">{{ run ? run.name : on ? '当前无执行任务' : '设备离线' }}</div>
+          <div class="nm" :title="run?.name">{{ run ? run.name : busy ? `执行中 · ${busy.label}` : on ? '当前无执行任务' : '设备离线' }}</div>
           <div class="ring">
             <a-progress type="circle" :percent="run ? Math.round(run.progress * 100) : 0" :size="66" stroke-color="#26C6DA" :stroke-width="7" />
             <div class="kv"><span>开始时间</span><b class="mono">{{ run?.start ?? '—' }}</b><span>圈数</span><b class="mono">{{ run ? `${run.laps} / ${run.circle}` : '—' }}</b><span>当前巡检点</span><b>{{ run && pts.length ? pts[Math.min(doneN, pts.length - 1)].desc : '无' }}</b></div>
@@ -182,20 +176,9 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
 
     <!-- ============ 中 ============ -->
     <div class="hm-col">
-      <div v-if="!patrol" class="pp-panel hm-map">
-        <div class="pp-panel-h"><h3>{{ chess ? '棋局' : cams.length ? '实时视频' : hasCap('location') ? '实时位置' : '实时数据' }}</h3><span class="muted sub">{{ desc.model.name }}</span>
-          <span v-if="!chess && cams.length > 1" class="r"><a-radio-group v-model:value="camI" size="small"><a-radio-button v-for="(c, i) in cams" :key="c.t" :value="i">{{ c.t }}</a-radio-button></a-radio-group></span></div>
-        <div class="hm-box">
-          <div v-if="!on" class="hm-empty">设备离线</div>
-          <div v-else-if="chess" class="hm-center"><ChessBoard :state="st" :size="320" /></div>
-          <WebRtcVideo v-else-if="cams.length" :key="camI" :url="cams[camI]?.url ?? cams[0].url" :hud="false" />
-          <MapSlot v-else-if="hasCap('location')" :seed="seed" mode="grid" :zones="false" :shape="null" :pts="[]" :progress="0" :robot="rt.pose" :cloud-bar="false" />
-          <div v-else class="hm-tg"><TelemetryGrid :desc="desc" :state="st" display="detail" :cols="3" /></div>
-        </div>
-      </div>
-      <div v-else class="pp-panel hm-map">
+      <div class="pp-panel hm-map">
         <div class="pp-panel-h">
-          <h3>巡检地图</h3><span class="muted sub">{{ isIns ? 'INS 坐标系' : rt.navMap || '未开启导航' }}</span>
+          <h3>{{ patrol ? '巡检地图' : '地图显示' }}</h3><span class="muted sub">{{ isIns ? 'INS 坐标系' : rt.navMap || '未开启导航' }}</span>
           <span v-if="mapMode === 'grid'" class="hm-lg"><span v-for="z in ZONES" :key="z.k"><i :style="{ borderColor: z.c, background: z.c + '33' }" />{{ z.t }}</span></span>
           <span class="r">
             <a-radio-group v-model:value="mapMode" size="small"><a-radio-button value="cloud">点云</a-radio-button><a-radio-button value="grid">栅格</a-radio-button><a-radio-button value="sat">卫星</a-radio-button></a-radio-group>
@@ -204,17 +187,18 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
           </span>
         </div>
         <div ref="mapBox" class="hm-box">
-          <MapSlot v-if="on" :seed="seed" :mode="mapMode" :zones="mapMode === 'grid'" :shape="runRoute?.shape ?? null" :pts="mapPts" :progress="runRoute && run ? run.progress : 0" :robot="hasNav ? rt.pose : null" :cloud-bar="false" />
+          <MapSlot v-if="on" :seed="seed" :mode="mapMode" :zones="mapMode === 'grid'" :shape="runRoute?.shape ?? null" :pts="mapPts" :progress="runRoute && run ? run.progress : 0" :robot="(patrol ? hasNav : hasCap('location')) ? rt.pose : null" :cloud-bar="false" />
           <div v-else class="hm-empty">设备离线</div>
         </div>
       </div>
-      <div v-if="!patrol" class="pp-panel hm-alarm">
-        <div class="pp-panel-h"><h3>指令记录</h3><span class="muted sub">插件回执</span><a class="r more" @click="emit('go', 'log', 'cmd')">全部记录 →</a></div>
-        <div class="hm-cmds"><CmdList :device-id="robot.id" :limit="8" /></div>
-      </div>
-      <div v-else class="pp-panel hm-alarm">
-        <div class="pp-panel-h"><h3>实时警情</h3><span class="muted sub">{{ alarms.filter((a) => a.state === '待处理').length }} 条待处理</span><a class="r more" @click="emit('go', 'log', 'rec')">全部警情 →</a></div>
-        <a-table size="small" :pagination="false" :data-source="alarms" row-key="id"
+      <div class="pp-panel hm-alarm">
+        <div class="pp-panel-h"><h3>信息展示</h3>
+          <a-radio-group v-model:value="info" size="small" class="hm-itab"><a-radio-button v-for="t in infoTabs" :key="t.k" :value="t.k">{{ t.t }}</a-radio-button></a-radio-group>
+          <span v-if="info === 'alarm'" class="muted sub">{{ alarms.filter((a) => a.state === '待处理').length }} 条待处理</span>
+          <a class="r more" @click="emit('go', 'log', info === 'alarm' ? 'rec' : info)">查看全部 →</a></div>
+        <div v-if="info === 'cmd'" class="hm-cmds"><CmdList :device-id="robot.id" :limit="8" /></div>
+        <div v-else-if="info === 'dlog'" class="hm-cmds"><LogList :device-id="robot.id" :limit="30" :filter="false" /></div>
+        <a-table v-else size="small" :pagination="false" :data-source="alarms" row-key="id"
           :columns="[{ title: '报警时间', key: 'time', width: 120 }, { title: '警情类型', key: 'type', width: 110 }, { title: '内容', dataIndex: 'content', ellipsis: true }, { title: '来源', dataIndex: 'src', width: 72 }, { title: '状态', key: 'state', width: 84 }, { title: '图片', key: 'pic', width: 60 }]">
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'time'"><span class="mono">{{ record.time.slice(5) }}</span></template>
@@ -229,7 +213,7 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
 
     <!-- ============ 右 ============ -->
     <div class="hm-col hm-right">
-      <div class="pp-panel hm-st" :class="{ big: isIns && patrol }">
+      <div class="pp-panel hm-st">
         <div class="pp-panel-h"><h3>{{ CAT_LABEL[cat] ?? '设备' }}状态</h3><a-badge :status="runBadge" :text="runText" style="margin-left:8px" /></div>
         <div class="hm-hero"><img v-if="robotImg" :src="robotImg" alt="" /><span v-else class="hm-gl"><DeviceGlyph :type="KIND_META[robot.kind].glyph" :size="44" :color="KIND_META[robot.kind].c" /></span><div><b>{{ robot.name }}</b><small class="mono">{{ robot.id }} · {{ desc.model.name || robot.model }}</small><small>{{ robot.site }}</small></div></div>
         <div class="hm-big">
@@ -250,15 +234,15 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
       </div>
 
       <!-- 技能 / 控制：由插件 controls 渲染（机器狗姿态步态、咖啡机器人做咖啡…） -->
-      <div v-if="ctlN" class="pp-panel hm-skill" :class="{ 'hm-grow': !patrol && !taskCtl.length }">
+      <div v-if="ctlN" class="pp-panel hm-skill hm-grow">
         <div class="pp-panel-h"><h3>{{ skillTitle }}</h3><span class="muted sub">{{ ctlN }} 项</span><a-tooltip v-if="hasCap('voice')" :title="talk ? '关闭语音对讲' : '开启语音对讲'"><a-button type="text" size="small" class="r" :class="{ 'hm-mic': talk }" :disabled="!on" @click="talk = !talk"><AudioOutlined v-if="talk" /><AudioMutedOutlined v-else /></a-button></a-tooltip></div>
         <div class="hm-cp"><ControlPanel :key="robot.id" :device-id="robot.id" :desc="desc" scope="biz" variant="compact" :cols="3" :exclude="['safety', 'navigation', 'task']" /></div>
       </div>
-      <div v-if="!patrol && taskCtl.length" class="pp-panel hm-send-p hm-grow">
+      <div v-if="!patrol && taskCtl.length" class="pp-panel hm-send-p">
         <div class="pp-panel-h"><h3>任务下发</h3><span class="muted sub">{{ taskCtl.map((c) => c.label).join(' / ') }}</span></div>
         <div class="hm-cp"><ControlPanel :key="robot.id" :device-id="robot.id" :desc="desc" scope="biz" variant="compact" :cols="2" :headers="false" :groups="['navigation', 'task']" /></div>
       </div>
-      <div v-if="patrol" class="pp-panel hm-send-p" :class="{ 'hm-grow': !isIns }">
+      <div v-if="patrol" class="pp-panel hm-send-p">
         <div class="pp-panel-h"><h3>任务下发</h3><span class="muted sub">{{ locText }}</span></div>
         <div class="hm-send">
           <div class="ln loc"><a-select v-model:value="navSel" size="small" :disabled="hasNav" :placeholder="gridMaps.length ? '选择地图' : '暂无地图'" :options="gridMaps.map((m) => ({ value: m.name, label: m.name }))" />
@@ -312,17 +296,17 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
 .hm-alarm :deep(.ant-table-placeholder:hover td) { background: transparent !important; }
 .hm-none { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 120px; color: var(--faint); font-size: 12.5px; } .hm-none .anticon { font-size: 22px; opacity: .55; }
 .hm-type { display: inline-flex; align-items: center; gap: 6px; } .hm-type i { width: 6px; height: 6px; border-radius: 50%; }
-.hm-right { overflow: auto; }
+.hm-right { overflow: hidden; } .hm-right > .pp-panel { flex: none; } .hm-right > .hm-skill { flex: 1 1 0; min-height: 120px; display: flex; flex-direction: column; } .hm-skill .hm-cp { flex: 1; min-height: 0; overflow: auto; }
 .hm-st.big { flex: 1 0 auto; display: flex; flex-direction: column; }
-.hm-hero { display: flex; align-items: center; gap: 14px; flex: none; height: 96px; padding: 10px 14px 0; }
-.hm-hero img { height: 100%; max-height: 96px; max-width: 52%; object-fit: contain; filter: drop-shadow(0 6px 12px rgba(0,0,0,.45)); }
+.hm-hero { display: flex; align-items: center; gap: 12px; flex: none; height: 64px; padding: 8px 14px 0; }
+.hm-hero img { height: 100%; max-height: 60px; max-width: 52%; object-fit: contain; filter: drop-shadow(0 6px 12px rgba(0,0,0,.45)); }
 .hm-hero div { display: flex; flex-direction: column; gap: 4px; min-width: 0; } .hm-hero b { font-size: 15px; color: #fff; } .hm-hero small { font-size: 11.5px; color: var(--muted); }
 .hm-send-p { flex: none; } .hm-right:has(.hm-st.big) .hm-chart svg { height: 64px; } .hm-right:has(.hm-st.big) .hm-send { gap: 8px; padding: 10px 14px 12px; } .hm-send-p.hm-grow { flex: 1; }
-.hm-big { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px 14px 4px; }
+.hm-big { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px 14px 2px; }
 .hm-big > div { padding: 7px 10px; background: rgba(46,211,230,.05); border: 1px solid rgba(46,211,230,.12); border-radius: 7px; }
 .hm-big small { display: block; font-size: 11.5px; color: var(--muted); } .hm-big b { font-size: 18px; font-weight: 600; color: #fff; } .hm-big b.low { color: #FF7A7A; } .hm-big em { font-style: normal; font-size: 11px; color: var(--muted); margin-left: 3px; }
 .hm-big { grid-template-columns: repeat(3, 1fr) !important; } .hm-big b { font-size: 16px !important; }
-.hm-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; padding: 10px 12px 14px; }
+.hm-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; padding: 8px 12px 12px; } .hm-grid:empty { display: none; }
 .hm-grid > div { min-width: 0; padding: 5px 1px; text-align: center; background: rgba(46,211,230,.04); border-radius: 7px; }
 .hm-grid small { display: block; font-size: 11px; color: var(--muted); } .hm-grid b { display: block; font-size: 12px; font-weight: 500; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .hm-grid b.ok { color: #45E3A8; } .hm-grid b.warn { color: #FFC15C; } .hm-grid .lk { cursor: pointer; border: 1px dashed rgba(77,232,176,.35); }
@@ -344,11 +328,12 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
 .hm-send .tg button.on { color: #0B1C2E; font-weight: 600; background: var(--cyan); border-color: var(--cyan); } .hm-send .tg button:disabled { cursor: not-allowed; opacity: .4; }
 .hm-send label { color: var(--muted); } .hm-send .ins { font-size: 12px; }
 .hm-pic { aspect-ratio: 16 / 9; position: relative; overflow: hidden; border-radius: 7px; }
-.hm-gl { width: 72px; height: 72px; display: grid; place-items: center; border-radius: 12px; background: rgba(46,211,230,.06); border: 1px solid var(--line); }
+.hm-gl { width: 56px; height: 56px; display: grid; place-items: center; border-radius: 12px; background: rgba(46,211,230,.06); border: 1px solid var(--line); }
 .hm-exec { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--cyan); } .hm-exec small { color: var(--muted); font-size: 12px; }
 .hm-caps { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; } .hm-caps span { padding: 1px 7px; font: 11px var(--mono); color: var(--muted); border: 1px solid var(--line); border-radius: 5px; }
 .hm-center { position: absolute; inset: 0; display: grid; place-items: center; }
 .hm-tg { position: absolute; inset: 0; padding: 14px; overflow: auto; }
 .hm-cmds { flex: 1; min-height: 0; overflow: auto; padding: 4px 12px 10px; }
-.hm-skill { flex: none; } .hm-skill:not(.hm-grow) .hm-cp { max-height: 210px; } .hm-cp { padding: 8px 12px 12px; overflow: auto; } .hm-grow > .hm-cp { flex: 1; min-height: 0; }
+.hm-skill { flex: none; }  .hm-cp { padding: 8px 12px 12px; overflow: auto; } .hm-grow > .hm-cp { flex: 1; min-height: 0; }
+.hm-itab { margin-left: 12px; } .hm-alarm .hm-cmds { flex: 1; min-height: 0; overflow: auto; }
 </style>
