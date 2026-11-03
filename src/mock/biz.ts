@@ -18,6 +18,11 @@ export const ROBOTS: BizRobot[] = [
   { id: 'DOG-003', modelCode: 'qd-b2', name: '巡检狗 03', kind: 'dog', model: 'B2', loc: 'lidar', rtk: false, online: true, battery: 64, mileage: 102.8, latency: 41, ip: '10.12.3.103', site: '综合楼二层（新部署）' },
   { id: 'CAR-001', modelCode: 'ug-scout', name: '巡检车 01', kind: 'car', model: 'Scout 2.0', loc: 'ins', rtk: true, online: true, battery: 88, mileage: 3210.5, latency: 29, ip: '10.12.3.111', site: '室外园区' },
   { id: 'CAR-002', modelCode: 'ug-hunter', name: '巡检车 02', kind: 'car', model: 'Hunter SE', loc: 'ins', rtk: true, online: false, battery: 0, mileage: 2480.1, latency: 0, ip: '10.12.3.112', site: '室外园区' },
+  { id: 'COF-001', modelCode: 'sv-coffee', name: '咖啡助手 #1', kind: 'svc', model: 'sv-coffee', loc: 'ins', rtk: false, online: true,  battery: 85, mileage: 0, latency: 12, ip: '10.5.1.20', site: 'E 区 · 服务展厅' },
+  { id: 'WEL-001', modelCode: 'sv-greeter', name: '迎宾机器人 #1', kind: 'svc', model: 'sv-greeter', loc: 'ins', rtk: false, online: false, battery: 60, mileage: 0, latency: 15, ip: '10.5.1.21', site: 'E 区 · 服务展厅' },
+  { id: 'CHS-001', modelCode: 'sv-chess',   name: '棋手机器人 #1', kind: 'svc', model: 'sv-chess',   loc: 'ins', rtk: false, online: true,  battery: 92, mileage: 0, latency: 8,  ip: '10.5.1.22', site: 'E 区 · 服务展厅' },
+  { id: 'GO2-001', modelCode: 'qd-go2', name: '表演狗 01', kind: 'svc', model: 'Go2 EDU', loc: 'ins', rtk: false, online: true, battery: 82, mileage: 56.3, latency: 18, ip: '10.5.1.30', site: 'E 区 · 服务展厅' },
+  { id: 'HUM-001', modelCode: 'hm-walker', name: '人形导览 01', kind: 'svc', model: 'Walker S1', loc: 'ins', rtk: false, online: true, battery: 71, mileage: 12.4, latency: 22, ip: '10.5.1.31', site: 'E 区 · 服务展厅' },
 ]
 
 /** 步态（对齐任务点 gait 1-9） */
@@ -206,9 +211,5 @@ export const SENSORS = [
   { en: 'O2', cn: '氧气', unit: '%VOL', lo: 19.5, hi: 23.5, v: 20.8, on: true }, { en: 'EX', cn: '可燃气体', unit: '%LEL', lo: null, hi: 10, v: 2.1, on: true },
   { en: 'H2S', cn: '硫化氢', unit: 'ppm', lo: null, hi: 10, v: 0.4, on: true }, { en: 'CO', cn: '一氧化碳', unit: 'ppm', lo: null, hi: 24, v: 3.2, on: true },
   { en: 'TEMP', cn: '环境温度', unit: '℃', lo: -10, hi: 45, v: 26.4, on: true }, { en: 'HUMI', cn: '环境湿度', unit: '%RH', lo: null, hi: 85, v: 61, on: true },
-
-  { id: 'COF-001', modelCode: 'sv-coffee', name: '咖啡助手 #1', kind: 'svc', model: 'sv-coffee', loc: 'ins', rtk: false, online: true,  battery: 85, mileage: 0, latency: 12, ip: '10.5.1.20', site: 'E 区 · 服务展厅' },
-  { id: 'WEL-001', modelCode: 'sv-greeter', name: '迎宾机器人 #1', kind: 'svc', model: 'sv-greeter', loc: 'ins', rtk: false, online: false, battery: 60, mileage: 0, latency: 15, ip: '10.5.1.21', site: 'E 区 · 服务展厅' },
-  { id: 'CHS-001', modelCode: 'sv-chess',   name: '棋手机器人 #1', kind: 'svc', model: 'sv-chess',   loc: 'ins', rtk: false, online: true,  battery: 92, mileage: 0, latency: 8,  ip: '10.5.1.22', site: 'E 区 · 服务展厅' },
 ]
 export { ROUTE_SET }

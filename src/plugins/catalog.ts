@@ -114,7 +114,7 @@ function uav(o: { dock?: boolean; max?: number } = {}): Omit<Descriptor, 'plugin
 function humanoid(): Omit<Descriptor, 'pluginId' | 'model'> {
   return {
     schemaVersion: '1.0',
-    capabilities: ['status', 'telemetry', 'video', 'posture', 'action', 'voice', 'alarm', 'log'],
+    capabilities: ['status', 'telemetry', 'video', 'posture', 'action', 'voice', 'task', 'alarm', 'log'],
     telemetry: [
       F.battery(), F.uptime(),
       { key: 'joint', label: '关节状态', type: 'enum', options: { ok: '正常', warn: '异常' }, display: ['card', 'detail'], sim: { values: ['ok'] } },
@@ -127,7 +127,7 @@ function humanoid(): Omit<Descriptor, 'pluginId' | 'model'> {
       { key: 'bow', label: '鞠躬', kind: 'button', group: 'action', costMs: 2500 },
       { key: 'shake', label: '握手', kind: 'button', group: 'action', costMs: 3000 },
       { key: 'dance', label: '跳舞', kind: 'button', group: 'action', costMs: 8000 },
-      SPEAK,
+      SPEAK, TASK,
     ],
     video: [{ key: 'head', label: '头部' }],
     connection: NET,
@@ -144,9 +144,12 @@ const coffee = (): Omit<Descriptor, 'pluginId' | 'model'> => ({
     { key: 'beans', label: '咖啡豆余量', type: 'percent', unit: '%', group: '耗材', display: ['detail'], warn: '<15', sim: { min: 30, max: 90, drift: 0 } },
   ],
   controls: [
-    { key: 'pourCoffee', label: '倒咖啡', kind: 'button', group: 'skill', icon: 'coffee', desc: '制作并递出一杯咖啡', costMs: 6000,
+    { key: 'pourCoffee', label: '做咖啡', kind: 'button', group: 'skill', icon: 'coffee', desc: '制作并递出一杯咖啡', costMs: 6000,
       params: [{ key: 'drink', label: '饮品', type: 'enum', options: { americano: '美式', latte: '拿铁', espresso: '浓缩' }, default: 'americano' }, { key: 'cup', label: '杯型', type: 'enum', options: { S: '小杯', M: '中杯', L: '大杯' }, default: 'M' }] },
+    { key: 'pourWater', label: '倒水', kind: 'button', group: 'skill', icon: 'coffee', desc: '接一杯温水并递出', costMs: 4000,
+      params: [{ key: 'temp', label: '水温', type: 'enum', options: { warm: '温水', hot: '热水', cold: '常温' }, default: 'warm' }] },
     { key: 'washCup', label: '洗杯子', kind: 'button', group: 'skill', icon: 'wash', desc: '清洗并归位杯具', costMs: 5000 },
+    { key: 'handshake', label: '握手', kind: 'button', group: 'skill', icon: 'action', desc: '伸出机械臂与顾客握手', costMs: 3000 },
     { key: 'action', label: '动作', kind: 'button', group: 'skill', icon: 'action', desc: '执行预置机械臂动作', costMs: 3000,
       params: [{ key: 'name', label: '动作', type: 'enum', options: { wave: '挥手', bow: '致谢', heart: '比心' }, default: 'wave' }] },
     { ...SPEAK, group: 'skill', icon: 'voice', desc: '通过扬声器播报文字' },
@@ -155,7 +158,7 @@ const coffee = (): Omit<Descriptor, 'pluginId' | 'model'> => ({
 })
 const greeter = (): Omit<Descriptor, 'pluginId' | 'model'> => ({
   schemaVersion: '1.0',
-  capabilities: ['status', 'telemetry', 'location', 'video', 'skill', 'action', 'voice', 'charge', 'log'],
+  capabilities: ['status', 'telemetry', 'location', 'video', 'skill', 'action', 'voice', 'charge', 'navigation', 'log'],
   telemetry: [
     F.battery(), F.uptime(),
     { key: 'visitors', label: '今日接待', type: 'number', unit: '人次', role: 'count', display: ['kpi', 'card', 'detail'], sim: { min: 40, max: 160, drift: 0 } },
@@ -172,7 +175,7 @@ const greeter = (): Omit<Descriptor, 'pluginId' | 'model'> => ({
     { key: 'patrolWelcome', label: '迎宾模式', kind: 'toggle', group: 'skill', stateKey: 'welcomeOn', desc: '开启后自动识别并迎接来访者', costMs: 800 },
     { key: 'wave', label: '挥手', kind: 'button', group: 'action', costMs: 2000 },
     { key: 'bow', label: '鞠躬', kind: 'button', group: 'action', costMs: 2000 },
-    SPEAK, ...DOCK,
+    SPEAK, ...DOCK, NAV,
   ],
   video: [{ key: 'head', label: '头部' }],
   connection: NET,

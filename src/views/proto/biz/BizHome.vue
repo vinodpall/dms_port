@@ -2,11 +2,20 @@
 /** 首页：对齐 robot_web Home.vue 三栏结构 —— 左 视频/任务统计 · 中 地图/实时警情 · 右 状态/控制/任务下发 */
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
-import { AimOutlined, ExpandOutlined, CompressOutlined, ReloadOutlined, PauseOutlined, CaretRightOutlined, SendOutlined, AudioOutlined, AudioMutedOutlined, LeftOutlined, RightOutlined, BellOutlined } from '@ant-design/icons-vue'
+import { LoadingOutlined, AimOutlined, ExpandOutlined, CompressOutlined, ReloadOutlined, PauseOutlined, CaretRightOutlined, SendOutlined, AudioOutlined, AudioMutedOutlined, LeftOutlined, RightOutlined, BellOutlined } from '@ant-design/icons-vue'
 import MapSlot from './MapSlot.vue'
 import WebRtcVideo from '@/components/viz/WebRtcVideo.vue'
 import CamShot from './CamShot.vue'
 import { toReal } from './geo'
+import ControlPanel from '@/components/plugin/ControlPanel.vue'
+import CmdList from '@/components/plugin/CmdList.vue'
+import LogList from '@/components/plugin/LogList.vue'
+import TelemetryGrid from '@/components/plugin/TelemetryGrid.vue'
+import ChessBoard from '@/components/plugin/ChessBoard.vue'
+import DeviceGlyph from '@/components/proto/DeviceGlyph.vue'
+import { stateOf, busyOf, cmdsOf, fmtField } from '@/plugins/runtime'
+import type { TelemetryField } from '@/plugins/types'
+import imgX2 from '@/assets/models/x2.webp'
 import imgCar from '@/assets/models/knight.webp'
 import imgX30 from '@/assets/models/x30.webp'
 import imgGo2 from '@/assets/models/go2.webp'
@@ -14,7 +23,7 @@ import { streamsOf } from '@/config/media'
 import { KIND_META, GAITS, ZONES, SENSORS, alarmColor, type BizAlarm } from '@/mock/biz'
 import {
   robot, rt, isDog, isIns, hasNav, locText, db, curId, myMaps, myRoutes, myGroups, routeById, groupById,
-  togglePause, stopRun, toggleNav, toggleIns, toggleMsf, openLaunch,
+  togglePause, stopRun, toggleNav, toggleIns, toggleMsf, openLaunch, desc, hasCap, isPatrol, CAT_LABEL,
 } from './store'
 
 const emit = defineEmits<{ go: [tab: string, sub?: string] }>()
@@ -52,7 +61,32 @@ const ctl = (k: string) => {
   else if (k === 'force') { force.value = !force.value; act(force.value ? '开启力控模式' : '关闭力控模式') }
   else if (k === 'stop') message.error('已触发急停')
 }
-const robotImg = computed(() => (isIns.value ? imgCar : robot.value.model.startsWith('X30') ? imgX30 : imgGo2))
+const cat = computed(() => desc.value.model.category)
+const robotImg = computed(() => (cat.value === 'ugv' ? imgCar : cat.value === 'quadruped' ? (robot.value.model.startsWith('X30') ? imgX30 : imgGo2) : cat.value === 'humanoid' ? imgX2 : ''))
+
+/* ---------- 插件驱动：状态 / 技能控制 / 任务下发 ---------- */
+const patrol = isPatrol
+const st = computed(() => stateOf(robot.value.id))
+const busy = computed(() => busyOf(robot.value.id))
+const runText = computed(() => (!on.value ? '离线' : run.value ? '任务中' : busy.value ? `执行中 · ${busy.value.label}` : st.value?.status === 'fault' ? '故障' : '在线'))
+const runBadge = computed(() => (!on.value ? 'default' : run.value || busy.value ? 'processing' : st.value?.status === 'fault' ? 'error' : 'success'))
+const tele = computed(() => desc.value.telemetry.filter((f) => f.type !== 'pose2d' && f.type !== 'gps'))
+const bigF = computed(() => {
+  const pick: TelemetryField[] = []
+  for (const r of ['speed', 'battery']) { const f = tele.value.find((x) => x.role === r); if (f) pick.push(f) }
+  for (const f of tele.value) { if (pick.length >= 3) break; if (!pick.includes(f) && f.display.includes('kpi')) pick.push(f) }
+  for (const f of tele.value) { if (pick.length >= 3) break; if (!pick.includes(f) && f.type === 'number') pick.push(f) }
+  return pick.slice(0, 3)
+})
+const gridF = computed(() => tele.value.filter((f) => !bigF.value.includes(f) && f.display.some((d) => d === 'detail' || d === 'card' || d === 'hud')).slice(0, hasCap('location') ? 6 : 10))
+const cell = (f: TelemetryField) => (on.value && st.value ? fmtField(f, st.value.values[f.key]) : { text: '--', unit: f.unit, warn: false })
+const SKIP = ['safety', 'navigation', 'task', 'teleop']
+const ctlN = computed(() => desc.value.controls.filter((c) => c.kind !== 'joystick' && !SKIP.includes(c.group)).length)
+const taskCtl = computed(() => desc.value.controls.filter((c) => c.group === 'navigation' || c.group === 'task'))
+const skillTitle = computed(() => (desc.value.controls.some((c) => c.group === 'skill') ? '技能控制' : '机器人控制'))
+const cmdStat = computed(() => { const l = cmdsOf(robot.value.id); return { all: l.length, ok: l.filter((c) => c.status === 'succeeded').length, bad: l.filter((c) => c.status === 'failed' || c.status === 'timeout').length } })
+const chess = computed(() => hasCap('custom:chess'))
+const camI = ref(0)
 const charge = (k: string) => act(k)
 const posture = computed(() => (!rt.value.standing ? '趴下' : crawl.value ? '匍匐' : '站立'))
 
@@ -87,7 +121,7 @@ watch(curId, () => {
 const seed = computed(() => myMaps.value.find((m) => m.name === (rt.value.navMap || navSel.value))?.seed ?? 11)
 const streams = computed(() => streamsOf(robot.value.id))
 /* 视频：画面内操作（码流切换 / 重连 / 全屏），对齐 robot_web video-action-group */
-const cams = computed(() => [{ k: 'rgb', t: '可见光', url: streams.value.rgb }, { k: 'ir', t: '红外', url: streams.value.ir }])
+const cams = computed(() => (desc.value.video ?? []).map((v) => ({ k: v.ir ? 'ir' : 'rgb', t: v.label, url: v.ir ? streams.value.ir : streams.value.rgb })))
 const camBox: Record<string, HTMLDivElement | null> = {}
 const camRef: Record<string, { reconnect: () => void } | null> = {}
 const sub = reactive<Record<string, boolean>>({ rgb: false, ir: false })
@@ -105,7 +139,7 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
   <div class="hm">
     <!-- ============ 左 ============ -->
     <div class="hm-col">
-      <div class="pp-panel hm-cam">
+      <div v-if="cams.length && patrol" class="pp-panel hm-cam">
         <div class="pp-panel-h"><h3>实时视频</h3></div>
         <div class="hm-vlist">
         <div v-for="c in cams" :key="c.k" :ref="(el) => (camBox[c.k] = el as HTMLDivElement)" class="hm-box hm-vbox">
@@ -119,7 +153,20 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
         </div>
         </div>
       </div>
-      <div class="pp-panel hm-grow">
+      <div v-if="!patrol" class="pp-panel" :class="{ 'hm-grow': !hasCap('log') }">
+        <div class="pp-panel-h"><h3>执行状态</h3><a-tag v-if="busy" color="cyan" class="r">执行中</a-tag></div>
+        <div class="hm-task" :class="{ idle: !busy }">
+          <div class="nm">{{ busy ? busy.label + (busy.paramText ? ' · ' + busy.paramText : '') : on ? '空闲待命，可下发技能' : '设备离线' }}</div>
+          <div class="hm-exec"><LoadingOutlined v-if="busy" /><span v-else :style="{ color: on ? '#45E3A8' : 'var(--faint)' }">●</span><small>{{ busy ? `开始于 ${busy.at.slice(11)}` : `插件 ${desc.pluginId || '—'}` }}</small></div>
+          <div class="st4"><div><b class="mono">{{ cmdStat.all }}</b><small>今日指令</small></div><div><b class="mono ok">{{ cmdStat.ok }}</b><small>成功</small></div><div><b class="mono bad">{{ cmdStat.bad }}</b><small>失败</small></div><div><b class="mono">{{ desc.controls.filter((c) => c.kind !== 'joystick').length }}</b><small>可用技能</small></div></div>
+          <div class="hm-caps"><span v-for="c in desc.capabilities" :key="c">{{ c }}</span></div>
+        </div>
+      </div>
+      <div v-if="!patrol && hasCap('log')" class="pp-panel hm-grow">
+        <div class="pp-panel-h"><h3>设备日志</h3><span class="muted sub">插件上报</span><a class="r more" @click="emit('go', 'log', 'dlog')">全部日志 →</a></div>
+        <div class="hm-cmds"><LogList :device-id="robot.id" :limit="30" :filter="false" /></div>
+      </div>
+      <div v-else class="pp-panel hm-grow">
         <div class="pp-panel-h"><h3>任务统计</h3><a-tag v-if="run" :color="rt.pause ? 'orange' : 'cyan'" class="r">{{ rt.pause ? '已暂停' : run.kind }}</a-tag></div>
         <div class="hm-task" :class="{ idle: !run }">
           <div class="nm" :title="run?.name">{{ run ? run.name : on ? '当前无执行任务' : '设备离线' }}</div>
@@ -135,7 +182,18 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
 
     <!-- ============ 中 ============ -->
     <div class="hm-col">
-      <div class="pp-panel hm-map">
+      <div v-if="!patrol" class="pp-panel hm-map">
+        <div class="pp-panel-h"><h3>{{ chess ? '棋局' : cams.length ? '实时视频' : hasCap('location') ? '实时位置' : '实时数据' }}</h3><span class="muted sub">{{ desc.model.name }}</span>
+          <span v-if="!chess && cams.length > 1" class="r"><a-radio-group v-model:value="camI" size="small"><a-radio-button v-for="(c, i) in cams" :key="c.t" :value="i">{{ c.t }}</a-radio-button></a-radio-group></span></div>
+        <div class="hm-box">
+          <div v-if="!on" class="hm-empty">设备离线</div>
+          <div v-else-if="chess" class="hm-center"><ChessBoard :state="st" :size="320" /></div>
+          <WebRtcVideo v-else-if="cams.length" :key="camI" :url="cams[camI]?.url ?? cams[0].url" :hud="false" />
+          <MapSlot v-else-if="hasCap('location')" :seed="seed" mode="grid" :zones="false" :shape="null" :pts="[]" :progress="0" :robot="rt.pose" :cloud-bar="false" />
+          <div v-else class="hm-tg"><TelemetryGrid :desc="desc" :state="st" display="detail" :cols="3" /></div>
+        </div>
+      </div>
+      <div v-else class="pp-panel hm-map">
         <div class="pp-panel-h">
           <h3>巡检地图</h3><span class="muted sub">{{ isIns ? 'INS 坐标系' : rt.navMap || '未开启导航' }}</span>
           <span v-if="mapMode === 'grid'" class="hm-lg"><span v-for="z in ZONES" :key="z.k"><i :style="{ borderColor: z.c, background: z.c + '33' }" />{{ z.t }}</span></span>
@@ -150,7 +208,11 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
           <div v-else class="hm-empty">设备离线</div>
         </div>
       </div>
-      <div class="pp-panel hm-alarm">
+      <div v-if="!patrol" class="pp-panel hm-alarm">
+        <div class="pp-panel-h"><h3>指令记录</h3><span class="muted sub">插件回执</span><a class="r more" @click="emit('go', 'log', 'cmd')">全部记录 →</a></div>
+        <div class="hm-cmds"><CmdList :device-id="robot.id" :limit="8" /></div>
+      </div>
+      <div v-else class="pp-panel hm-alarm">
         <div class="pp-panel-h"><h3>实时警情</h3><span class="muted sub">{{ alarms.filter((a) => a.state === '待处理').length }} 条待处理</span><a class="r more" @click="emit('go', 'log', 'rec')">全部警情 →</a></div>
         <a-table size="small" :pagination="false" :data-source="alarms" row-key="id"
           :columns="[{ title: '报警时间', key: 'time', width: 120 }, { title: '警情类型', key: 'type', width: 110 }, { title: '内容', dataIndex: 'content', ellipsis: true }, { title: '来源', dataIndex: 'src', width: 72 }, { title: '状态', key: 'state', width: 84 }, { title: '图片', key: 'pic', width: 60 }]">
@@ -167,75 +229,36 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
 
     <!-- ============ 右 ============ -->
     <div class="hm-col hm-right">
-      <div class="pp-panel hm-st" :class="{ big: isIns }">
-        <div class="pp-panel-h"><h3>{{ KIND_META[robot.kind].t }}状态</h3><a-badge :status="!on ? 'default' : run ? 'processing' : 'success'" :text="!on ? '离线' : run ? '任务中' : '在线'" style="margin-left:8px" /></div>
-        <div class="hm-hero"><img :src="robotImg" alt="" /><div><b>{{ robot.name }}</b><small class="mono">{{ robot.id }} · {{ robot.model }}</small><small>{{ robot.site }} · 累计 {{ (robot.mileage / 1000).toFixed(1) }} km</small></div></div>
+      <div class="pp-panel hm-st" :class="{ big: isIns && patrol }">
+        <div class="pp-panel-h"><h3>{{ CAT_LABEL[cat] ?? '设备' }}状态</h3><a-badge :status="runBadge" :text="runText" style="margin-left:8px" /></div>
+        <div class="hm-hero"><img v-if="robotImg" :src="robotImg" alt="" /><span v-else class="hm-gl"><DeviceGlyph :type="KIND_META[robot.kind].glyph" :size="44" :color="KIND_META[robot.kind].c" /></span><div><b>{{ robot.name }}</b><small class="mono">{{ robot.id }} · {{ desc.model.name || robot.model }}</small><small>{{ robot.site }}</small></div></div>
         <div class="hm-big">
-          <div><small>当前速度</small><b class="mono">{{ on ? speed.toFixed(2) : '--' }}<em>m/s</em></b></div>
-          <div><small>剩余电量</small><b class="mono" :class="{ low: robot.battery < 30 }">{{ on ? robot.battery : '--' }}<em>%</em></b></div>
-          <div v-if="isDog"><small>累计里程</small><b class="mono">{{ (robot.mileage / 1000).toFixed(2) }}<em>km</em></b></div>
-          <div v-else><small>网络延迟</small><b class="mono">{{ on ? latency : '--' }}<em>ms</em></b></div>
+          <div v-for="f in bigF" :key="f.key"><small>{{ f.label }}</small><b class="mono" :class="{ low: cell(f).warn }">{{ cell(f).text }}<em>{{ cell(f).unit }}</em></b></div>
         </div>
         <div class="hm-grid">
-          <div><small>X坐标</small><b class="mono">{{ pose.x }}</b></div>
-          <div><small>Y坐标</small><b class="mono">{{ pose.y }}</b></div>
-          <div><small>高度</small><b class="mono">0.00</b></div>
-          <div><small>角度</small><b class="mono">{{ rt.pose.yaw }}°</b></div>
-          <a-popover v-if="!isDog" v-model:open="rtkOpen" trigger="click" placement="left">
+          <template v-if="hasCap('location')">
+            <div><small>X坐标</small><b class="mono">{{ pose.x }}</b></div>
+            <div><small>Y坐标</small><b class="mono">{{ pose.y }}</b></div>
+            <div><small>角度</small><b class="mono">{{ rt.pose.yaw }}°</b></div>
+          </template>
+          <a-popover v-if="patrol && isIns" v-model:open="rtkOpen" trigger="click" placement="left">
             <template #content><div class="hm-rtk"><span>经度</span><b class="mono">{{ gps.lng.toFixed(6) }}°</b><span>纬度</span><b class="mono">{{ gps.lat.toFixed(6) }}°</b><span>海拔</span><b class="mono">{{ gps.alt }} m</b><span>航向</span><b class="mono">{{ ((rt.pose.yaw * Math.PI) / 180).toFixed(3) }} rad</b></div></template>
             <div class="lk"><small>RTK</small><b :class="rt.ins || rt.msf ? 'ok' : 'warn'">{{ rt.ins || rt.msf ? '固定解' : '浮点解' }}</b></div>
           </a-popover>
-          <div v-else><small>状态</small><b>{{ !on ? '离线' : run ? '任务中' : rt.standing ? (moving ? '运动中' : '站立') : '趴下' }}</b></div>
-          <div><small>电压</small><b class="mono">{{ isDog ? '52.4V' : '48.1V' }}</b></div>
-          <div><small>电流</small><b class="mono">{{ isDog ? '6.8A' : '9.2A' }}</b></div>
-          <template v-if="isDog">
-            <div><small>地面</small><b>实心地面</b></div>
-            <div><small>步态</small><b :title="GAITS[gait]">{{ GAITS[gait] }}</b></div>
-            <div><small>姿态</small><b>{{ posture }}</b></div>
-          </template>
-          <template v-else>
-            <div><small>CPU</small><b class="mono">38%</b></div>
-            <div><small>内存</small><b class="mono">46%</b></div>
-            <div><small>磁盘</small><b class="mono" style="color:#FFC15C">83%</b></div>
-          </template>
+          <div v-for="f in gridF" :key="f.key" :title="f.label"><small>{{ f.label }}</small><b class="mono" :class="{ warn: cell(f).warn }">{{ cell(f).text }}{{ cell(f).unit && cell(f).text !== '--' ? cell(f).unit : '' }}</b></div>
         </div>
       </div>
 
-      <!-- 机器狗：机器人控制 -->
-      <div v-if="isDog" class="pp-panel">
-        <div class="pp-panel-h"><h3>机器人控制</h3><a-tooltip :title="talk ? '关闭语音对讲' : '开启语音对讲'"><a-button type="text" size="small" class="r" :class="{ 'hm-mic': talk }" :disabled="!on" @click="talk = !talk"><AudioOutlined v-if="talk" /><AudioMutedOutlined v-else /></a-button></a-tooltip></div>
-        <div class="hm-ctl">
-          <button type="button" :disabled="!on" @click="ctl('stand')">{{ rt.standing ? '趴下' : '起立' }}</button>
-          <button type="button" :class="{ on: force }" :disabled="!on" @click="ctl('force')">力控模式</button>
-          <button type="button" class="stop" :disabled="!on" @click="ctl('stop')">急停</button>
-          <button type="button" :class="{ on: moving }" :disabled="!on" @click="ctl('move')">{{ moving ? '停止运动' : '开始运动' }}</button>
-          <button type="button" :class="{ on: crawl }" :disabled="!on" @click="ctl('crawl')">{{ crawl ? '正常姿态' : '匍匐姿态' }}</button>
-          <button type="button" :class="{ on: !manual }" :disabled="!on" @click="ctl('auto')">{{ manual ? '非手动模式' : '手动模式' }}</button>
-          <a-select :value="gait" size="small" class="gsel" :disabled="!on" :options="GAITS.map((g, i) => ({ value: i, label: '步态：' + g }))" @change="(v: any) => setGait(Number(v))" />
-          <a-dropdown :trigger="['click']" :disabled="!on">
-            <button type="button" :disabled="!on">充电 ▾</button>
-            <template #overlay><a-menu @click="({ key }: any) => charge(String(key))"><a-menu-item key="开始充电">开始充电</a-menu-item><a-menu-item key="结束充电">结束充电</a-menu-item><a-menu-item key="重置充电">重置充电</a-menu-item></a-menu></template>
-          </a-dropdown>
-        </div>
+      <!-- 技能 / 控制：由插件 controls 渲染（机器狗姿态步态、咖啡机器人做咖啡…） -->
+      <div v-if="ctlN" class="pp-panel hm-skill" :class="{ 'hm-grow': !patrol && !taskCtl.length }">
+        <div class="pp-panel-h"><h3>{{ skillTitle }}</h3><span class="muted sub">{{ ctlN }} 项</span><a-tooltip v-if="hasCap('voice')" :title="talk ? '关闭语音对讲' : '开启语音对讲'"><a-button type="text" size="small" class="r" :class="{ 'hm-mic': talk }" :disabled="!on" @click="talk = !talk"><AudioOutlined v-if="talk" /><AudioMutedOutlined v-else /></a-button></a-tooltip></div>
+        <div class="hm-cp"><ControlPanel :key="robot.id" :device-id="robot.id" :desc="desc" scope="biz" variant="compact" :cols="3" :exclude="['safety', 'navigation', 'task']" /></div>
       </div>
-      <!-- 无人车：传感器数据 -->
-      <div v-else class="pp-panel">
-        <div class="pp-panel-h"><h3>传感器数据</h3>
-          <span class="r hm-stog"><a-button type="text" size="small" @click="stepS(-1)"><LeftOutlined /></a-button><b>{{ sensor.cn }}</b><a-button type="text" size="small" @click="stepS(1)"><RightOutlined /></a-button></span></div>
-        <div v-if="on" class="hm-chart">
-          <div class="cv"><b class="mono">{{ chart.cur }}</b><em>{{ sensor.unit }}</em><small>阈值 {{ sensor.lo != null ? sensor.lo + ' ~ ' : '≤ ' }}{{ sensor.hi }}</small></div>
-          <svg viewBox="0 0 300 100" preserveAspectRatio="none">
-            <defs><linearGradient id="hm-sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#45E3A8" stop-opacity=".35" /><stop offset="1" stop-color="#45E3A8" stop-opacity="0" /></linearGradient></defs>
-            <line v-if="chart.hi != null" x1="0" x2="300" :y1="chart.hi" :y2="chart.hi" stroke="#FF7A7A" stroke-dasharray="4 3" stroke-width="1" vector-effect="non-scaling-stroke" />
-            <line v-if="chart.lo != null" x1="0" x2="300" :y1="chart.lo" :y2="chart.lo" stroke="#FFC15C" stroke-dasharray="4 3" stroke-width="1" vector-effect="non-scaling-stroke" />
-            <polygon :points="chart.area" fill="url(#hm-sg)" />
-            <polyline :points="chart.pts" fill="none" stroke="#45E3A8" stroke-width="1.6" vector-effect="non-scaling-stroke" />
-          </svg>
-        </div>
-        <div v-else class="hm-empty sm">设备离线</div>
+      <div v-if="!patrol && taskCtl.length" class="pp-panel hm-send-p hm-grow">
+        <div class="pp-panel-h"><h3>任务下发</h3><span class="muted sub">{{ taskCtl.map((c) => c.label).join(' / ') }}</span></div>
+        <div class="hm-cp"><ControlPanel :key="robot.id" :device-id="robot.id" :desc="desc" scope="biz" variant="compact" :cols="2" :headers="false" :groups="['navigation', 'task']" /></div>
       </div>
-
-      <div class="pp-panel hm-send-p" :class="{ 'hm-grow': !isIns }">
+      <div v-if="patrol" class="pp-panel hm-send-p" :class="{ 'hm-grow': !isIns }">
         <div class="pp-panel-h"><h3>任务下发</h3><span class="muted sub">{{ locText }}</span></div>
         <div class="hm-send">
           <div class="ln loc"><a-select v-model:value="navSel" size="small" :disabled="hasNav" :placeholder="gridMaps.length ? '选择地图' : '暂无地图'" :options="gridMaps.map((m) => ({ value: m.name, label: m.name }))" />
@@ -321,4 +344,11 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
 .hm-send .tg button.on { color: #0B1C2E; font-weight: 600; background: var(--cyan); border-color: var(--cyan); } .hm-send .tg button:disabled { cursor: not-allowed; opacity: .4; }
 .hm-send label { color: var(--muted); } .hm-send .ins { font-size: 12px; }
 .hm-pic { aspect-ratio: 16 / 9; position: relative; overflow: hidden; border-radius: 7px; }
+.hm-gl { width: 72px; height: 72px; display: grid; place-items: center; border-radius: 12px; background: rgba(46,211,230,.06); border: 1px solid var(--line); }
+.hm-exec { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--cyan); } .hm-exec small { color: var(--muted); font-size: 12px; }
+.hm-caps { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; } .hm-caps span { padding: 1px 7px; font: 11px var(--mono); color: var(--muted); border: 1px solid var(--line); border-radius: 5px; }
+.hm-center { position: absolute; inset: 0; display: grid; place-items: center; }
+.hm-tg { position: absolute; inset: 0; padding: 14px; overflow: auto; }
+.hm-cmds { flex: 1; min-height: 0; overflow: auto; padding: 4px 12px 10px; }
+.hm-skill { flex: none; } .hm-skill:not(.hm-grow) .hm-cp { max-height: 210px; } .hm-cp { padding: 8px 12px 12px; overflow: auto; } .hm-grow > .hm-cp { flex: 1; min-height: 0; }
 </style>

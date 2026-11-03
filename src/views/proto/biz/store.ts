@@ -261,3 +261,7 @@ ROBOTS.forEach((r) => {
     values: { battery: Math.round(60 + Math.random() * 35), latency: Math.round(10 + Math.random() * 40) },
   })
 })
+/** 巡检类业务（已适配导航管理/任务管理/警情）：巡检狗、巡检车；其余设备按插件能力动态渲染 */
+export const isPatrol = computed(() => (robot.value.kind === 'dog' || robot.value.kind === 'car') && hasCap('navigation'))
+export const patrolOf = (id: string) => { const r = ROBOTS.find((x) => x.id === id)!; return (r.kind === 'dog' || r.kind === 'car') && descOfRobot(id).capabilities.includes('navigation') }
+export const CAT_LABEL: Record<string, string> = { quadruped: '机器狗', ugv: '无人车', uav: '无人机', humanoid: '人形机器人', service: '服务机器人', generic: '设备' }
