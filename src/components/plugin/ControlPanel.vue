@@ -38,6 +38,11 @@ const st = computed(() => stateOf(props.deviceId))
 const cs = (c: ControlDef) => ctrlState(props.deviceId, c)
 const running = (c: ControlDef) => busyOf(props.deviceId)?.control === c.key
 const val = (c: ControlDef) => (c.stateKey ? st.value?.values[c.stateKey] : undefined)
+const btnSpanAll = (s: { items: ControlDef[] }, c: ControlDef) => {
+  if (c.kind !== 'button') return false
+  const btns = s.items.filter((x) => x.kind === 'button')
+  return btns.length % props.cols !== 0 && btns[btns.length - 1] === c
+}
 
 /* ---- 执行 ---- */
 const run = (c: ControlDef, p?: Record<string, any>) => execute(props.deviceId, c, p).then(() => emit('done', c.key)).catch(() => {})
@@ -78,7 +83,7 @@ const groupColor = (g: ControlGroup) => capMeta(g === 'safety' ? 'alarm' : g ===
       <div class="cp-items" :style="{ '--cols': cols }">
         <template v-for="c in s.items" :key="c.key">
           <!-- 按钮 -->
-          <a-tooltip v-if="c.kind === 'button'" :title="cs(c).enabled ? c.desc : cs(c).reason">
+          <a-tooltip v-if="c.kind === 'button'" :title="cs(c).enabled ? c.desc : cs(c).reason" :class="{ 'span-all': btnSpanAll(s, c) }">
             <button v-if="variant === 'cards'" type="button" class="cp-card" :class="{ danger: c.danger, busy: running(c) }" :disabled="!cs(c).enabled" @click="click(c)">
               <span class="ic"><LoadingOutlined v-if="running(c)" /><component :is="ICONS[c.icon ?? ''] ?? ThunderboltOutlined" v-else /></span>
               <b>{{ c.label }}</b>
@@ -144,7 +149,7 @@ const groupColor = (g: ControlGroup) => capMeta(g === 'safety' ? 'alarm' : g ===
 .cp-sec h5 i { width: 3px; height: 11px; border-radius: 2px; }
 .cp-sec h5 small { font-size: 11px; color: var(--faint); }
 .cp-items { display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: 6px; }
-.cp-items > .cp-tg, .cp-items > .cp-row { grid-column: 1 / -1; }
+.cp-items > .cp-tg, .cp-items > .cp-row, .cp-items > .span-all { grid-column: 1 / -1; }
 .cp-btn { position: relative; display: flex; align-items: center; justify-content: center; gap: 5px; width: 100%; height: 32px; padding: 0 6px; font: inherit; font-size: 12.5px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; background: rgba(46,211,230,.05); border: 1px solid var(--line); border-radius: 7px; transition: .15s; }
 .cp-btn em { font-style: normal; color: var(--muted); }
 .cp-btn:hover:not(:disabled) { color: #fff; border-color: rgba(46,211,230,.5); background: rgba(46,211,230,.12); }
