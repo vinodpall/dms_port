@@ -170,8 +170,8 @@ const groupColor = (g: ControlGroup) => capMeta(g === 'safety' ? 'alarm' : g ===
 .cp-btn.stop:not(:disabled) { color: #fff; background: #C93838; border-color: #E05555; font-weight: 600; letter-spacing: 1px; }
 .cp-btn.stop:hover:not(:disabled) { background: #DD4343; }
 /* richBtn：两行彩色卡片按钮 */
-.cp-btn.rich { flex-direction: row; align-items: center; justify-content: flex-start; height: auto; min-height: 60px; padding: 10px 12px; gap: 10px; text-align: left; border-left: 3px solid var(--ac, var(--cyan)); background: linear-gradient(135deg, color-mix(in srgb, var(--ac, var(--cyan)) 10%, transparent), rgba(46,211,230,.02)); white-space: normal; }
-.cp-btn.rich:hover:not(:disabled) { border-left-color: var(--ac, var(--cyan)); background: linear-gradient(135deg, color-mix(in srgb, var(--ac, var(--cyan)) 20%, transparent), rgba(46,211,230,.06)); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,0,0,.3); }
+.cp-btn.rich { flex-direction: row; align-items: center; justify-content: flex-start; height: auto; min-height: 60px; padding: 10px 12px; gap: 10px; text-align: left; border-color: color-mix(in srgb, var(--ac, var(--cyan)) 35%, transparent); background: linear-gradient(135deg, color-mix(in srgb, var(--ac, var(--cyan)) 8%, transparent), rgba(46,211,230,.02)); white-space: normal; }
+.cp-btn.rich:hover:not(:disabled) { border-color: color-mix(in srgb, var(--ac, var(--cyan)) 60%, transparent); background: linear-gradient(135deg, color-mix(in srgb, var(--ac, var(--cyan)) 16%, transparent), rgba(46,211,230,.06)); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,0,0,.3); }
 .cp-btn.rich .rb-ic { flex: none; width: 32px; height: 32px; display: grid; place-items: center; font-size: 15px; color: var(--ac, var(--cyan)); background: color-mix(in srgb, var(--ac, var(--cyan)) 15%, transparent); border-radius: 8px; }
 .cp-btn.rich .rb-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .cp-btn.rich .rb-txt b { font-size: 13.5px; font-weight: 600; color: var(--title); display: block; }
