@@ -239,7 +239,7 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
       <!-- 技能 / 控制：由插件 controls 渲染（机器狗姿态步态、咖啡机器人做咖啡…） -->
       <div v-if="ctlN" class="pp-panel hm-skill hm-grow">
         <div class="pp-panel-h"><h3>{{ skillTitle }}</h3><span class="muted sub">{{ ctlN }} 项</span><a-tooltip v-if="hasCap('voice')" :title="talk ? '关闭语音对讲' : '开启语音对讲'"><a-button type="text" size="small" class="r" :class="{ 'hm-mic': talk }" :disabled="!on" @click="talk = !talk"><AudioOutlined v-if="talk" /><AudioMutedOutlined v-else /></a-button></a-tooltip></div>
-        <div class="hm-cp"><ControlPanel :key="robot.id" :device-id="robot.id" :desc="desc" scope="biz" variant="panel" :cols="2" :exclude="['safety', 'navigation', 'task']" /></div>
+        <div class="hm-cp"><ControlPanel :key="robot.id" :device-id="robot.id" :desc="desc" scope="biz" variant="panel" :cols="2" rich-btn :exclude="['safety', 'navigation', 'task']" /></div>
       </div>
       <div v-if="!patrol && taskCtl.length" class="pp-panel hm-send-p">
         <div class="pp-panel-h"><h3>任务下发</h3><span class="muted sub">{{ taskCtl.map((c) => c.label).join(' / ') }}</span></div>
@@ -338,10 +338,8 @@ const navRoutes = computed(() => myRoutes.value.filter((r) => isIns.value || !rt
 .hm-tg { position: absolute; inset: 0; padding: 14px; overflow: auto; }
 .hm-cmds { flex: 1; min-height: 0; overflow: auto; padding: 4px 12px 10px; }
 .hm-skill { flex: none; }  .hm-cp { padding: 8px 12px 12px; overflow: auto; } .hm-grow > .hm-cp { flex: 1; min-height: 0; }
-/* 右侧技能控制按钮：2列、扁平大按钮、文字完整显示 */
-.hm-skill .hm-cp :deep(.cp-btn) { height: auto; min-height: 42px; padding: 8px 10px; white-space: normal; line-height: 1.4; font-size: 13px; letter-spacing: 0.2px; }
-.hm-skill .hm-cp :deep(.cp-items) { gap: 7px; }
-.hm-skill .hm-cp :deep(.cp-sec) { margin-bottom: 2px; }
+/* 右侧技能控制：彩色两行卡片按钮 */
+.hm-skill .hm-cp :deep(.cp-items) { gap: 8px; }
 .hm-skill .hm-cp :deep(.cp-tg), .hm-skill .hm-cp :deep(.cp-row) { font-size: 13px; }
 .hm-itab { margin-left: 12px; } .hm-alarm .hm-cmds { flex: 1; min-height: 0; overflow: auto; }
 </style>

@@ -16,8 +16,8 @@ import { busyOf, ctrlState, execute, stateOf } from '@/plugins/runtime'
 
 const props = withDefaults(defineProps<{
   deviceId: string; desc: Descriptor; groups?: ControlGroup[]; exclude?: ControlGroup[]
-  scope?: 'device' | 'biz'; variant?: 'panel' | 'cards' | 'compact'; cols?: number; headers?: boolean
-}>(), { groups: undefined, exclude: () => [], scope: 'device', variant: 'panel', cols: 3, headers: true })
+  scope?: 'device' | 'biz'; variant?: 'panel' | 'cards' | 'compact'; cols?: number; headers?: boolean; richBtn?: boolean
+}>(), { groups: undefined, exclude: () => [], scope: 'device', variant: 'panel', cols: 3, headers: true, richBtn: false })
 const emit = defineEmits<{ done: [string] }>()
 
 const ICONS: Record<string, any> = { coffee: CoffeeOutlined, wash: ClearOutlined, action: SmileOutlined, voice: SoundOutlined, greet: UserAddOutlined, guide: CompassOutlined, explain: ReadOutlined, photo: CameraOutlined, play: PlayCircleOutlined, undo: UndoOutlined, review: HistoryOutlined, stop: StopOutlined, arrange: AppstoreOutlined }
@@ -42,6 +42,12 @@ const btnSpanAll = (s: { items: ControlDef[] }, c: ControlDef) => {
   if (c.kind !== 'button') return false
   const btns = s.items.filter((x) => x.kind === 'button')
   return btns.length % props.cols !== 0 && btns[btns.length - 1] === c
+}
+const RICH_COLORS = ['#2ED3E6', '#45E3A8', '#FFC15C', '#A78BFA', '#60A5FA', '#F472B6', '#FF7A7A', '#4ADE80']
+const btnColor = (s: { items: ControlDef[] }, c: ControlDef) => {
+  const btns = s.items.filter((x) => x.kind === 'button')
+  const idx = btns.indexOf(c)
+  return RICH_COLORS[idx % RICH_COLORS.length]
 }
 
 /* ---- 执行 ---- */
@@ -89,8 +95,13 @@ const groupColor = (g: ControlGroup) => capMeta(g === 'safety' ? 'alarm' : g ===
               <b>{{ c.label }}</b>
               <small>{{ running(c) ? '执行中…' : !cs(c).enabled ? cs(c).reason : c.desc ?? (c.params?.length ? `可设置 ${c.params.map((p) => p.label).join('、')}` : '点击执行') }}</small>
             </button>
-            <button v-else type="button" class="cp-btn" :class="{ danger: c.danger, busy: running(c), stop: c.group === 'safety' }" :disabled="!cs(c).enabled" @click="click(c)">
-              <LoadingOutlined v-if="running(c)" />{{ c.label }}<em v-if="c.params?.length">…</em>
+            <button v-else type="button" class="cp-btn" :class="{ danger: c.danger, busy: running(c), stop: c.group === 'safety', rich: richBtn }" :style="richBtn ? { '--ac': btnColor(s, c) } : {}" :disabled="!cs(c).enabled" @click="click(c)">
+              <LoadingOutlined v-if="running(c)" />
+              <template v-else-if="richBtn">
+                <span class="rb-ic"><component :is="ICONS[c.icon ?? ''] ?? ThunderboltOutlined" /></span>
+                <span class="rb-txt"><b>{{ c.label }}</b><small v-if="c.desc">{{ c.desc }}</small></span>
+              </template>
+              <template v-else>{{ c.label }}<em v-if="c.params?.length">…</em></template>
             </button>
           </a-tooltip>
           <!-- 开关 -->
@@ -158,6 +169,13 @@ const groupColor = (g: ControlGroup) => capMeta(g === 'safety' ? 'alarm' : g ===
 .cp-btn.danger:not(:disabled) { color: #FFB0B0; border-color: rgba(255,122,122,.35); }
 .cp-btn.stop:not(:disabled) { color: #fff; background: #C93838; border-color: #E05555; font-weight: 600; letter-spacing: 1px; }
 .cp-btn.stop:hover:not(:disabled) { background: #DD4343; }
+/* richBtn：两行彩色卡片按钮 */
+.cp-btn.rich { flex-direction: row; align-items: center; justify-content: flex-start; height: auto; min-height: 60px; padding: 10px 12px; gap: 10px; text-align: left; border-left: 3px solid var(--ac, var(--cyan)); background: linear-gradient(135deg, color-mix(in srgb, var(--ac, var(--cyan)) 10%, transparent), rgba(46,211,230,.02)); white-space: normal; }
+.cp-btn.rich:hover:not(:disabled) { border-left-color: var(--ac, var(--cyan)); background: linear-gradient(135deg, color-mix(in srgb, var(--ac, var(--cyan)) 20%, transparent), rgba(46,211,230,.06)); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,0,0,.3); }
+.cp-btn.rich .rb-ic { flex: none; width: 32px; height: 32px; display: grid; place-items: center; font-size: 15px; color: var(--ac, var(--cyan)); background: color-mix(in srgb, var(--ac, var(--cyan)) 15%, transparent); border-radius: 8px; }
+.cp-btn.rich .rb-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.cp-btn.rich .rb-txt b { font-size: 13.5px; font-weight: 600; color: var(--title); display: block; }
+.cp-btn.rich .rb-txt small { font-size: 11.5px; color: var(--muted); line-height: 1.35; display: block; white-space: normal; }
 .cp-tg, .cp-row { display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 6px 12px; font-size: 13px; background: rgba(46,211,230,.04); border: 1px solid var(--line); border-radius: 7px; }
 .cp-tg { cursor: pointer; } .cp-tg small { margin-left: auto; font-size: 12px; color: var(--faint); }
 .cp-tg.on { border-color: rgba(69,227,168,.4); background: rgba(69,227,168,.06); } .cp-tg.on small { color: #45E3A8; }
