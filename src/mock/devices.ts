@@ -1,5 +1,5 @@
 import type { Device, DeviceModel, DeviceStatus, DeviceType } from '@/models/device'
-import { AREAS } from '@/models/device'
+import { SCENES } from '@/mock/scenes'
 import imgGo2 from '@/assets/models/go2.webp'
 import imgX30 from '@/assets/models/x30.webp'
 import imgZsl from '@/assets/models/zsl1.webp'
@@ -77,7 +77,7 @@ export const DEVICES: Device[] = MODELS.flatMap((m, mi) =>
       type: t, modelId: m.id, status,
       battery: off ? 0 : 25 + Math.round(rnd() * 74),
       ip: `10.20.${['quadruped', 'ugv', 'uav', 'humanoid', 'service'].indexOf(t) + 1}.${10 + n}`,
-      area: AREAS[ai],
+      area: SCENES[ai]?.name ?? SCENES[0]?.name ?? '',
       publicIp: n % 3 === 0 ? `112.64.${20 + mi}.${100 + n}` : undefined,
       cameraIps: m.cameras.map((_, ci) => `10.20.${['quadruped', 'ugv', 'uav', 'humanoid', 'service'].indexOf(t) + 1}.${100 + n * 4 + ci}`),
       firmware: n % 4 === 1 && mi % 3 !== 2 ? `v${2 + (mi % 2)}.${(mi * 3) % 9}.${mi % 4}` : `v${2 + (mi % 2)}.${(mi * 3) % 9 + 1}.${(mi * 2) % 5}`,

@@ -17,6 +17,7 @@ import {
   FACILITY_CATEGORIES, FACILITY_STATUS,
   type Scene, type SceneStatus, type SceneFacility,
 } from '@/mock/scenes'
+import { syncSceneAreaName } from './device/store'
 
 document.title = '场景管理 · 具身智能训练场'
 const router = useRouter()
@@ -75,9 +76,53 @@ const planOpen = ref(false)
 const sceneFormOpen = ref(false)
 const editingScene = ref<Scene | null>(null)
 const sceneForm = reactive({ name: '', type: '综合', area: 500, capacity: 6, open: '08:00–20:00', owner: '', location: '', difficulty: 3, desc: '' })
-const openAddScene  = () => { editingScene.value = null; sceneFormOpen.value = true }
+const openAddScene  = () => {
+  editingScene.value = null
+  Object.assign(sceneForm, { name: '', type: '综合', area: 500, capacity: 6, open: '08:00–20:00', owner: '周工', location: '', difficulty: 3, desc: '' })
+  sceneFormOpen.value = true
+}
 const openEditScene = (s: Scene) => { editingScene.value = s; Object.assign(sceneForm, { name: s.name, type: s.type, area: s.area, capacity: s.capacity, open: s.open, owner: s.owner, location: s.location, difficulty: s.difficulty, desc: s.desc }); sceneFormOpen.value = true }
-const submitScene   = () => { sceneFormOpen.value = false; message.success(editingScene.value ? '场景信息已更新（演示）' : '场景已创建（演示）') }
+const submitScene   = () => {
+  const name = sceneForm.name.trim()
+  if (!name) { message.warning('请输入场景名称'); return }
+  if (SCENES.some((s) => s.name === name && s !== editingScene.value)) {
+    message.warning('已存在同名场景')
+    return
+  }
+  if (editingScene.value) {
+    const oldName = editingScene.value.name
+    Object.assign(editingScene.value, { ...sceneForm, name })
+    syncSceneAreaName(oldName, name)
+    message.success('场景信息已更新')
+  } else {
+    const todayStr = new Date().toISOString().slice(0, 10)
+    const id = `SC-${String(SCENES.length + 1).padStart(3, '0')}`
+    const newScene: Scene = {
+      id,
+      name,
+      type: sceneForm.type,
+      status: 'planning',
+      area: sceneForm.area,
+      capacity: sceneForm.capacity,
+      open: sceneForm.open,
+      owner: sceneForm.owner || '周工',
+      location: sceneForm.location,
+      difficulty: sceneForm.difficulty,
+      desc: sceneForm.desc,
+      tags: [],
+      createdAt: todayStr,
+      plan: [{ k: 'zone', x: 8, y: 8, w: 144, h: 84, t: name }],
+      site: [8, 8, 24, 18],
+      facilities: [],
+      lifecycle: [{ status: 'planning', date: todayStr, operator: sceneForm.owner || '当前用户', remark: '新建场景立项' }],
+      bookings: [],
+    }
+    SCENES.push(newScene)
+    cur.value = newScene
+    message.success('场景已创建')
+  }
+  sceneFormOpen.value = false
+}
 
 const lcConfirmOpen = ref(false)
 const lcRemark = ref('')

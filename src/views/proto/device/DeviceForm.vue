@@ -2,22 +2,19 @@
 /** 新增 / 编辑设备 */
 import { computed, reactive, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
-import { SettingOutlined } from '@ant-design/icons-vue'
-import AreaManager from './AreaManager.vue'
-import { AREAS, STATUSES, STATUS_META, type Device, type DeviceStatus } from '@/models/device'
+import { STATUSES, STATUS_META, type Device, type DeviceStatus } from '@/models/device'
 import { descriptorOf, pluginOf } from '@/plugins/catalog'
-import { fleet, ipTaken, saveDevice } from './store'
+import { fleet, ipTaken, saveDevice, sceneAreaOptions, sceneAreas } from './store'
 
 const props = defineProps<{ open: boolean; device?: Device | null }>()
 const emit = defineEmits<{ 'update:open': [boolean]; saved: [Device] }>()
 
 const blank = () => ({
   modelId: undefined as string | undefined, name: '', sn: '', ip: '', publicIp: '', cams: '',
-  area: AREAS[0], status: 'offline' as DeviceStatus, remark: '',
+  area: sceneAreas.value[0] ?? '', status: 'offline' as DeviceStatus, remark: '',
 })
 const f = reactive(blank())
 const formRef = ref()
-const areasOpen = ref(false)
 const editing = computed(() => !!props.device)
 
 watch(() => props.open, (v) => {
@@ -103,9 +100,7 @@ async function submit() {
         <a-input v-model:value="f.cams" placeholder="如：10.20.1.101; rtsp://10.20.1.102/live" />
       </a-form-item>
       <a-row :gutter="16">
-        <a-col :span="12"><a-form-item label="所属区域">
-          <div class="df-area"><a-select v-model:value="f.area" placeholder="选择区域" :options="AREAS.map((v) => ({ value: v, label: v }))" /><a-tooltip title="管理区域"><a-button @click="areasOpen = true"><SettingOutlined /></a-button></a-tooltip></div>
-        </a-form-item></a-col>
+        <a-col :span="12"><a-form-item label="所属区域"><a-select v-model:value="f.area" placeholder="选择所属区域" :options="sceneAreaOptions" /></a-form-item></a-col>
         <a-col :span="12"><a-form-item label="状态">
           <a-radio-group v-model:value="f.status" button-style="solid" class="df-st"><a-radio-button v-for="s in STATUSES" :key="s" :value="s">{{ STATUS_META[s].label }}</a-radio-button></a-radio-group>
         </a-form-item></a-col>
@@ -113,13 +108,11 @@ async function submit() {
       <a-form-item label="备注" style="margin-bottom: 0"><a-textarea v-model:value="f.remark" :rows="2" placeholder="选填" /></a-form-item>
     </a-form>
   </a-modal>
-  <AreaManager v-model:open="areasOpen" />
 </template>
 
 <style scoped>
 .df-conn { margin: -4px 0 18px; padding: 12px 14px 0; border: 1px dashed var(--line); border-radius: 6px; background: rgba(46,211,230,.03); }
 .df-conn-h { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 12.5px; } .df-conn-h b { color: var(--title); font-weight: 600; }
 .df-conn :deep(.ant-form-item) { margin-bottom: 12px; } .df-none { margin: 0 0 12px; font-size: 12px; }
-.df-area { display: flex; gap: 8px; } .df-area > :first-child { flex: 1; min-width: 0; }
 .df-st { display: flex; } .df-st :deep(.ant-radio-button-wrapper) { flex: 1; text-align: center; }
 </style>

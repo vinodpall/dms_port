@@ -84,6 +84,3 @@ export const isOnline = (d: Device) => d.status !== 'offline'
 export const hasTeleop = (d: Device) => { const x = descriptorOf(d.modelId); return x.capabilities.includes('teleop') || x.controls.some((c) => c.group !== 'navigation' && c.group !== 'task') }
 /** 可遥操作：具备能力且设备在线、无故障 */
 export const canTeleop = (d: Device) => hasTeleop(d) && d.status === 'online'
-
-/** 所属区域（响应式，可在「所属区域」中增删改） */
-export const AREAS = reactive<string[]>(['A 区 · 室内训练场', 'B 区 · 越野场地', 'C 区 · 室外道路', 'D 区 · 停机坪', 'E 区 · 服务展厅'])

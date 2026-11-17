@@ -1,4 +1,5 @@
 /** 场景管理模块数据 */
+import { reactive } from 'vue'
 
 export type SceneStatus = 'planning' | 'building' | 'trial' | 'active' | 'maint' | 'retired'
 export type PlanKind = 'zone' | 'stairs' | 'slope' | 'terrain' | 'water' | 'equip' | 'facility' | 'point' | 'path' | 'wall'
@@ -90,7 +91,7 @@ export const PLAN_LEGEND: { k: PlanKind; t: string; c: string }[] = [
   { k: 'path',     t: '路线',      c: '#7FF3FF' },
 ]
 
-export const SCENES: Scene[] = [
+export const SCENES = reactive<Scene[]>([
   {
     id: 'SC-001', name: '综合训练场 A', type: '综合', status: 'active',
     area: 2400, capacity: 12, open: '08:00–22:00', owner: '周工',
@@ -245,4 +246,4 @@ export const SCENES: Scene[] = [
     ],
     bookings: [],
   },
-]
+])

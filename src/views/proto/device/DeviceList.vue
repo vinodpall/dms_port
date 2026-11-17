@@ -2,13 +2,11 @@
 /** 设备列表：下拉筛选 + 表格（每页行数按屏幕高度计算，一屏显示完整）；只展示关键信息，其余进详情查看 */
 import { computed, reactive, ref, watch } from 'vue'
 import { Modal, message } from 'ant-design-vue'
-import { PlusOutlined, SearchOutlined, MoreOutlined, DownOutlined, ImportOutlined, ExportOutlined, EnvironmentOutlined } from '@ant-design/icons-vue'
-import AreaManager from './AreaManager.vue'
+import { PlusOutlined, SearchOutlined, MoreOutlined, DownOutlined, ImportOutlined, ExportOutlined } from '@ant-design/icons-vue'
 import { useFitRows } from '@/components/proto/fitRows'
-import { AREAS, STATUSES, STATUS_META, TYPES, TYPE_META, canTeleop, hasTeleop, isOnline, type Device, type DeviceStatus, type DeviceType } from '@/models/device'
-import { fleet, modelOf, removeDevice } from './store'
+import { STATUSES, STATUS_META, TYPES, TYPE_META, canTeleop, hasTeleop, isOnline, type Device, type DeviceStatus, type DeviceType } from '@/models/device'
+import { fleet, modelOf, removeDevice, sceneAreaOptions } from './store'
 
-const areasOpen = ref(false)
 const props = defineProps<{ preset?: { type?: DeviceType; status?: DeviceStatus; model?: string; area?: string; n: number } | null }>()
 const emit = defineEmits<{ open: [Device]; teleop: [Device]; edit: [Device]; add: [] }>()
 
@@ -56,7 +54,6 @@ const onMenu = (key: string, d: Device) => (key === 'edit' ? emit('edit', d) : d
   <div class="pp-head">
     <div><h2>设备列表</h2><p>共 {{ fleet.devices.length }} 台设备，在线 {{ fleet.devices.filter(isOnline).length }} 台</p></div>
     <div class="r" style="margin-left:auto; display:flex; gap:8px">
-      <a-button @click="areasOpen = true"><EnvironmentOutlined />所属区域</a-button>
       <a-dropdown><a-button>批量 <DownOutlined /></a-button>
         <template #overlay><a-menu><a-menu-item key="i"><ImportOutlined /> 批量导入</a-menu-item><a-menu-item key="e"><ExportOutlined /> 导出列表</a-menu-item></a-menu></template>
       </a-dropdown>
@@ -70,7 +67,7 @@ const onMenu = (key: string, d: Device) => (key === 'edit' ? emit('edit', d) : d
         <a-select v-model:value="f.type" allow-clear placeholder="设备类型" style="width: 130px" :options="typeOpts" />
         <a-select v-model:value="f.model" allow-clear placeholder="型号" style="width: 140px" :options="modelOpts" show-search option-filter-prop="label" />
         <a-select v-model:value="f.status" allow-clear placeholder="状态" style="width: 110px" :options="statusOpts" />
-        <a-select v-model:value="f.area" allow-clear placeholder="所属区域" style="width: 160px" :options="AREAS.map((v) => ({ value: v, label: v }))" />
+        <a-select v-model:value="f.area" allow-clear placeholder="所属区域" style="width: 160px" :options="sceneAreaOptions" />
         <a v-if="dirty" class="reset" @click="reset">重置</a>
         <span class="sum">共<b>{{ rows.length }}</b>台</span>
       </div>
@@ -99,7 +96,6 @@ const onMenu = (key: string, d: Device) => (key === 'edit' ? emit('edit', d) : d
         </template>
       </a-table>
   </section>
-  <AreaManager v-model:open="areasOpen" />
   </div>
 </template>
 
