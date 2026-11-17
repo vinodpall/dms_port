@@ -18,7 +18,7 @@ const columns = [
 const customRow = (b: Batch) => ({ class: 'row-click', onClick: () => emit('open', b.id) })
 </script>
 <template>
-  <a-table v-if="rows.length" :columns="columns" :data-source="rows" row-key="id" :pagination="false" :custom-row="customRow" :scroll="{ x: 820 }">
+  <a-table v-if="rows.length" :columns="columns" :data-source="rows" row-key="id" size="middle" class="pp-table" :pagination="false" :custom-row="customRow" :scroll="{ x: 820 }">
     <template #bodyCell="{ column, record }">
       <template v-if="column.key === 'id'"><span class="mono">{{ (record as Batch).id }}</span></template>
       <template v-else-if="column.key === 'task'">

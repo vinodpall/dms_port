@@ -76,7 +76,7 @@ const auditCols = [{ title: '时间', key: 't', width: 130 }, { title: '用户',
 
   <div v-else-if="tab === 'audit'" class="card">
     <div class="toolbar"><div class="chips"><button v-for="k in kinds" :key="k" type="button" class="chip" :aria-pressed="au.k === k" @click="au.k = k">{{ k === 'all' ? '全部' : k }}</button></div></div>
-    <a-table row-key="t" :columns="auditCols" :data-source="auRows.map((r, i) => ({ ...r, i }))" :scroll="{ x: 620 }" :pagination="{ current: au.page, pageSize: 10, showSizeChanger: false, showTotal: (n: number) => `共 ${n} 条记录，保留 180 天` }" @change="(p: { current?: number }) => (au.page = p.current ?? 1)">
+    <a-table row-key="t" :columns="auditCols" :data-source="auRows.map((r, i) => ({ ...r, i }))" size="middle" class="pp-table" :scroll="{ x: 620 }" :pagination="{ current: au.page, pageSize: 10, showSizeChanger: false, size: 'small', showTotal: (n: number) => `共 ${n} 条记录，保留 180 天` }" @change="(p: { current?: number }) => (au.page = p.current ?? 1)">
       <template #bodyCell="{ column, record }">
         <span v-if="column.key === 't'" class="num muted">{{ record.t }}</span>
         <StatusBadge v-else-if="column.key === 'k'" kind="" :text="record.k" plain />

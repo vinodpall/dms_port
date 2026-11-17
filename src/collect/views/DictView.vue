@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import PageHead from '@/collect/components/PageHead.vue'
 import AppIcon from '@/components/AppIcon.vue'
+import EmptyState from '@/collect/components/EmptyState.vue'
 import { SCEN, type ScenKey } from '@/collect/constants'
 import { LEVELS, useDict, type ActLevel, type DictCat, type DictItem, type DictOp } from '@/collect/stores/dict'
 import { useAnnotate } from '@/collect/stores/annotate'
@@ -18,6 +19,8 @@ type Tab = 'all' | ActLevel
 const tab = ref<Tab>('all')
 const scen = ref<'all' | ScenKey | 'common'>('all')
 const q = ref('')
+const page = ref(1)
+watch([tab, scen, q], () => { page.value = 1 })
 const TABS: [Tab, string][] = [['all', '全部'], ['compound', '标准子任务'], ['abnormal', '异常子任务']]
 const count = (t: Tab) => dict.items.filter((x) => match(x, t)).length
 function match(x: DictItem, t: Tab) {
@@ -35,6 +38,18 @@ const usage = (name: string) => ann.clips.reduce((a, c) => a + c.segs.filter((s)
 const SCEN_OPTS = (Object.keys(SCEN) as ScenKey[]).map((k) => ({ value: k, label: SCEN[k].short }))
 const LEVEL_OPTS = (Object.keys(LEVELS) as ActLevel[]).map((k) => ({ value: k, label: LEVELS[k] }))
 const scenLabel = (s: DictItem['scen']) => (s === 'common' ? '通用' : SCEN[s].short)
+
+const itemCols = [
+  { title: '编码', key: 'code', width: 120 },
+  { title: '名称', key: 'name', width: 140 },
+  { title: '分级', key: 'level', width: 112 },
+  { title: '场景', key: 'scen', width: 100 },
+  { title: '定义', key: 'desc', width: 260 },
+  { title: '别名', key: 'aliases', width: 180 },
+  { title: '引用', key: 'usage', width: 70, align: 'right' as const },
+  { title: '启用', key: 'status', width: 76 },
+  { title: '操作', key: 'action', width: 120, align: 'right' as const },
+]
 
 const modal = reactive({ open: false, id: '', code: '', name: '', category: 'action' as DictCat, level: 'compound' as ActLevel, scen: 'common' as DictItem['scen'], aliases: '', desc: '', required: false })
 function openAdd() {
@@ -82,6 +97,8 @@ const view = ref<'list' | 'log'>('list')
 const logQ = ref('')
 const logOp = ref<'all' | DictOp>('all')
 const logBy = ref('all')
+const logPage = ref(1)
+watch([logQ, logOp, logBy], () => { logPage.value = 1 })
 const OPS: DictOp[] = ['新增', '修改', '启用', '停用', '删除']
 const OP_CLS: Record<DictOp, string> = { 新增: 'good', 修改: 'info', 启用: 'good', 停用: 'warn', 删除: 'crit' }
 const byOpts = computed(() => [{ value: 'all', label: '全部操作人' }, ...[...new Set(dict.changes.map((c) => c.by))].map((v) => ({ value: v, label: v }))])
@@ -90,7 +107,15 @@ const logs = computed(() => dict.changes.filter((c) => {
   if (logBy.value !== 'all' && c.by !== logBy.value) return false
   const k = logQ.value.trim()
   return !k || c.target.includes(k) || c.summary.includes(k)
-}))
+}).map((c, i) => ({ ...c, _key: `${i}-${c.t}-${c.ver}` })))
+const logCols = [
+  { title: '时间', key: 't', width: 155 },
+  { title: '版本', key: 'ver', width: 92 },
+  { title: '操作人', key: 'by', width: 92 },
+  { title: '操作', key: 'op', width: 84 },
+  { title: '词条', key: 'target', width: 150 },
+  { title: '内容', key: 'summary', width: 280 },
+]
 </script>
 
 <template>
@@ -104,20 +129,26 @@ const logs = computed(() => dict.changes.filter((c) => {
         <a-select v-model:value="logOp" style="width:130px" aria-label="操作类型" :options="[{ value: 'all', label: '全部操作' }, ...OPS.map((v) => ({ value: v, label: v }))]" />
         <a-select v-model:value="logBy" style="width:130px" aria-label="操作人" :options="byOpts" />
       </div>
-      <table class="stbl" aria-label="字典操作记录">
-        <thead><tr><th style="width:150px">时间</th><th style="width:90px">版本</th><th style="width:90px">操作人</th><th style="width:80px">操作</th><th style="width:140px">词条</th><th>内容</th></tr></thead>
-        <tbody>
-          <tr v-for="(c, i) in logs" :key="i">
-            <td class="num muted">{{ c.t }}</td>
-            <td><span class="mono ver">{{ c.ver }}</span></td>
-            <td>{{ c.by }}</td>
-            <td><span class="tag" :class="OP_CLS[c.op]">{{ c.op }}</span></td>
-            <td><b>{{ c.target }}</b></td>
-            <td class="muted">{{ c.summary }}</td>
-          </tr>
-          <tr v-if="!logs.length"><td colspan="6" class="muted" style="text-align:center;padding:24px">没有匹配的记录</td></tr>
-        </tbody>
-      </table>
+      <a-table
+        row-key="_key"
+        :columns="logCols"
+        :data-source="logs"
+        size="middle"
+        class="pp-table"
+        :scroll="{ x: 840 }"
+        :pagination="{ current: logPage, pageSize: 12, showSizeChanger: false, size: 'small', hideOnSinglePage: false, showTotal: (n: number) => `共 ${n} 条记录` }"
+        @change="(p: { current?: number }) => (logPage = p.current ?? 1)"
+      >
+        <template #bodyCell="{ column, record }">
+          <span v-if="column.key === 't'" class="num muted">{{ record.t }}</span>
+          <span v-else-if="column.key === 'ver'" class="mono ver">{{ record.ver }}</span>
+          <span v-else-if="column.key === 'by'">{{ record.by }}</span>
+          <span v-else-if="column.key === 'op'" class="tag" :class="OP_CLS[record.op as DictOp]">{{ record.op }}</span>
+          <b v-else-if="column.key === 'target'">{{ record.target }}</b>
+          <span v-else-if="column.key === 'summary'" class="muted">{{ record.summary }}</span>
+        </template>
+        <template #emptyText><EmptyState icon="search" title="没有匹配的记录" desc="换个关键词或筛选条件试试" /></template>
+      </a-table>
     </div>
   </template>
 
@@ -135,23 +166,33 @@ const logs = computed(() => dict.changes.filter((c) => {
       <div class="toolbar" style="border-bottom:0;padding-bottom:0">
         <div class="chips"><button v-for="t in TABS" :key="t[0]" type="button" class="chip" :aria-pressed="tab === t[0]" @click="tab = t[0]">{{ t[1] }} <span class="n num">{{ count(t[0]) }}</span></button></div>
       </div>
-      <table class="stbl" aria-label="字典词条">
-        <thead><tr><th style="width:120px">编码</th><th style="width:120px">名称</th><th style="width:110px">分级</th><th style="width:100px;white-space:nowrap">场景</th><th>定义</th><th style="width:150px">别名</th><th style="width:60px">引用</th><th style="width:64px">启用</th><th style="width:120px">操作</th></tr></thead>
-        <tbody>
-          <tr v-for="x in rows" :key="x.id" :class="{ off: x.status !== 'active' }">
-            <td class="mono"><b>{{ x.code }}</b></td>
-            <td><b>{{ x.name }}</b> <span v-if="x.required" class="tag crit" style="font-size:11px">必选</span></td>
-            <td><span class="tag" :class="x.category === 'object' ? 'good' : x.level === 'abnormal' ? 'warn' : 'info'">{{ x.category === 'object' ? '物体' : LEVELS[x.level ?? 'compound'] }}</span></td>
-            <td class="muted" style="white-space:nowrap">{{ scenLabel(x.scen) }}</td>
-            <td class="muted" style="font-size:12.5px">{{ x.desc }}</td>
-            <td><span v-for="a in x.aliases" :key="a" class="alias">{{ a }}</span></td>
-            <td class="num muted">{{ usage(x.name) }}</td>
-            <td><a-switch size="small" :checked="x.status === 'active'" :aria-label="'启用 ' + x.name" @change="toggle(x)" /></td>
-            <td style="white-space:nowrap"><a-button size="small" type="link" @click="openEdit(x)">编辑</a-button><a-button size="small" type="link" danger @click="del(x)">删除</a-button></td>
-          </tr>
-          <tr v-if="!rows.length"><td colspan="9" class="muted" style="text-align:center;padding:24px">没有匹配的词条</td></tr>
-        </tbody>
-      </table>
+      <a-table
+        row-key="id"
+        :columns="itemCols"
+        :data-source="rows"
+        size="middle"
+        class="pp-table"
+        :row-class-name="(r: DictItem) => (r.status !== 'active' ? 'row-off' : '')"
+        :scroll="{ x: 1080 }"
+        :pagination="{ current: page, pageSize: 12, showSizeChanger: false, size: 'small', hideOnSinglePage: false, showTotal: (n: number) => `共 ${n} 条词条` }"
+        @change="(p: { current?: number }) => (page = p.current ?? 1)"
+      >
+        <template #bodyCell="{ column, record }">
+          <b v-if="column.key === 'code'" class="mono">{{ record.code }}</b>
+          <template v-else-if="column.key === 'name'"><b>{{ record.name }}</b> <span v-if="record.required" class="tag crit" style="font-size:11px">必选</span></template>
+          <span v-else-if="column.key === 'level'" class="tag" :class="record.category === 'object' ? 'good' : record.level === 'abnormal' ? 'warn' : 'info'">{{ record.category === 'object' ? '物体' : LEVELS[(record.level ?? 'compound') as ActLevel] }}</span>
+          <span v-else-if="column.key === 'scen'" class="muted" style="white-space:nowrap">{{ scenLabel(record.scen) }}</span>
+          <span v-else-if="column.key === 'desc'" class="muted" style="font-size:12.5px">{{ record.desc }}</span>
+          <template v-else-if="column.key === 'aliases'"><span v-for="a in record.aliases" :key="a" class="alias">{{ a }}</span></template>
+          <span v-else-if="column.key === 'usage'" class="num muted">{{ usage(record.name) }}</span>
+          <a-switch v-else-if="column.key === 'status'" size="small" :checked="record.status === 'active'" :aria-label="'启用 ' + record.name" @change="toggle(record as DictItem)" />
+          <div v-else-if="column.key === 'action'" class="pp-op">
+            <a-button size="small" type="link" @click="openEdit(record as DictItem)">编辑</a-button>
+            <a-button size="small" type="link" danger @click="del(record as DictItem)">删除</a-button>
+          </div>
+        </template>
+        <template #emptyText><EmptyState icon="search" title="没有匹配的词条" desc="换个关键词或场景试试" /></template>
+      </a-table>
     </div>
 
   </template>
@@ -177,10 +218,7 @@ const logs = computed(() => dict.changes.filter((c) => {
 </template>
 
 <style scoped>
-.stbl { width: 100%; border-collapse: collapse; font-size: 13px; }
-.stbl th { text-align: left; font-weight: 500; color: var(--muted); padding: 8px; border-bottom: 1px solid var(--line); background: var(--surface-2); }
-.stbl td { padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
-.stbl tr.off td { opacity: .5; }
+.pp-table :deep(tr.row-off td) { opacity: .5; }
 .alias { display: inline-block; font-size: 11px; padding: 0 6px; margin: 1px 3px 1px 0; border-radius: 4px; background: var(--surface-3); color: var(--muted); }
 .vlog { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; font-size: 13px; }
 .vlog li { display: flex; gap: 10px; }

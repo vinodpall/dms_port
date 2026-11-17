@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import PageHead from '@/collect/components/PageHead.vue'
 import AppIcon from '@/components/AppIcon.vue'
 import StatusBadge from '@/collect/components/StatusBadge.vue'
-import { useLogs, type LogEntry, type LogModule } from '@/collect/stores/logs'
+import EmptyState from '@/collect/components/EmptyState.vue'
+import { useLogs, type LogEntry } from '@/collect/stores/logs'
 import { toast } from '@/composables/toast'
 import type { BadgeKind } from '@/collect/constants'
 
@@ -14,6 +15,15 @@ const filterModule = ref<string>('all')
 const filterStatus = ref<string>('all')
 const filterUser = ref<string>('all')
 const filterTime = ref<'all' | 'today' | '3days' | '7days'>('all')
+const page = ref(1)
+watch([search, filterModule, filterStatus, filterUser, filterTime], () => { page.value = 1 })
+
+const timeChips: ['all' | 'today' | '3days' | '7days', string][] = [
+  ['all', '全部时间'],
+  ['today', '今日'],
+  ['3days', '近3天'],
+  ['7days', '近7天'],
+]
 
 const filteredList = computed(() => {
   const now = Date.now()
@@ -41,6 +51,27 @@ const filteredList = computed(() => {
     }
     return true
   })
+})
+
+const columns = [
+  { title: 'Trace ID', key: 'traceId', width: 120 },
+  { title: '操作时间', key: 'time', width: 165 },
+  { title: '操作人员', key: 'user', width: 130 },
+  { title: '业务模块', key: 'module', width: 112 },
+  { title: '操作行为', key: 'action', width: 100 },
+  { title: '目标对象', key: 'target', width: 210 },
+  { title: '业务摘要与变更说明', key: 'summary', width: 260 },
+  { title: '耗时', key: 'duration', width: 84, align: 'right' as const },
+  { title: '状态', key: 'status', width: 86 },
+  { title: '操作', key: 'op', width: 76, align: 'right' as const },
+]
+
+const customRow = (r: LogEntry) => ({
+  class: 'row-click',
+  onClick: (e: MouseEvent) => {
+    if ((e.target as HTMLElement).closest('a, button, .ant-btn')) return
+    viewDetail(r)
+  },
 })
 
 const stats = computed(() => {
@@ -129,108 +160,88 @@ function exportCsv() {
     </div>
   </div>
 
-  <div class="card" style="padding:16px;margin-top:14px">
+  <div class="card">
     <!-- 筛选搜索栏 -->
-    <div class="row between" style="margin-bottom:14px;flex-wrap:wrap;gap:10px">
-      <div class="row" style="gap:10px;flex-wrap:wrap">
-        <a-input
-          v-model:value="search"
-          placeholder="搜索流水号 / 操作人 / 目标 / 行为"
-          style="width:240px"
-          size="small"
-          allow-clear
-        >
-          <template #prefix><AppIcon name="search" size="sm" /></template>
-        </a-input>
+    <div class="toolbar">
+      <a-input
+        v-model:value="search"
+        class="grow"
+        placeholder="搜索流水号 / 操作人 / 目标 / 行为"
+        aria-label="搜索审计日志"
+        allow-clear
+      >
+        <template #prefix><AppIcon name="search" /></template>
+      </a-input>
 
-        <a-select v-model:value="filterModule" size="small" style="width:130px">
-          <a-select-option value="all">全部业务模块</a-select-option>
-          <a-select-option value="annotate">标注工作台</a-select-option>
-          <a-select-option value="review">审核工作台</a-select-option>
-          <a-select-option value="vocab">字典管理</a-select-option>
-          <a-select-option value="collect">采集任务</a-select-option>
-          <a-select-option value="pipeline">数据流水线</a-select-option>
-          <a-select-option value="system">系统管理</a-select-option>
-        </a-select>
+      <a-select v-model:value="filterModule" style="width:140px" aria-label="按业务模块筛选">
+        <a-select-option value="all">全部业务模块</a-select-option>
+        <a-select-option value="annotate">标注工作台</a-select-option>
+        <a-select-option value="review">审核工作台</a-select-option>
+        <a-select-option value="vocab">字典管理</a-select-option>
+        <a-select-option value="collect">采集任务</a-select-option>
+        <a-select-option value="pipeline">数据流水线</a-select-option>
+        <a-select-option value="system">系统管理</a-select-option>
+      </a-select>
 
-        <a-select v-model:value="filterStatus" size="small" style="width:105px">
-          <a-select-option value="all">全部状态</a-select-option>
-          <a-select-option value="success">成功</a-select-option>
-          <a-select-option value="warn">质检告警</a-select-option>
-          <a-select-option value="failed">执行失败</a-select-option>
-        </a-select>
+      <a-select v-model:value="filterStatus" style="width:115px" aria-label="按状态筛选">
+        <a-select-option value="all">全部状态</a-select-option>
+        <a-select-option value="success">成功</a-select-option>
+        <a-select-option value="warn">质检告警</a-select-option>
+        <a-select-option value="failed">执行失败</a-select-option>
+      </a-select>
 
-        <a-select v-model:value="filterUser" size="small" style="width:115px">
-          <a-select-option value="all">全部操作人</a-select-option>
-          <a-select-option value="林悦">林悦 (标注员)</a-select-option>
-          <a-select-option value="陈静">陈静 (审核员)</a-select-option>
-          <a-select-option value="周工">周工 (管理员)</a-select-option>
-          <a-select-option value="张杰">张杰 (操作员)</a-select-option>
-        </a-select>
+      <a-select v-model:value="filterUser" style="width:130px" aria-label="按操作人筛选">
+        <a-select-option value="all">全部操作人</a-select-option>
+        <a-select-option value="林悦">林悦 (标注员)</a-select-option>
+        <a-select-option value="陈静">陈静 (审核员)</a-select-option>
+        <a-select-option value="周工">周工 (管理员)</a-select-option>
+        <a-select-option value="张杰">张杰 (操作员)</a-select-option>
+      </a-select>
+    </div>
 
-        <a-radio-group v-model:value="filterTime" button-style="solid" size="small">
-          <a-radio-button value="all">全部时间</a-radio-button>
-          <a-radio-button value="today">今日</a-radio-button>
-          <a-radio-button value="3days">近3天</a-radio-button>
-          <a-radio-button value="7days">近7天</a-radio-button>
-        </a-radio-group>
+    <div class="toolbar" style="border-bottom:0;padding-bottom:0">
+      <div class="chips">
+        <button v-for="t in timeChips" :key="t[0]" type="button" class="chip" :aria-pressed="filterTime === t[0]" @click="filterTime = t[0]">{{ t[1] }}</button>
       </div>
-
-      <span class="muted" style="font-size:12px">共检索到 {{ filteredList.length }} 条流水</span>
     </div>
 
     <!-- 日志表格 -->
-    <table class="stbl" aria-label="操作日志表格">
-      <thead>
-        <tr>
-          <th style="width:110px">Trace ID</th>
-          <th style="width:145px">操作时间</th>
-          <th style="width:110px">操作人员</th>
-          <th style="width:100px">业务模块</th>
-          <th style="width:90px">操作行为</th>
-          <th style="width:200px">目标对象</th>
-          <th>业务摘要与变更说明</th>
-          <th style="width:75px">耗时</th>
-          <th style="width:75px">状态</th>
-          <th style="width:70px">详情</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="l in filteredList" :key="l.id">
-          <td>
-            <a class="mono ell-code" @click="copyText(l.traceId)" title="点击复制 TraceID">{{ l.traceId }}</a>
-          </td>
-          <td class="muted num" style="font-size:12px">{{ l.time }}</td>
-          <td>
-            <div class="row" style="gap:4px">
-              <b>{{ l.user }}</b>
-              <span class="muted" style="font-size:11px">({{ l.role }})</span>
-            </div>
-          </td>
-          <td>
-            <a-tag :color="l.module === 'annotate' ? 'blue' : l.module === 'review' ? 'purple' : l.module === 'vocab' ? 'cyan' : l.module === 'collect' ? 'green' : 'orange'">
-              {{ l.moduleName }}
-            </a-tag>
-          </td>
-          <td><b>{{ l.action }}</b></td>
-          <td><span class="mono" style="font-size:12px">{{ l.target }}</span></td>
-          <td class="muted" style="font-size:12.5px">{{ l.summary }}</td>
-          <td class="num muted">{{ l.duration }}ms</td>
-          <td>
-            <StatusBadge
-              :kind="(l.status === 'success' ? 'good' : l.status === 'warn' ? 'warn' : 'crit') as BadgeKind"
-              :text="l.status === 'success' ? '成功' : l.status === 'warn' ? '打回' : '失败'"
-            />
-          </td>
-          <td>
-            <a-button size="small" type="link" @click="viewDetail(l)">查看</a-button>
-          </td>
-        </tr>
-        <tr v-if="!filteredList.length">
-          <td colspan="10" class="muted" style="text-align:center;padding:32px">暂无符合条件的审计日志记录</td>
-        </tr>
-      </tbody>
-    </table>
+    <a-table
+      row-key="id"
+      :columns="columns"
+      :data-source="filteredList"
+      size="middle"
+      class="pp-table"
+      :custom-row="customRow"
+      :scroll="{ x: 1180 }"
+      :pagination="{ current: page, pageSize: 10, showSizeChanger: false, size: 'small', hideOnSinglePage: false, showTotal: (n: number) => `共 ${n} 条流水` }"
+      @change="(p: { current?: number }) => (page = p.current ?? 1)"
+    >
+      <template #bodyCell="{ column, record }">
+        <a v-if="column.key === 'traceId'" class="mono ell-code" title="点击复制 TraceID" @click.stop="copyText(record.traceId)">{{ record.traceId }}</a>
+        <span v-else-if="column.key === 'time'" class="muted num" style="font-size:12.5px">{{ record.time }}</span>
+        <div v-else-if="column.key === 'user'" class="cell-main">
+          <span>{{ record.user }}</span>
+          <small>{{ record.role }}</small>
+        </div>
+        <a-tag v-else-if="column.key === 'module'" :color="record.module === 'annotate' ? 'blue' : record.module === 'review' ? 'purple' : record.module === 'vocab' ? 'cyan' : record.module === 'collect' ? 'green' : 'orange'">
+          {{ record.moduleName }}
+        </a-tag>
+        <b v-else-if="column.key === 'action'">{{ record.action }}</b>
+        <span v-else-if="column.key === 'target'" class="mono" style="font-size:12px">{{ record.target }}</span>
+        <span v-else-if="column.key === 'summary'" class="muted" style="font-size:12.5px">{{ record.summary }}</span>
+        <span v-else-if="column.key === 'duration'" class="num muted">{{ record.duration }} ms</span>
+        <StatusBadge
+          v-else-if="column.key === 'status'"
+          :kind="(record.status === 'success' ? 'good' : record.status === 'warn' ? 'warn' : 'crit') as BadgeKind"
+          :text="record.status === 'success' ? '成功' : record.status === 'warn' ? '打回' : '失败'"
+        />
+        <a-button v-else-if="column.key === 'op'" size="small" type="link" @click.stop="viewDetail(record as LogEntry)">查看</a-button>
+      </template>
+      <template #emptyText>
+        <EmptyState icon="search" title="暂无符合条件的审计日志记录" desc="换个关键词或筛选条件试试" />
+      </template>
+    </a-table>
   </div>
 
   <!-- 详情弹窗 -->
@@ -282,10 +293,6 @@ function exportCsv() {
 .stat-card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; box-shadow: var(--shadow-sm); }
 .stat-card .num { display: block; font: 700 22px var(--font-mono); margin-bottom: 2px; }
 .stat-card .lbl { font-size: 12px; color: var(--muted); }
-
-.stbl { width: 100%; border-collapse: collapse; font-size: 13px; }
-.stbl th { text-align: left; font-weight: 500; color: var(--muted); padding: 8px 8px; border-bottom: 1px solid var(--line); background: var(--surface-2); }
-.stbl td { padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
 
 .ell-code { cursor: pointer; text-decoration: underline; color: var(--accent); }
 

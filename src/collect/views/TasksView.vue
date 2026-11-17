@@ -47,7 +47,7 @@ function onTableChange(p: { current?: number }, _f: unknown, s: { columnKey?: st
   st.page = p.current ?? 1
   if (s && s.columnKey) { st.key = String(s.columnKey); st.dir = s.order ?? null; if (!s.order) { st.key = 'ts'; st.dir = 'descend' } }
 }
-const rowSelection = computed(() => ({ selectedRowKeys: selected.value, onChange: (k: (string | number)[]) => { selected.value = k as string[] } }))
+const rowSelection = computed(() => ({ columnWidth: 48, selectedRowKeys: selected.value, onChange: (k: (string | number)[]) => { selected.value = k as string[] } }))
 const customRow = (r: Task) => ({
   class: 'row-click',
   onClick: (e: MouseEvent) => { if ((e.target as HTMLElement).closest('.ant-table-selection-column')) return; ui.taskDrawerId = r.id },
@@ -136,7 +136,7 @@ function created(id: string) {
     <div class="toolbar" style="border-bottom:0;padding-bottom:0">
       <div class="chips"><button v-for="c in HIST_CHIPS" :key="c[0]" type="button" class="chip" :aria-pressed="hs.state === c[0]" @click="hs.state = c[0]">{{ c[1] }} <span class="n num">{{ histCount(c[0]) }}</span></button></div>
     </div>
-    <a-table :row-key="(r: { file: string; task: string }) => r.file + r.task" :columns="histCols" :data-source="histRows" :scroll="{ x: 900 }" :pagination="{ pageSize: 12, hideOnSinglePage: true, showTotal: (n: number) => `共 ${n} 条` }">
+    <a-table :row-key="(r: { file: string; task: string }) => r.file + r.task" :columns="histCols" :data-source="histRows" size="middle" class="pp-table" :scroll="{ x: 900 }" :pagination="{ pageSize: 12, showSizeChanger: false, size: 'small', hideOnSinglePage: false, showTotal: (n: number) => `共 ${n} 条` }">
       <template #bodyCell="{ column, record }">
         <span v-if="column.key === 'file'" class="mono" style="font-size:12.5px">{{ record.file }}</span>
         <span v-else-if="column.key === 'source'">{{ HIST_SRC[record.source as HistSource] }}</span>
@@ -165,8 +165,8 @@ function created(id: string) {
       <a-button size="small" danger :disabled="!mayEdit" :title="dis" @click="bulkCancel">批量取消</a-button>
       <a-button size="small" type="text" style="margin-left:auto" @click="selected = []">清除选择</a-button>
     </div>
-    <a-table row-key="id" :columns="columns" :data-source="rows" :row-selection="rowSelection" :custom-row="customRow" :scroll="{ x: 860 }"
-      :pagination="{ current: st.page, pageSize: 8, showSizeChanger: false, hideOnSinglePage: false, showTotal: (n: number) => `共 ${n} 个任务` }" @change="onTableChange as never">
+    <a-table row-key="id" :columns="columns" :data-source="rows" size="middle" class="pp-table" :row-selection="rowSelection" :custom-row="customRow" :scroll="{ x: 860 }"
+      :pagination="{ current: st.page, pageSize: 8, showSizeChanger: false, size: 'small', hideOnSinglePage: false, showTotal: (n: number) => `共 ${n} 个任务` }" @change="onTableChange as never">
       <template #bodyCell="{ column, record }">
         <div v-if="column.key === 'id'" class="cell-main"><span class="mono">{{ record.id }}</span><span>{{ record.name }}</span></div>
         <div v-else-if="column.key === 'scen'" class="cell-main"><span>{{ SCEN[record.scen as 'qmd' | 'fhd'].short }}</span><small class="muted">{{ MODES[record.mode as ModeKey].name }} · {{ record.devices.length }} 台设备</small></div>

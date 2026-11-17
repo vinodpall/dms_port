@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, reactive, watch } from 'vue'
 import PageHead from '@/collect/components/PageHead.vue'
 import AppIcon from '@/components/AppIcon.vue'
@@ -64,8 +64,8 @@ function openViewer(d: Dataset) { ui.datasetViewerId = d.id }
       <span class="muted" style="font-size:12.5px">试试：</span>
       <div class="chips"><button v-for="q in DS_QUERIES" :key="q" type="button" class="chip" :aria-pressed="st.q === q" @click="st.q = q">{{ q }}</button></div>
     </div>
-    <a-table row-key="id" :columns="columns" :data-source="rows" :custom-row="customRow" :scroll="{ x: 960 }" @change="onChange as never"
-      :pagination="{ current: st.page, pageSize: 6, showSizeChanger: false, showTotal: (n: number) => `共 ${n} 个数据集` }">
+    <a-table row-key="id" :columns="columns" :data-source="rows" size="middle" class="pp-table" :custom-row="customRow" :scroll="{ x: 960 }" @change="onChange as never"
+      :pagination="{ current: st.page, pageSize: 6, showSizeChanger: false, size: 'small', showTotal: (n: number) => `共 ${n} 个数据集` }">
       <template #bodyCell="{ column, record }">
         <div v-if="column.key === 'name'" class="cell-main"><span>{{ record.name }} <span class="fmt">{{ record.ver }}</span></span><small>{{ record.id }} · {{ SCEN[record.scen as 'qmd' | 'fhd'].mode }}</small></div>
         <div v-else-if="column.key === 'tags'" class="row wrap" style="gap:4px"><span v-for="t in record.tags.slice(0, 3)" :key="t" class="tag">{{ t }}</span></div>

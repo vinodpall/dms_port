@@ -51,7 +51,7 @@ const customRow = (r: Device) => ({ class: 'row-click', onClick: () => (drawerId
       <a-select v-model:value="st.type" style="width:130px" aria-label="按类型筛选" :options="[{ value: 'all', label: '全部类型' }, ...DEV_TYPES.map((x) => ({ value: x }))]" />
       <a-select v-model:value="st.cal" style="width:120px" aria-label="按标定筛选" :options="[{ value: 'all', label: '标定状态' }, { value: 'yes', label: '已标定' }, { value: 'no', label: '未标定' }]" /></div>
     <div class="toolbar" style="border-bottom:0;padding-bottom:0"><div class="chips"><button v-for="c in chips" :key="c[0]" type="button" class="chip" :aria-pressed="st.s === c[0]" @click="st.s = c[0]">{{ c[1] }} <span class="n num">{{ count(c[0]) }}</span></button></div></div>
-    <a-table row-key="id" :columns="columns" :data-source="rows" :custom-row="customRow" :scroll="{ x: 820 }" :pagination="{ pageSize: 20, hideOnSinglePage: true, showTotal: (n: number) => `共 ${n} 台设备` }" @change="onChange as never">
+    <a-table row-key="id" :columns="columns" :data-source="rows" size="middle" class="pp-table" :custom-row="customRow" :scroll="{ x: 820 }" :pagination="{ pageSize: 20, showSizeChanger: false, size: 'small', hideOnSinglePage: false, showTotal: (n: number) => `共 ${n} 台设备` }" @change="onChange as never">
       <template #bodyCell="{ column, record }">
         <div v-if="column.key === 'name'" class="cell-main"><span>{{ record.name }}</span><small class="mono">{{ record.id }}</small></div>
         <span v-else-if="column.key === 'station'">{{ record.station }}</span>
@@ -62,7 +62,6 @@ const customRow = (r: Device) => ({ class: 'row-click', onClick: () => (drawerId
       </template>
       <template #emptyText><EmptyState icon="search" title="没有符合条件的设备" desc="换个关键词或状态试试" /></template>
     </a-table>
-    <div class="tbl-foot"><span>共 {{ rows.length }} 台设备</span></div>
   </div>
   <AddDeviceDialog :open="addOpen" @close="addOpen = false" @done="(id: string) => (drawerId = id)" />
   <DeviceDrawer :id="drawerId" @close="drawerId = null" />
