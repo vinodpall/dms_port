@@ -1,8 +1,8 @@
 <script setup lang="ts">
-/** 设备详情：首屏只放「摄像头 + 关键实时指标 + 位置」，档案、规格、日志收在下方标签页 */
+/** 设备详情：按插件声明的能力动态组合模块，保持双栏比例协调与留白均衡 */
 import { computed, ref, watch } from 'vue'
 import { Modal, message } from 'ant-design-vue'
-import { ArrowLeftOutlined, ControlOutlined, EditOutlined, MoreOutlined } from '@ant-design/icons-vue'
+import { ArrowLeftOutlined, ControlOutlined, EditOutlined, MoreOutlined, VideoCameraOutlined } from '@ant-design/icons-vue'
 import DeviceGlyph from '@/components/proto/DeviceGlyph.vue'
 import CamShot from '@/views/proto/biz/CamShot.vue'
 import CapTags from '@/components/plugin/CapTags.vue'
@@ -33,10 +33,15 @@ const has = (c: string) => desc.value.capabilities.includes(c as never)
 const cams = computed(() => desc.value.video?.map((v) => ({ label: v.label, ir: !!v.ir })) ?? m.value?.cameras.map((c) => ({ label: c, ir: c === '红外' })) ?? [])
 const showCam = computed(() => has('video') && cams.value.length > 0)
 const chess = computed(() => has('custom:chess'))
+const hasLoc = computed(() => has('location'))
 /** 设备管理范围内可用控件（导航/任务/遥操作归其他页面） */
 const ctrlCount = computed(() => desc.value.controls.filter((c) => c.kind !== 'joystick' && !['teleop', 'navigation', 'task'].includes(c.group)).length)
-/** 首屏左侧主区：有视频放视频，下棋放棋盘，否则直接放控制卡片 */
+/** 首屏主区：有视频放视频，下棋放棋盘，否则直接放控制卡片 */
 const lead = computed<'cam' | 'chess' | 'ctrl' | 'none'>(() => (showCam.value ? 'cam' : chess.value ? 'chess' : ctrlCount.value ? 'ctrl' : 'none'))
+/** 有定位卡时右侧高度较高，将控制面板放在左侧主区下方以平衡双栏高度；无定位卡时控制面板放下方通栏 */
+const ctrlInMain = computed(() => (lead.value === 'cam' || lead.value === 'chess') && hasLoc.value && ctrlCount.value > 0)
+const ctrlBelow = computed(() => (lead.value === 'cam' || lead.value === 'chess') && !hasLoc.value && ctrlCount.value > 0)
+
 const pose = computed(() => rt.value?.values.pose as { x: number; y: number; yaw: number } | undefined)
 const tab = ref('info')
 watch(() => props.id, () => { tab.value = 'info' })
@@ -55,12 +60,15 @@ function del() {
   <div v-if="d && m" class="dd">
     <div class="dd-head">
       <a-button type="text" class="dd-back" @click="emit('back')"><ArrowLeftOutlined /></a-button>
-      <span class="dd-ic"><DeviceGlyph :type="d.type" :size="34" :color="TYPE_META[d.type].color" /></span>
+      <span class="dd-ic"><DeviceGlyph :type="d.type" :size="32" :color="TYPE_META[d.type].color" /></span>
       <div class="dd-t">
-        <div><b>{{ d.name }}</b><a-badge :status="STATUS_META[d.status].badge" :text="STATUS_META[d.status].label" /></div>
-        <small class="muted">{{ TYPE_META[d.type].label }} · {{ m.name }} · <span class="mono">{{ d.ip }}</span>
+        <div class="dd-title">
+          <b>{{ d.name }}</b>
+          <a-badge :status="STATUS_META[d.status].badge" :text="STATUS_META[d.status].label" />
+          <CapTags class="dd-caps" :caps="desc.capabilities" scope="device" small />
+        </div>
+        <small class="muted">{{ TYPE_META[d.type].label }} · {{ m.name }} · {{ d.area }} · <span class="mono">{{ d.ip }}</span>
           <template v-if="plugin"> · 插件 <a-badge :status="P_STATUS[plugin.status].b" />{{ plugin.name }}</template></small>
-        <CapTags class="dd-caps" :caps="desc.capabilities" scope="device" small />
       </div>
       <div class="dd-op">
         <a-tooltip v-if="hasTeleop(d)" :title="canTeleop(d) ? '' : '设备离线或故障，暂不可遥操作'">
@@ -73,30 +81,9 @@ function del() {
       </div>
     </div>
 
-    <div class="dd-grid">
-      <!-- 首屏主区：按能力切换 -->
-      <section v-if="lead === 'cam'" class="pp-panel dd-campanel">
-        <div class="pp-panel-h"><h3>实时画面</h3>
-          <div class="r"><a-radio-group v-model:value="cam" size="small" button-style="solid"><a-radio-button v-for="(c, i) in cams" :key="c.label" :value="i">{{ c.label }}</a-radio-button></a-radio-group></div>
-        </div>
-        <div class="dd-cam">
-          <CamShot v-if="on" :seed="cam + d.id.length * 3" :ir="cams[cam]?.ir" />
-          <div v-else class="dd-empty">{{ pluginRunning(d.modelId) ? '设备离线，暂无画面' : '接入插件未运行，暂无画面' }}</div>
-          <span v-if="on" class="dd-live"><i />LIVE · {{ cams[cam]?.label }}</span>
-        </div>
-      </section>
-      <section v-else-if="lead === 'chess'" class="pp-panel dd-campanel">
-        <div class="pp-panel-h"><h3>棋局</h3><span class="r muted" style="font-size:12px">由插件扩展面板渲染</span></div>
-        <div class="dd-chess"><ChessBoard :state="rt" :size="360" /></div>
-      </section>
-      <section v-else-if="lead === 'ctrl'" class="pp-panel dd-campanel">
-        <div class="pp-panel-h"><h3>设备控制</h3><span class="r muted" style="font-size:12px">控件由插件声明</span></div>
-        <div class="dd-ctrl"><ControlPanel :device-id="d.id" :desc="desc" variant="cards" :cols="3" /></div>
-      </section>
-      <section v-else class="pp-panel dd-campanel"><div class="dd-empty">该型号插件未声明画面与控制能力</div></section>
-
-      <div class="dd-side">
-        <!-- 型号图片：不同来源的图尺寸不一，统一按等比缩放居中于固定舞台 -->
+    <!-- 无画面/棋盘/控制能力的精简模式：双栏等比展示设备档案与状态 -->
+    <div v-if="lead === 'none'" class="dd-grid is-minimal">
+      <div class="dd-col">
         <section class="pp-panel dd-hero">
           <div class="dd-stage"><img v-if="m.image" :src="m.image" :alt="m.name" /><DeviceGlyph v-else :type="d.type" :size="88" :color="TYPE_META[d.type].color" /></div>
           <dl class="dd-mi">
@@ -106,13 +93,85 @@ function del() {
             <div><dt>尺寸</dt><dd class="mono">{{ m.size ? `${m.size} mm` : '—' }}</dd></div>
           </dl>
         </section>
+        <section class="pp-panel dd-hint-panel">
+          <span class="muted">该型号暂未声明实时画面或控制指令，可在下方查看设备档案与接入状态</span>
+        </section>
+      </div>
+      <div class="dd-col">
+        <section class="pp-panel dd-tele-panel">
+          <div class="pp-panel-h"><h3>实时状态</h3><span class="r muted" style="font-size:12px">{{ on ? '刚刚更新' : `最后在线 ${d.lastSeen}` }}</span></div>
+          <TelemetryGrid :desc="desc" :state="rt" display="detail" />
+        </section>
+        <section v-if="hasLoc" class="pp-panel">
+          <div class="pp-panel-h"><h3>位置</h3><span class="r muted" style="font-size:12px">{{ d.area }}</span></div>
+          <div class="dd-loc">
+            <svg viewBox="0 0 60 40" class="dd-map" preserveAspectRatio="xMidYMid slice">
+              <defs><pattern id="dd-g-min" width="5" height="5" patternUnits="userSpaceOnUse"><path d="M5 0H0V5" fill="none" stroke="rgba(46,211,230,.12)" stroke-width=".2" /></pattern></defs>
+              <rect width="60" height="40" fill="url(#dd-g-min)" /><rect x=".3" y=".3" width="59.4" height="39.4" fill="none" stroke="rgba(46,211,230,.3)" stroke-width=".3" />
+              <g v-if="on && pose" :transform="`translate(${pose.x} ${pose.y})`">
+                <circle r="2.6" fill="rgba(46,211,230,.18)" /><path :transform="`rotate(${pose.yaw})`" d="M0 -2.2 L1.4 1.4 L0 .6 L-1.4 1.4 Z" fill="#2ED3E6" />
+              </g>
+            </svg>
+            <div class="dd-xy mono">
+              <div><small>X 坐标</small><b>{{ on && pose ? pose.x.toFixed(1) : '—' }}</b></div>
+              <div><small>Y 坐标</small><b>{{ on && pose ? pose.y.toFixed(1) : '—' }}</b></div>
+              <div><small>航向角</small><b>{{ on && pose ? Math.round(pose.yaw) + '°' : '—' }}</b></div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- 标准双栏工作台：左右高度动态匹配 -->
+    <div v-else class="dd-grid">
+      <div class="dd-col">
+        <section v-if="lead === 'cam'" class="pp-panel dd-campanel">
+          <div class="pp-panel-h"><h3>实时画面</h3>
+            <div class="r"><a-radio-group v-model:value="cam" size="small" button-style="solid"><a-radio-button v-for="(c, i) in cams" :key="c.label" :value="i">{{ c.label }}</a-radio-button></a-radio-group></div>
+          </div>
+          <div class="dd-cam">
+            <CamShot v-if="on" :seed="cam + d.id.length * 3" :ir="cams[cam]?.ir" />
+            <div v-else class="dd-empty">
+              <VideoCameraOutlined />
+              <span>{{ pluginRunning(d.modelId) ? '设备离线，暂无画面' : '接入插件未运行，暂无画面' }}</span>
+            </div>
+            <span v-if="on" class="dd-live"><i />LIVE · {{ cams[cam]?.label }}</span>
+          </div>
+        </section>
+        <section v-else-if="lead === 'chess'" class="pp-panel dd-campanel">
+          <div class="pp-panel-h"><h3>棋局</h3><span class="r muted" style="font-size:12px">由插件扩展面板渲染</span></div>
+          <div class="dd-chess"><ChessBoard :state="rt" :size="280" /></div>
+        </section>
+        <section v-else-if="lead === 'ctrl'" class="pp-panel dd-campanel">
+          <div class="pp-panel-h"><h3>设备控制</h3><span class="r muted" style="font-size:12px">控件由插件声明</span></div>
+          <div class="dd-ctrl"><ControlPanel :device-id="d.id" :desc="desc" variant="cards" :cols="3" /></div>
+        </section>
+
+        <!-- 有定位卡时，将控制面板嵌入左栏以对齐右侧三卡高度 -->
+        <section v-if="ctrlInMain" class="pp-panel">
+          <div class="pp-panel-h"><h3>设备控制</h3><span class="r muted" style="font-size:12px">控件由插件声明，不可用时悬停查看原因</span></div>
+          <div class="dd-ctrl"><ControlPanel :device-id="d.id" :desc="desc" :variant="lead === 'chess' ? 'cards' : 'panel'" :cols="3" /></div>
+        </section>
+      </div>
+
+      <div class="dd-col">
+        <!-- 型号图片：不同来源的图尺寸不一，统一按等比缩放居中于固定舞台 -->
+        <section class="pp-panel dd-hero">
+          <div class="dd-stage"><img v-if="m.image" :src="m.image" :alt="m.name" /><DeviceGlyph v-else :type="d.type" :size="88" :color="TYPE_META[d.type].color" /></div>
+          <dl class="dd-mi">
+            <div><dt>型号</dt><dd :title="m.name">{{ m.name }}</dd></div>
+            <div><dt>厂商</dt><dd :title="m.vendor">{{ m.vendor }}</dd></div>
+            <div><dt>序列号</dt><dd class="mono" :title="d.sn">{{ d.sn }}</dd></div>
+            <div><dt>尺寸</dt><dd class="mono" :title="m.size ? `${m.size} mm` : '—'">{{ m.size ? `${m.size} mm` : '—' }}</dd></div>
+          </dl>
+        </section>
         <!-- 关键指标 -->
-        <section class="pp-panel">
+        <section class="pp-panel dd-tele-panel">
           <div class="pp-panel-h"><h3>实时状态</h3><span class="r muted" style="font-size:12px">{{ on ? '刚刚更新' : `最后在线 ${d.lastSeen}` }}</span></div>
           <TelemetryGrid :desc="desc" :state="rt" display="detail" />
         </section>
         <!-- 位置：仅声明定位能力的设备显示 -->
-        <section v-if="has('location')" class="pp-panel">
+        <section v-if="hasLoc" class="pp-panel">
           <div class="pp-panel-h"><h3>位置</h3><span class="r muted" style="font-size:12px">{{ d.area }}</span></div>
           <div class="dd-loc">
             <svg viewBox="0 0 60 40" class="dd-map" preserveAspectRatio="xMidYMid slice">
@@ -122,14 +181,18 @@ function del() {
                 <circle r="2.6" fill="rgba(46,211,230,.18)" /><path :transform="`rotate(${pose.yaw})`" d="M0 -2.2 L1.4 1.4 L0 .6 L-1.4 1.4 Z" fill="#2ED3E6" />
               </g>
             </svg>
-            <div class="dd-xy mono"><span>X {{ on && pose ? pose.x.toFixed(1) : '—' }}</span><span>Y {{ on && pose ? pose.y.toFixed(1) : '—' }}</span><span>航向 {{ on && pose ? Math.round(pose.yaw) + '°' : '—' }}</span></div>
+            <div class="dd-xy mono">
+              <div><small>X 坐标</small><b>{{ on && pose ? pose.x.toFixed(1) : '—' }}</b></div>
+              <div><small>Y 坐标</small><b>{{ on && pose ? pose.y.toFixed(1) : '—' }}</b></div>
+              <div><small>航向角</small><b>{{ on && pose ? Math.round(pose.yaw) + '°' : '—' }}</b></div>
+            </div>
           </div>
         </section>
       </div>
     </div>
 
-    <!-- 设备控制：主区已被画面/棋盘占用时，控制面板放到下方 -->
-    <section v-if="(lead === 'cam' || lead === 'chess') && ctrlCount" class="pp-panel dd-ctlsec">
+    <!-- 无定位卡且主区已被画面/棋盘占用时，控制面板置于下方通栏 -->
+    <section v-if="ctrlBelow" class="pp-panel dd-ctlsec">
       <div class="pp-panel-h"><h3>设备控制</h3><span class="r muted" style="font-size:12px">控件由插件声明，不可用时悬停查看原因</span></div>
       <div class="dd-ctrl"><ControlPanel :device-id="d.id" :desc="desc" :variant="lead === 'chess' ? 'cards' : 'panel'" :cols="4" /></div>
     </section>
@@ -206,49 +269,63 @@ function del() {
 </template>
 
 <style scoped>
-.dd-head { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
-.dd-back { font-size: 16px; color: var(--muted); }
-.dd-ic { width: 48px; height: 48px; overflow: hidden; display: grid; place-items: center; background: rgba(46,211,230,.06); border: 1px solid var(--line); border-radius: 6px; }
-.dd-t b { font-size: 20px; font-weight: 600; color: var(--title); margin-right: 12px; }
-.dd-t small { display: block; margin-top: 2px; font-size: 12.5px; }
-.dd-op { margin-left: auto; display: flex; gap: 8px; }
-.dd-grid { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(300px, 1fr); gap: 16px; margin-bottom: 16px; }
+.dd-head { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; flex-wrap: wrap; }
+.dd-back { font-size: 16px; color: var(--muted); flex: none; }
+.dd-ic { flex: none; width: 50px; height: 50px; overflow: hidden; display: grid; place-items: center;
+  background: linear-gradient(135deg, rgba(46,211,230,.12), rgba(76,141,255,.06)); border: 1px solid rgba(46,211,230,.28); border-radius: 10px; box-shadow: 0 4px 14px rgba(0,0,0,.22); }
+.dd-t { flex: 1; min-width: 240px; }
+.dd-title { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
+.dd-title b { font-size: 20px; font-weight: 600; color: var(--title); line-height: 1.2; }
+.dd-t small { display: block; margin-top: 4px; font-size: 12.5px; }
+.dd-op { margin-left: auto; display: flex; gap: 8px; flex: none; }
+
+.dd-grid { display: grid; grid-template-columns: minmax(0, 1.42fr) minmax(360px, 1fr); gap: 16px; align-items: start; margin-bottom: 16px; }
+.dd-grid.is-minimal { grid-template-columns: minmax(340px, 1fr) minmax(0, 1.3fr); }
+.dd-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .dd-campanel { display: flex; flex-direction: column; }
-.dd-cam { position: relative; flex: 1; min-height: 360px; margin: 12px; border-radius: 4px; overflow: hidden; background: #0b1726; }
+
+.dd-cam { position: relative; aspect-ratio: 16 / 9; margin: 14px; border-radius: 8px; overflow: hidden; background: #091524; border: 1px solid rgba(46,211,230,.16); }
 .dd-cam :deep(svg) { width: 100%; height: 100%; display: block; }
-.dd-live { position: absolute; left: 10px; top: 10px; padding: 2px 8px; border-radius: 3px; background: rgba(0,0,0,.45); color: #fff; font-size: 11.5px; display: flex; align-items: center; gap: 6px; }
-.dd-live i { width: 6px; height: 6px; border-radius: 50%; background: #FF5A5A; }
-.dd-empty { height: 100%; display: grid; place-items: center; color: var(--muted); font-size: 13px; }
-.dd-side { display: flex; flex-direction: column; gap: 16px; }
-.dd-hero { display: flex; align-items: stretch; gap: 16px; padding: 14px; }
-.dd-stage { position: relative; flex: 0 0 52%; height: 168px; padding: 10px 12px 16px; display: grid; place-items: center; border-radius: 6px; overflow: hidden;
-  background: radial-gradient(ellipse 70% 60% at 50% 45%, rgba(46,211,230,.12), rgba(46,211,230,0) 70%), rgba(10,24,42,.45); }
+.dd-live { position: absolute; left: 10px; top: 10px; padding: 3px 9px; border-radius: 4px; background: rgba(8,18,32,.72); backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,.12); color: #fff; font-size: 11.5px; display: flex; align-items: center; gap: 6px; }
+.dd-live i { width: 6px; height: 6px; border-radius: 50%; background: #FF5A5A; box-shadow: 0 0 6px #FF5A5A; }
+.dd-empty { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: var(--muted); font-size: 13px; }
+.dd-empty :deep(.anticon) { font-size: 26px; color: var(--faint); opacity: .7; }
+
+.dd-hero { display: flex; align-items: stretch; gap: 16px; padding: 14px 16px; }
+.dd-stage { position: relative; flex: 0 0 44%; min-height: 162px; padding: 10px 12px 16px; display: grid; place-items: center; border-radius: 8px; overflow: hidden;
+  border: 1px solid rgba(46,211,230,.12);
+  background: radial-gradient(ellipse 75% 65% at 50% 45%, rgba(46,211,230,.14), rgba(46,211,230,0) 70%), rgba(10,24,42,.5); }
 .dd-stage::after { content: ''; position: absolute; left: 18%; right: 18%; bottom: 10px; height: 10px; border-radius: 50%; background: radial-gradient(ellipse, rgba(0,0,0,.45), transparent 70%); }
 .dd-stage img { position: absolute; z-index: 1; inset: 10px 12px 14px; width: calc(100% - 24px); height: calc(100% - 24px); object-fit: contain; filter: drop-shadow(0 6px 10px rgba(0,0,0,.35)); }
-.dd-mi { flex: 1; min-width: 0; margin: 0; display: flex; flex-direction: column; justify-content: center; gap: 10px; }
-.dd-mi div { display: flex; flex-direction: column; gap: 1px; } .dd-mi dt { font-size: 12px; color: var(--muted); } .dd-mi dd { margin: 0; font-size: 13.5px; color: var(--title); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.dd-metrics { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: var(--line); }
-.dd-metrics > div:last-child:nth-child(odd) { grid-column: span 2; }
-.dd-metrics > div { padding: 14px 16px; background: var(--panel-2, #13263f); }
-.dd-metrics small { display: block; color: var(--muted); font-size: 12px; margin-bottom: 4px; }
-.dd-metrics b { font-size: 22px; font-weight: 600; color: var(--title); }
-.dd-metrics em { font-style: normal; font-size: 12px; color: var(--muted); margin-left: 3px; font-weight: 400; }
-.dd-metrics .warn b { color: var(--warn); }
-.dd-loc { padding: 12px 16px 14px; }
-.dd-map { width: 100%; height: 200px; display: block; border-radius: 4px; background: rgba(11,23,38,.6); }
-.dd-xy { display: flex; gap: 16px; margin-top: 8px; font-size: 12.5px; color: var(--muted); }
-.dd-more { padding: 0 16px 6px; }
-.dd-caps { margin-top: 6px; }
+.dd-mi { flex: 1; min-width: 0; margin: 0; display: grid; grid-template-columns: minmax(0, 1fr); align-content: center; gap: 9px; }
+.dd-mi div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.dd-mi dt { font-size: 11.5px; color: var(--faint); line-height: 1.2; }
+.dd-mi dd { margin: 0; font-size: 13px; color: var(--title); line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.dd-hint-panel { padding: 14px 18px; font-size: 12.5px; }
+.dd-tele-panel { overflow: hidden; }
+
+.dd-loc { padding: 14px 16px; }
+.dd-map { width: 100%; height: 170px; display: block; border-radius: 6px; background: rgba(11,23,38,.65); border: 1px solid rgba(46,211,230,.15); }
+.dd-xy { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+.dd-xy > div { display: flex; flex-direction: column; gap: 2px; padding: 7px 10px; border-radius: 6px; background: var(--well, rgba(12,27,45,.55)); border: 1px solid rgba(46,211,230,.1); }
+.dd-xy small { font-size: 11px; color: var(--faint); }
+.dd-xy b { font-size: 13.5px; font-weight: 600; color: var(--title); }
+
+.dd-more { padding: 4px 18px 14px; }
 .dd-ctlsec { margin-bottom: 16px; }
 .dd-ctrl { padding: 14px 16px; }
-.dd-chess { flex: 1; display: grid; place-items: center; padding: 16px; min-height: 360px; }
+.dd-chess { display: grid; place-items: center; padding: 20px 24px; }
 .dd-plug { padding-bottom: 10px; }
 .dd-plug h4 { margin: 14px 0 8px; font-size: 13px; color: var(--title); font-weight: 600; }
 .dd-plug h4 em { font-style: normal; color: var(--muted); font-weight: 400; margin-left: 4px; }
 .dd-plug-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .dd-desc { margin-top: 4px; }
-.dd-log { list-style: none; margin: 4px 0 10px; padding: 0; }
-.dd-log li { display: flex; gap: 16px; padding: 8px 0; font-size: 13px; border-bottom: 1px dashed var(--line); }
-.dd-log li:last-child { border-bottom: 0; }
-.dd-log span { width: 90px; flex: none; font-size: 12px; }
+
+@media (max-width: 1120px) {
+  .dd-grid, .dd-grid.is-minimal { grid-template-columns: 1fr; }
+}
+@media (max-width: 960px) {
+  .dd-plug-cols { grid-template-columns: 1fr; }
+}
 </style>
