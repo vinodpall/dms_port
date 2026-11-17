@@ -106,3 +106,10 @@ body { font-family: var(--font-sans); }
 [data-theme="dark"] .ant-tag[class*="ant-tag-"]:not(.ant-tag-checkable) { background: color-mix(in srgb, currentColor 12%, transparent) !important; border-color: color-mix(in srgb, currentColor 42%, transparent) !important; }
 [data-theme="dark"] .ant-tag-cyan { color: #5FD8EA !important; } [data-theme="dark"] .ant-tag-purple { color: #C3A2FF !important; } [data-theme="dark"] .ant-tag-green, [data-theme="dark"] .ant-tag-success { color: #5BE3AE !important; }
 [data-theme="dark"] .ant-tag-orange, [data-theme="dark"] .ant-tag-warning, [data-theme="dark"] .ant-tag-gold { color: #FFC35C !important; } [data-theme="dark"] .ant-tag-red, [data-theme="dark"] .ant-tag-error { color: #FF8A8A !important; } [data-theme="dark"] .ant-tag-blue, [data-theme="dark"] .ant-tag-processing { color: #7DB4FF !important; }
+
+/* 滑块：深色主题高对比轨道与亮青手柄 */
+[data-theme="dark"] .ant-slider .ant-slider-rail { background: rgba(140,180,220,.22) !important; }
+[data-theme="dark"] .ant-slider .ant-slider-track { background: linear-gradient(90deg, #17BFD4, #2ED3E6) !important; }
+[data-theme="dark"] .ant-slider .ant-slider-handle::after { background: #0F1F35 !important; box-shadow: 0 0 0 2.5px #2ED3E6 !important; }
+[data-theme="dark"] .ant-slider:hover .ant-slider-handle::after,
+[data-theme="dark"] .ant-slider .ant-slider-handle:focus::after { box-shadow: 0 0 0 3px #7FF3FF, 0 0 10px rgba(46,211,230,.6) !important; }

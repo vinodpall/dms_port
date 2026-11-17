@@ -38,11 +38,6 @@ const st = computed(() => stateOf(props.deviceId))
 const cs = (c: ControlDef) => ctrlState(props.deviceId, c)
 const running = (c: ControlDef) => busyOf(props.deviceId)?.control === c.key
 const val = (c: ControlDef) => (c.stateKey ? st.value?.values[c.stateKey] : undefined)
-const btnSpanAll = (s: { items: ControlDef[] }, c: ControlDef) => {
-  if (c.kind !== 'button') return false
-  const btns = s.items.filter((x) => x.kind === 'button')
-  return btns.length % props.cols !== 0 && btns[btns.length - 1] === c
-}
 const RICH_COLORS = ['#2ED3E6', '#45E3A8', '#FFC15C', '#A78BFA', '#60A5FA', '#F472B6', '#FF7A7A', '#4ADE80']
 const btnColor = (s: { items: ControlDef[] }, c: ControlDef) => {
   const btns = s.items.filter((x) => x.kind === 'button')
@@ -89,7 +84,7 @@ const groupColor = (g: ControlGroup) => capMeta(g === 'safety' ? 'alarm' : g ===
       <div class="cp-items" :style="{ '--cols': cols }">
         <template v-for="c in s.items" :key="c.key">
           <!-- 按钮 -->
-          <a-tooltip v-if="c.kind === 'button'" :title="cs(c).enabled ? c.desc : cs(c).reason" :class="{ 'span-all': btnSpanAll(s, c) }">
+          <a-tooltip v-if="c.kind === 'button'" :title="cs(c).enabled ? c.desc : cs(c).reason">
             <button v-if="variant === 'cards'" type="button" class="cp-card" :class="{ danger: c.danger, busy: running(c) }" :disabled="!cs(c).enabled" @click="click(c)">
               <span class="ic"><LoadingOutlined v-if="running(c)" /><component :is="ICONS[c.icon ?? ''] ?? ThunderboltOutlined" v-else /></span>
               <b>{{ c.label }}</b>
@@ -159,16 +154,18 @@ const groupColor = (g: ControlGroup) => capMeta(g === 'safety' ? 'alarm' : g ===
 .cp-sec h5 { display: flex; align-items: center; gap: 7px; margin: 0 0 8px; font-size: 12.5px; font-weight: 500; color: var(--muted); }
 .cp-sec h5 i { width: 3px; height: 11px; border-radius: 2px; }
 .cp-sec h5 small { font-size: 11px; color: var(--faint); }
-.cp-items { display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: 6px; }
-.cp-items > .cp-tg, .cp-items > .cp-row, .cp-items > .span-all { grid-column: 1 / -1; }
-.cp-btn { position: relative; display: flex; align-items: center; justify-content: center; gap: 5px; width: 100%; height: 32px; padding: 0 6px; font: inherit; font-size: 12.5px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; background: rgba(46,211,230,.05); border: 1px solid var(--line); border-radius: 7px; transition: .15s; }
+.cp-items { display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: 8px; }
+.cp-items > .cp-tg, .cp-items > .cp-row { grid-column: 1 / -1; }
+.cp-btn { position: relative; display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; height: 34px; padding: 0 12px; font: inherit; font-size: 13px; font-weight: 500; color: #D6E8F3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; background: rgba(46,211,230,.08); border: 1px solid rgba(46,211,230,.28); border-radius: 8px; transition: background .15s, border-color .15s, color .15s, box-shadow .15s; }
 .cp-btn em { font-style: normal; color: var(--muted); }
-.cp-btn:hover:not(:disabled) { color: #fff; border-color: rgba(46,211,230,.5); background: rgba(46,211,230,.12); }
-.cp-btn:disabled { color: var(--faint); cursor: not-allowed; background: transparent; }
-.cp-btn.busy { color: #9FE6EF; border-color: rgba(46,211,230,.5); }
-.cp-btn.danger:not(:disabled) { color: #FFB0B0; border-color: rgba(255,122,122,.35); }
-.cp-btn.stop:not(:disabled) { color: #fff; background: #C93838; border-color: #E05555; font-weight: 600; letter-spacing: 1px; }
-.cp-btn.stop:hover:not(:disabled) { background: #DD4343; }
+.cp-btn:hover:not(:disabled) { color: #fff; border-color: #2ED3E6; background: rgba(46,211,230,.16); }
+.cp-btn:disabled { color: rgba(182,202,220,.4); cursor: not-allowed; background: rgba(255,255,255,.03); border-color: rgba(140,175,220,.14); }
+.cp-btn.busy { color: #9FE6EF; border-color: rgba(46,211,230,.55); background: rgba(46,211,230,.14); }
+.cp-btn.danger:not(:disabled):not(.stop) { color: #FF9A9A; background: rgba(255,107,107,.08); border-color: rgba(255,122,122,.4); }
+.cp-btn.danger:not(:disabled):not(.stop):hover { color: #fff; background: rgba(255,107,107,.2); border-color: #FF7A7A; }
+.cp-btn.stop:not(:disabled) { color: #fff; background: linear-gradient(135deg, #D94545, #B83030); border-color: #EE5E5E; box-shadow: 0 2px 10px rgba(217,69,69,.28); font-weight: 600; letter-spacing: 1px; }
+.cp-btn.stop:hover:not(:disabled) { background: linear-gradient(135deg, #E65050, #C93838); border-color: #FF7878; }
+.cp-btn.stop:disabled { color: rgba(255,176,176,.45); background: rgba(217,69,69,.1); border-color: rgba(255,122,122,.2); }
 /* richBtn：两行彩色卡片按钮 */
 .cp-btn.rich { flex-direction: row; align-items: center; justify-content: flex-start; height: auto; min-height: 60px; padding: 10px 12px; gap: 10px; text-align: left; border-color: color-mix(in srgb, var(--ac, var(--cyan)) 35%, transparent); background: linear-gradient(135deg, color-mix(in srgb, var(--ac, var(--cyan)) 8%, transparent), rgba(46,211,230,.02)); white-space: normal; }
 .cp-btn.rich:hover:not(:disabled) { border-color: color-mix(in srgb, var(--ac, var(--cyan)) 60%, transparent); background: linear-gradient(135deg, color-mix(in srgb, var(--ac, var(--cyan)) 16%, transparent), rgba(46,211,230,.06)); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,0,0,.3); }
@@ -176,14 +173,21 @@ const groupColor = (g: ControlGroup) => capMeta(g === 'safety' ? 'alarm' : g ===
 .cp-btn.rich .rb-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .cp-btn.rich .rb-txt b { font-size: 13.5px; font-weight: 600; color: var(--title); display: block; }
 .cp-btn.rich .rb-txt small { font-size: 11.5px; color: var(--muted); line-height: 1.35; display: block; white-space: normal; }
-.cp-tg, .cp-row { display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 6px 12px; font-size: 13px; background: rgba(46,211,230,.04); border: 1px solid var(--line); border-radius: 7px; }
+.cp-tg, .cp-row { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 6px 12px; font-size: 13px; background: rgba(16,36,60,.55); border: 1px solid rgba(110,175,220,.24); border-radius: 8px; }
 .cp-tg { cursor: pointer; } .cp-tg small { margin-left: auto; font-size: 12px; color: var(--faint); }
-.cp-tg.on { border-color: rgba(69,227,168,.4); background: rgba(69,227,168,.06); } .cp-tg.on small { color: #45E3A8; }
+.cp-tg.on { border-color: rgba(69,227,168,.45); background: rgba(69,227,168,.08); } .cp-tg.on small { color: #45E3A8; }
 .cp-tg.dis, .cp-row.dis { opacity: .55; cursor: not-allowed; }
-.cp-row > span { flex: none; min-width: 56px; color: var(--muted); font-size: 12.5px; }
+.cp-row > span { flex: none; min-width: 60px; color: var(--muted); font-size: 12.5px; }
 .cp-row > :last-child:not(b) { margin-left: auto; }
-.cp-row.sl :deep(.ant-slider) { flex: 1; margin: 0 6px; }
-.cp-row.sl b { flex: none; min-width: 52px; text-align: right; font-weight: 500; font-size: 12.5px; } .cp-row.sl b em { font-style: normal; color: var(--muted); margin-left: 2px; }
+.cp-row.sl :deep(.ant-slider) { flex: 1; margin: 0 8px; }
+.cp-row.sl :deep(.ant-slider-rail) { height: 6px; border-radius: 3px; background: rgba(140,180,220,.22); }
+.cp-row.sl :deep(.ant-slider-track) { height: 6px; border-radius: 3px; background: linear-gradient(90deg, #17BFD4, #2ED3E6); }
+.cp-row.sl :deep(.ant-slider-handle::after) { background: #0F1F35; box-shadow: 0 0 0 2.5px #2ED3E6, 0 0 8px rgba(46,211,230,.5); }
+.cp-row.sl :deep(.ant-slider-handle:hover::after),
+.cp-row.sl :deep(.ant-slider-handle:focus::after) { box-shadow: 0 0 0 3px #7FF3FF, 0 0 12px rgba(46,211,230,.7); }
+.cp-row.sl :deep(.ant-slider-disabled .ant-slider-track) { background: rgba(46,211,230,.35); }
+.cp-row.sl :deep(.ant-slider-disabled .ant-slider-handle::after) { box-shadow: 0 0 0 2px rgba(46,211,230,.45); }
+.cp-row.sl b { flex: none; min-width: 54px; text-align: right; font-weight: 600; font-size: 12.5px; color: var(--accent-text, #8BEFFF); } .cp-row.sl b em { font-style: normal; color: var(--muted); margin-left: 2px; font-weight: 400; }
 /* 技能卡片 */
 .cards .cp-items { gap: 10px; }
 .cp-card { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; width: 100%; min-height: 104px; padding: 14px 14px 12px; text-align: left; font: inherit; color: var(--text); cursor: pointer; background: linear-gradient(160deg, rgba(46,211,230,.08), rgba(46,211,230,.02)); border: 1px solid var(--line); border-radius: 10px; transition: .18s; }

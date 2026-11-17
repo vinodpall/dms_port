@@ -36,11 +36,9 @@ const chess = computed(() => has('custom:chess'))
 const hasLoc = computed(() => has('location'))
 /** 设备管理范围内可用控件（导航/任务/遥操作归其他页面） */
 const ctrlCount = computed(() => desc.value.controls.filter((c) => c.kind !== 'joystick' && !['teleop', 'navigation', 'task'].includes(c.group)).length)
-/** 首屏主区：有视频放视频，下棋放棋盘，否则直接放控制卡片 */
+/** 首屏主区：有视频放视频，下棋放棋盘，否则仅展示型号卡与实时状态 */
 const lead = computed<'cam' | 'chess' | 'ctrl' | 'none'>(() => (showCam.value ? 'cam' : chess.value ? 'chess' : ctrlCount.value ? 'ctrl' : 'none'))
-/** 有定位卡时右侧高度较高，将控制面板放在左侧主区下方以平衡双栏高度；无定位卡时控制面板放下方通栏 */
-const ctrlInMain = computed(() => (lead.value === 'cam' || lead.value === 'chess') && hasLoc.value && ctrlCount.value > 0)
-const ctrlBelow = computed(() => (lead.value === 'cam' || lead.value === 'chess') && !hasLoc.value && ctrlCount.value > 0)
+const hasVisualLead = computed(() => lead.value === 'cam' || lead.value === 'chess')
 
 const pose = computed(() => rt.value?.values.pose as { x: number; y: number; yaw: number } | undefined)
 const tab = ref('info')
@@ -81,49 +79,8 @@ function del() {
       </div>
     </div>
 
-    <!-- 无画面/棋盘/控制能力的精简模式：双栏等比展示设备档案与状态 -->
-    <div v-if="lead === 'none'" class="dd-grid is-minimal">
-      <div class="dd-col">
-        <section class="pp-panel dd-hero">
-          <div class="dd-stage"><img v-if="m.image" :src="m.image" :alt="m.name" /><DeviceGlyph v-else :type="d.type" :size="88" :color="TYPE_META[d.type].color" /></div>
-          <dl class="dd-mi">
-            <div><dt>型号</dt><dd>{{ m.name }}</dd></div>
-            <div><dt>厂商</dt><dd>{{ m.vendor }}</dd></div>
-            <div><dt>序列号</dt><dd class="mono">{{ d.sn }}</dd></div>
-            <div><dt>尺寸</dt><dd class="mono">{{ m.size ? `${m.size} mm` : '—' }}</dd></div>
-          </dl>
-        </section>
-        <section class="pp-panel dd-hint-panel">
-          <span class="muted">该型号暂未声明实时画面或控制指令，可在下方查看设备档案与接入状态</span>
-        </section>
-      </div>
-      <div class="dd-col">
-        <section class="pp-panel dd-tele-panel">
-          <div class="pp-panel-h"><h3>实时状态</h3><span class="r muted" style="font-size:12px">{{ on ? '刚刚更新' : `最后在线 ${d.lastSeen}` }}</span></div>
-          <TelemetryGrid :desc="desc" :state="rt" display="detail" />
-        </section>
-        <section v-if="hasLoc" class="pp-panel">
-          <div class="pp-panel-h"><h3>位置</h3><span class="r muted" style="font-size:12px">{{ d.area }}</span></div>
-          <div class="dd-loc">
-            <svg viewBox="0 0 60 40" class="dd-map" preserveAspectRatio="xMidYMid slice">
-              <defs><pattern id="dd-g-min" width="5" height="5" patternUnits="userSpaceOnUse"><path d="M5 0H0V5" fill="none" stroke="rgba(46,211,230,.12)" stroke-width=".2" /></pattern></defs>
-              <rect width="60" height="40" fill="url(#dd-g-min)" /><rect x=".3" y=".3" width="59.4" height="39.4" fill="none" stroke="rgba(46,211,230,.3)" stroke-width=".3" />
-              <g v-if="on && pose" :transform="`translate(${pose.x} ${pose.y})`">
-                <circle r="2.6" fill="rgba(46,211,230,.18)" /><path :transform="`rotate(${pose.yaw})`" d="M0 -2.2 L1.4 1.4 L0 .6 L-1.4 1.4 Z" fill="#2ED3E6" />
-              </g>
-            </svg>
-            <div class="dd-xy mono">
-              <div><small>X 坐标</small><b>{{ on && pose ? pose.x.toFixed(1) : '—' }}</b></div>
-              <div><small>Y 坐标</small><b>{{ on && pose ? pose.y.toFixed(1) : '—' }}</b></div>
-              <div><small>航向角</small><b>{{ on && pose ? Math.round(pose.yaw) + '°' : '—' }}</b></div>
-            </div>
-          </div>
-        </section>
-      </div>
-    </div>
-
-    <!-- 标准双栏工作台：左右高度动态匹配 -->
-    <div v-else class="dd-grid">
+    <!-- 第一行：实时画面/棋盘（若有） + 型号形象卡 & 实时状态 -->
+    <div class="dd-grid" :class="{ 'is-minimal': !hasVisualLead }">
       <div class="dd-col">
         <section v-if="lead === 'cam'" class="pp-panel dd-campanel">
           <div class="pp-panel-h"><h3>实时画面</h3>
@@ -142,21 +99,25 @@ function del() {
           <div class="pp-panel-h"><h3>棋局</h3><span class="r muted" style="font-size:12px">由插件扩展面板渲染</span></div>
           <div class="dd-chess"><ChessBoard :state="rt" :size="280" /></div>
         </section>
-        <section v-else-if="lead === 'ctrl'" class="pp-panel dd-campanel">
-          <div class="pp-panel-h"><h3>设备控制</h3><span class="r muted" style="font-size:12px">控件由插件声明</span></div>
-          <div class="dd-ctrl"><ControlPanel :device-id="d.id" :desc="desc" variant="cards" :cols="3" /></div>
-        </section>
-
-        <!-- 有定位卡时，将控制面板嵌入左栏以对齐右侧三卡高度 -->
-        <section v-if="ctrlInMain" class="pp-panel">
-          <div class="pp-panel-h"><h3>设备控制</h3><span class="r muted" style="font-size:12px">控件由插件声明，不可用时悬停查看原因</span></div>
-          <div class="dd-ctrl"><ControlPanel :device-id="d.id" :desc="desc" :variant="lead === 'chess' ? 'cards' : 'panel'" :cols="3" /></div>
-        </section>
+        <template v-else>
+          <section class="pp-panel dd-hero">
+            <div class="dd-stage"><img v-if="m.image" :src="m.image" :alt="m.name" /><DeviceGlyph v-else :type="d.type" :size="88" :color="TYPE_META[d.type].color" /></div>
+            <dl class="dd-mi">
+              <div><dt>型号</dt><dd :title="m.name">{{ m.name }}</dd></div>
+              <div><dt>厂商</dt><dd :title="m.vendor">{{ m.vendor }}</dd></div>
+              <div><dt>序列号</dt><dd class="mono" :title="d.sn">{{ d.sn }}</dd></div>
+              <div><dt>尺寸</dt><dd class="mono" :title="m.size ? `${m.size} mm` : '—'">{{ m.size ? `${m.size} mm` : '—' }}</dd></div>
+            </dl>
+          </section>
+          <section v-if="lead === 'none'" class="pp-panel dd-hint-panel">
+            <span class="muted">该型号暂未声明实时画面或控制指令，可在下方查看设备档案与接入状态</span>
+          </section>
+        </template>
       </div>
 
       <div class="dd-col">
-        <!-- 型号图片：不同来源的图尺寸不一，统一按等比缩放居中于固定舞台 -->
-        <section class="pp-panel dd-hero">
+        <!-- 有视觉主区时，型号卡置于右上；否则右上专注展示实时状态 -->
+        <section v-if="hasVisualLead" class="pp-panel dd-hero">
           <div class="dd-stage"><img v-if="m.image" :src="m.image" :alt="m.name" /><DeviceGlyph v-else :type="d.type" :size="88" :color="TYPE_META[d.type].color" /></div>
           <dl class="dd-mi">
             <div><dt>型号</dt><dd :title="m.name">{{ m.name }}</dd></div>
@@ -165,12 +126,21 @@ function del() {
             <div><dt>尺寸</dt><dd class="mono" :title="m.size ? `${m.size} mm` : '—'">{{ m.size ? `${m.size} mm` : '—' }}</dd></div>
           </dl>
         </section>
-        <!-- 关键指标 -->
         <section class="pp-panel dd-tele-panel">
           <div class="pp-panel-h"><h3>实时状态</h3><span class="r muted" style="font-size:12px">{{ on ? '刚刚更新' : `最后在线 ${d.lastSeen}` }}</span></div>
           <TelemetryGrid :desc="desc" :state="rt" display="detail" />
         </section>
-        <!-- 位置：仅声明定位能力的设备显示 -->
+      </div>
+    </div>
+
+    <!-- 第二行：设备控制（左）与 位置 + 基本信息标签页（右）左右并排 -->
+    <div class="dd-row2" :class="{ 'solo-right': !ctrlCount }">
+      <section v-if="ctrlCount" class="pp-panel dd-ctl-panel">
+        <div class="pp-panel-h"><h3>设备控制</h3><span class="r muted" style="font-size:12px">控件由插件声明，不可用时悬停查看原因</span></div>
+        <div class="dd-ctrl"><ControlPanel :device-id="d.id" :desc="desc" :variant="lead === 'chess' || lead === 'ctrl' ? 'cards' : 'panel'" :cols="3" /></div>
+      </section>
+
+      <div class="dd-col">
         <section v-if="hasLoc" class="pp-panel">
           <div class="pp-panel-h"><h3>位置</h3><span class="r muted" style="font-size:12px">{{ d.area }}</span></div>
           <div class="dd-loc">
@@ -188,82 +158,76 @@ function del() {
             </div>
           </div>
         </section>
+
+        <section class="pp-panel dd-more" :class="{ compact: ctrlCount > 0 }">
+          <a-tabs v-model:active-key="tab" size="small">
+            <a-tab-pane key="info" tab="基本信息">
+              <a-descriptions :column="ctrlCount ? 2 : 3" size="small" class="dd-desc">
+                <a-descriptions-item label="序列号"><span class="mono">{{ d.sn }}</span></a-descriptions-item>
+                <a-descriptions-item label="型号">{{ m.name }}（{{ m.vendor }}）</a-descriptions-item>
+                <a-descriptions-item label="内网 IP"><span class="mono">{{ d.ip }}</span></a-descriptions-item>
+                <a-descriptions-item label="外网 IP"><span class="mono">{{ d.publicIp || '—' }}</span></a-descriptions-item>
+                <a-descriptions-item label="相机地址"><span class="mono">{{ d.cameraIps?.length ? d.cameraIps.join('; ') : '—' }}</span></a-descriptions-item>
+                <a-descriptions-item label="所属区域">{{ d.area }}</a-descriptions-item>
+                <a-descriptions-item label="固件版本"><span class="mono">{{ d.firmware }}</span></a-descriptions-item>
+                <a-descriptions-item label="入场日期"><span class="mono">{{ d.commissioned }}</span></a-descriptions-item>
+                <a-descriptions-item label="备注">{{ d.remark || '—' }}</a-descriptions-item>
+              </a-descriptions>
+            </a-tab-pane>
+            <a-tab-pane key="spec" tab="型号规格">
+              <a-descriptions :column="ctrlCount ? 2 : 3" size="small" class="dd-desc">
+                <a-descriptions-item label="最高速度">{{ m.spec.speed }}</a-descriptions-item>
+                <a-descriptions-item label="续航">{{ m.spec.endurance }}</a-descriptions-item>
+                <a-descriptions-item label="负载">{{ m.spec.payload }}</a-descriptions-item>
+                <a-descriptions-item label="重量">{{ m.spec.weight }}</a-descriptions-item>
+                <a-descriptions-item label="电压范围"><span class="mono">{{ m.voltMin != null && m.voltMax != null ? `${m.voltMin} – ${m.voltMax} V` : '—' }}</span></a-descriptions-item>
+                <a-descriptions-item label="尺寸"><span class="mono">{{ m.size ? `${m.size} mm` : '—' }}</span></a-descriptions-item>
+                <a-descriptions-item label="摄像头">{{ cams.length ? cams.map((c) => c.label).join('、') : '无' }}</a-descriptions-item>
+              </a-descriptions>
+            </a-tab-pane>
+            <a-tab-pane key="plugin" tab="插件与能力">
+              <div class="dd-plug">
+                <a-descriptions v-if="plugin" :column="ctrlCount ? 2 : 3" size="small" class="dd-desc">
+                  <a-descriptions-item label="接入插件">{{ plugin.name }} <span class="mono muted">v{{ plugin.version }}</span></a-descriptions-item>
+                  <a-descriptions-item label="运行状态"><a-badge :status="P_STATUS[plugin.status].b" :text="P_STATUS[plugin.status].t" /></a-descriptions-item>
+                  <a-descriptions-item label="通信方式">{{ plugin.transport }}</a-descriptions-item>
+                  <a-descriptions-item label="厂商 SDK">{{ plugin.sdk }}</a-descriptions-item>
+                  <a-descriptions-item label="型号编码"><span class="mono">{{ desc.model.code || d.modelId }}</span></a-descriptions-item>
+                  <a-descriptions-item label="描述版本"><span class="mono">schema {{ desc.schemaVersion }}</span></a-descriptions-item>
+                </a-descriptions>
+                <a-alert v-else type="warning" show-icon message="该型号暂无接入插件，仅展示基础档案信息" style="margin:6px 0 12px" />
+                <h4>设备能力</h4><CapTags :caps="desc.capabilities" />
+                <div class="dd-plug-cols">
+                  <div><h4>上报字段 <em>{{ desc.telemetry.length }}</em></h4>
+                    <a-table size="small" :pagination="false" :data-source="desc.telemetry" row-key="key" :scroll="{ y: 220 }"
+                      :columns="[{ title: '字段', dataIndex: 'label' }, { title: '标识', dataIndex: 'key' }, { title: '类型', dataIndex: 'type' }, { title: '单位', dataIndex: 'unit' }, { title: '告警阈值', dataIndex: 'warn' }]">
+                      <template #bodyCell="{ column, record, text }">
+                        <span v-if="column.dataIndex === 'key'" class="mono muted">{{ text }}</span>
+                        <span v-else-if="column.dataIndex === 'type'">{{ TYPE_LABEL[record.type] ?? text }}</span>
+                        <span v-else-if="column.dataIndex === 'warn'" class="mono">{{ text || '—' }}</span>
+                        <template v-else>{{ text ?? '—' }}</template>
+                      </template>
+                    </a-table></div>
+                  <div><h4>控制指令 <em>{{ desc.controls.length }}</em></h4>
+                    <a-table size="small" :pagination="false" :data-source="desc.controls" row-key="key" :scroll="{ y: 220 }"
+                      :columns="[{ title: '指令', dataIndex: 'label' }, { title: '标识', dataIndex: 'key' }, { title: '分组', dataIndex: 'group' }, { title: '控件', dataIndex: 'kind' }, { title: '确认', dataIndex: 'confirm' }]">
+                      <template #bodyCell="{ column, record, text }">
+                        <span v-if="column.dataIndex === 'key'" class="mono muted">{{ text }}</span>
+                        <span v-else-if="column.dataIndex === 'group'">{{ GROUP_META[record.group as keyof typeof GROUP_META]?.label ?? text }}</span>
+                        <span v-else-if="column.dataIndex === 'kind'">{{ KIND_LABEL[text] ?? text }}</span>
+                        <span v-else-if="column.dataIndex === 'confirm'">{{ record.confirm || record.danger ? '需确认' : '—' }}</span>
+                        <template v-else>{{ text }}</template>
+                      </template>
+                    </a-table></div>
+                </div>
+              </div>
+            </a-tab-pane>
+            <a-tab-pane key="cmd" tab="执行记录"><CmdList :device-id="d.id" /></a-tab-pane>
+            <a-tab-pane key="log" tab="设备日志"><LogList :device-id="d.id" /></a-tab-pane>
+          </a-tabs>
+        </section>
       </div>
     </div>
-
-    <!-- 无定位卡且主区已被画面/棋盘占用时，控制面板置于下方通栏 -->
-    <section v-if="ctrlBelow" class="pp-panel dd-ctlsec">
-      <div class="pp-panel-h"><h3>设备控制</h3><span class="r muted" style="font-size:12px">控件由插件声明，不可用时悬停查看原因</span></div>
-      <div class="dd-ctrl"><ControlPanel :device-id="d.id" :desc="desc" :variant="lead === 'chess' ? 'cards' : 'panel'" :cols="4" /></div>
-    </section>
-
-    <section class="pp-panel dd-more">
-      <a-tabs v-model:active-key="tab" size="small">
-        <a-tab-pane key="info" tab="基本信息">
-          <a-descriptions :column="3" size="small" class="dd-desc">
-            <a-descriptions-item label="序列号"><span class="mono">{{ d.sn }}</span></a-descriptions-item>
-            <a-descriptions-item label="型号">{{ m.name }}（{{ m.vendor }}）</a-descriptions-item>
-            <a-descriptions-item label="内网 IP"><span class="mono">{{ d.ip }}</span></a-descriptions-item>
-            <a-descriptions-item label="外网 IP"><span class="mono">{{ d.publicIp || '—' }}</span></a-descriptions-item>
-            <a-descriptions-item label="相机地址"><span class="mono">{{ d.cameraIps?.length ? d.cameraIps.join('; ') : '—' }}</span></a-descriptions-item>
-            <a-descriptions-item label="所属区域">{{ d.area }}</a-descriptions-item>
-            <a-descriptions-item label="固件版本"><span class="mono">{{ d.firmware }}</span></a-descriptions-item>
-            <a-descriptions-item label="入场日期"><span class="mono">{{ d.commissioned }}</span></a-descriptions-item>
-            <a-descriptions-item label="备注">{{ d.remark || '—' }}</a-descriptions-item>
-          </a-descriptions>
-        </a-tab-pane>
-        <a-tab-pane key="spec" tab="型号规格">
-          <a-descriptions :column="3" size="small" class="dd-desc">
-            <a-descriptions-item label="最高速度">{{ m.spec.speed }}</a-descriptions-item>
-            <a-descriptions-item label="续航">{{ m.spec.endurance }}</a-descriptions-item>
-            <a-descriptions-item label="负载">{{ m.spec.payload }}</a-descriptions-item>
-            <a-descriptions-item label="重量">{{ m.spec.weight }}</a-descriptions-item>
-            <a-descriptions-item label="电压范围"><span class="mono">{{ m.voltMin != null && m.voltMax != null ? `${m.voltMin} – ${m.voltMax} V` : '—' }}</span></a-descriptions-item>
-            <a-descriptions-item label="尺寸"><span class="mono">{{ m.size ? `${m.size} mm` : '—' }}</span></a-descriptions-item>
-            <a-descriptions-item label="摄像头">{{ cams.length ? cams.map((c) => c.label).join('、') : '无' }}</a-descriptions-item>
-          </a-descriptions>
-        </a-tab-pane>
-        <a-tab-pane key="plugin" tab="插件与能力">
-          <div class="dd-plug">
-            <a-descriptions v-if="plugin" :column="3" size="small" class="dd-desc">
-              <a-descriptions-item label="接入插件">{{ plugin.name }} <span class="mono muted">v{{ plugin.version }}</span></a-descriptions-item>
-              <a-descriptions-item label="运行状态"><a-badge :status="P_STATUS[plugin.status].b" :text="P_STATUS[plugin.status].t" /></a-descriptions-item>
-              <a-descriptions-item label="通信方式">{{ plugin.transport }}</a-descriptions-item>
-              <a-descriptions-item label="厂商 SDK">{{ plugin.sdk }}</a-descriptions-item>
-              <a-descriptions-item label="型号编码"><span class="mono">{{ desc.model.code || d.modelId }}</span></a-descriptions-item>
-              <a-descriptions-item label="描述版本"><span class="mono">schema {{ desc.schemaVersion }}</span></a-descriptions-item>
-            </a-descriptions>
-            <a-alert v-else type="warning" show-icon message="该型号暂无接入插件，仅展示基础档案信息" style="margin:6px 0 12px" />
-            <h4>设备能力</h4><CapTags :caps="desc.capabilities" />
-            <div class="dd-plug-cols">
-              <div><h4>上报字段 <em>{{ desc.telemetry.length }}</em></h4>
-                <a-table size="small" :pagination="false" :data-source="desc.telemetry" row-key="key" :scroll="{ y: 240 }"
-                  :columns="[{ title: '字段', dataIndex: 'label' }, { title: '标识', dataIndex: 'key' }, { title: '类型', dataIndex: 'type' }, { title: '单位', dataIndex: 'unit' }, { title: '告警阈值', dataIndex: 'warn' }]">
-                  <template #bodyCell="{ column, record, text }">
-                    <span v-if="column.dataIndex === 'key'" class="mono muted">{{ text }}</span>
-                    <span v-else-if="column.dataIndex === 'type'">{{ TYPE_LABEL[record.type] ?? text }}</span>
-                    <span v-else-if="column.dataIndex === 'warn'" class="mono">{{ text || '—' }}</span>
-                    <template v-else>{{ text ?? '—' }}</template>
-                  </template>
-                </a-table></div>
-              <div><h4>控制指令 <em>{{ desc.controls.length }}</em></h4>
-                <a-table size="small" :pagination="false" :data-source="desc.controls" row-key="key" :scroll="{ y: 240 }"
-                  :columns="[{ title: '指令', dataIndex: 'label' }, { title: '标识', dataIndex: 'key' }, { title: '分组', dataIndex: 'group' }, { title: '控件', dataIndex: 'kind' }, { title: '确认', dataIndex: 'confirm' }]">
-                  <template #bodyCell="{ column, record, text }">
-                    <span v-if="column.dataIndex === 'key'" class="mono muted">{{ text }}</span>
-                    <span v-else-if="column.dataIndex === 'group'">{{ GROUP_META[record.group as keyof typeof GROUP_META]?.label ?? text }}</span>
-                    <span v-else-if="column.dataIndex === 'kind'">{{ KIND_LABEL[text] ?? text }}</span>
-                    <span v-else-if="column.dataIndex === 'confirm'">{{ record.confirm || record.danger ? '需确认' : '—' }}</span>
-                    <template v-else>{{ text }}</template>
-                  </template>
-                </a-table></div>
-            </div>
-          </div>
-        </a-tab-pane>
-        <a-tab-pane key="cmd" tab="执行记录"><CmdList :device-id="d.id" /></a-tab-pane>
-        <a-tab-pane key="log" tab="设备日志"><LogList :device-id="d.id" /></a-tab-pane>
-      </a-tabs>
-    </section>
   </div>
   <a-result v-else status="404" title="设备不存在" sub-title="该设备可能已被删除"><template #extra><a-button @click="emit('back')">返回列表</a-button></template></a-result>
 </template>
@@ -279,8 +243,10 @@ function del() {
 .dd-t small { display: block; margin-top: 4px; font-size: 12.5px; }
 .dd-op { margin-left: auto; display: flex; gap: 8px; flex: none; }
 
-.dd-grid { display: grid; grid-template-columns: minmax(0, 1.42fr) minmax(360px, 1fr); gap: 16px; align-items: start; margin-bottom: 16px; }
+.dd-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(360px, 1fr); gap: 16px; align-items: start; margin-bottom: 16px; }
 .dd-grid.is-minimal { grid-template-columns: minmax(340px, 1fr) minmax(0, 1.3fr); }
+.dd-row2 { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.dd-row2.solo-right { grid-template-columns: 1fr; }
 .dd-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .dd-campanel { display: flex; flex-direction: column; }
 
@@ -306,15 +272,15 @@ function del() {
 .dd-tele-panel { overflow: hidden; }
 
 .dd-loc { padding: 14px 16px; }
-.dd-map { width: 100%; height: 170px; display: block; border-radius: 6px; background: rgba(11,23,38,.65); border: 1px solid rgba(46,211,230,.15); }
+.dd-map { width: 100%; height: 160px; display: block; border-radius: 6px; background: rgba(11,23,38,.65); border: 1px solid rgba(46,211,230,.15); }
 .dd-xy { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
 .dd-xy > div { display: flex; flex-direction: column; gap: 2px; padding: 7px 10px; border-radius: 6px; background: var(--well, rgba(12,27,45,.55)); border: 1px solid rgba(46,211,230,.1); }
 .dd-xy small { font-size: 11px; color: var(--faint); }
 .dd-xy b { font-size: 13.5px; font-weight: 600; color: var(--title); }
 
 .dd-more { padding: 4px 18px 14px; }
-.dd-ctlsec { margin-bottom: 16px; }
-.dd-ctrl { padding: 14px 16px; }
+.dd-more.compact .dd-plug-cols { grid-template-columns: 1fr; }
+.dd-ctrl { padding: 16px; }
 .dd-chess { display: grid; place-items: center; padding: 20px 24px; }
 .dd-plug { padding-bottom: 10px; }
 .dd-plug h4 { margin: 14px 0 8px; font-size: 13px; color: var(--title); font-weight: 600; }
@@ -323,7 +289,7 @@ function del() {
 .dd-desc { margin-top: 4px; }
 
 @media (max-width: 1120px) {
-  .dd-grid, .dd-grid.is-minimal { grid-template-columns: 1fr; }
+  .dd-grid, .dd-grid.is-minimal, .dd-row2 { grid-template-columns: 1fr; }
 }
 @media (max-width: 960px) {
   .dd-plug-cols { grid-template-columns: 1fr; }
